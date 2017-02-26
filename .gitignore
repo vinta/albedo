@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+caches/*
+!caches/.keep
+*.pickle
+*.sqlite3
+.DS_Store
