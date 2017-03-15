@@ -93,3 +93,6 @@ caches/*
 *.pickle
 *.sqlite3
 .DS_Store
+
+metastore_db
+derby.log
