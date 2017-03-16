@@ -30,3 +30,7 @@ shell:
 .PHONY: upload
 upload:
 	aws s3 cp db.sqlite3 s3://files.albedo.one/db.sqlite3
+
+.PHONY: download
+download:
+	aws s3 cp s3://files.albedo.one/db.sqlite3 db.sqlite3
