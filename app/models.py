@@ -21,32 +21,39 @@ def retry_if_database_is_lock(exc):
 
 
 class UserRelation(models.Model):
+    from_user_id = models.PositiveIntegerField()
     from_username = models.CharField(max_length=39)
+    to_user_id = models.PositiveIntegerField()
     to_username = models.CharField(max_length=39)
     relation = models.CharField(max_length=16)
 
     class Meta:
-        unique_together = (('from_username', 'relation', 'to_username'),)
+        unique_together = (('from_user_id', 'relation', 'to_user_id'),)
 
     def __str__(self):
         return '@{0} {1} @{2}'.format(self.from_username, self.relation, self.to_username)
 
     @staticmethod
     @retry(retry_on_exception=retry_if_database_is_lock, **retry_kwargs)
-    def create_one(from_username, relation, user_dict):
+    def create_one(from_user, relation, to_user):
         ur = UserRelation()
-        ur.from_username = from_username
+        ur.from_user_id = from_user['id']
+        ur.from_username = from_user['login']
         ur.relation = relation
-        ur.to_username = user_dict['login']
+        ur.to_user_id = to_user['id']
+        ur.to_username = to_user['login']
         ur.save()
 
         return ur
 
 
 class RepoStarring(models.Model):
+    from_user_id = models.PositiveIntegerField()
     from_username = models.CharField(max_length=39)
+    repo_owner_id = models.PositiveIntegerField()
     repo_owner_username = models.CharField(max_length=39)
     repo_owner_type = models.CharField(max_length=16)
+    repo_id = models.PositiveIntegerField()
     repo_name = models.CharField(max_length=100)
     repo_full_name = models.CharField(max_length=140)
     repo_url = models.URLField()
@@ -58,18 +65,21 @@ class RepoStarring(models.Model):
     forks_count = models.PositiveIntegerField()
 
     class Meta:
-        unique_together = (('from_username', 'repo_full_name'),)
+        unique_together = (('from_user_id', 'repo_id'),)
 
     def __str__(self):
         return '@{0} starred {1}'.format(self.from_username, self.repo_full_name)
 
     @staticmethod
     @retry(retry_on_exception=retry_if_database_is_lock, **retry_kwargs)
-    def update_or_create_one(from_username, repo_dict):
+    def update_or_create_one(from_user, repo_dict):
         rs = RepoStarring()
-        rs.from_username = from_username
+        rs.from_user_id = from_user['id']
+        rs.from_username = from_user['login']
+        rs.repo_owner_id = repo_dict['owner']['id']
         rs.repo_owner_username = repo_dict['owner']['login']
         rs.repo_owner_type = repo_dict['owner']['type']
+        rs.repo_id = repo_dict['id']
         rs.repo_name = repo_dict['name']
         rs.repo_full_name = repo_dict['full_name']
         rs.repo_url = repo_dict['html_url']
@@ -83,5 +93,5 @@ class RepoStarring(models.Model):
             rs.save()
         except IntegrityError:
             RepoStarring.objects \
-                .filter(from_username=rs.from_username, repo_full_name=rs.repo_full_name) \
+                .filter(from_user_id=rs.from_user_id, repo_id=rs.repo_id) \
                 .update(repo_updated_at=rs.repo_updated_at, stargazers_count=rs.stargazers_count, forks_count=rs.forks_count)

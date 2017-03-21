@@ -41,7 +41,7 @@ class GitHubCrawler(object):
 
         self.session = requests.Session()
         self.session.headers = {
-            'User-Agent': 'Albedo 0.1.1',
+            'User-Agent': 'Albedo 0.2.0',
             'Authorization': 'token {0}'.format(self.token),
         }
 
@@ -88,23 +88,32 @@ class GitHubCrawler(object):
 
         return response_gen
 
+    def fetch_user_info(self, username):
+        endpoint = 'https://api.github.com/users/{0}'.format(username)
+        res = self._make_reqeust('GET', endpoint)
+        return res.json()
+
     @timing_decorator
     def fetch_followd_users(self, username):
+        from_user = self.fetch_user_info(username)
+
         try:
-            UserRelation.create_one(username, 'be', {'login': username})
+            UserRelation.create_one(from_user, 'be', from_user)
         except IntegrityError:
             pass
 
         endpoint = 'https://api.github.com/users/{0}/following'.format(username)
         for user_list in self._fetch_pages_concurrently(endpoint):
-            for user in user_list:
+            for to_user in user_list:
                 try:
-                    UserRelation.create_one(username, 'followed', user)
+                    UserRelation.create_one(from_user, 'followed', to_user)
                 except IntegrityError:
                     continue
 
     @timing_decorator
     def fetch_starred_repos(self, username):
+        from_user = self.fetch_user_info(username)
+
         endpoint = 'https://api.github.com/users/{0}/starred'.format(username)
         for repo_list in self._fetch_pages_concurrently(endpoint):
             for repo in repo_list:
@@ -117,11 +126,11 @@ class GitHubCrawler(object):
                 if repo.get('stargazers_count', 0) <= self.min_stargazers_count:
                     continue
 
-                RepoStarring.update_or_create_one(username, repo)
+                RepoStarring.update_or_create_one(from_user, repo)
 
                 if repo['owner']['type'] == 'User':
                     try:
-                        UserRelation.create_one(username, 'starred', repo['owner'])
+                        UserRelation.create_one(from_user, 'starred', repo['owner'])
                     except IntegrityError:
                         pass
 
