@@ -21,9 +21,9 @@ def retry_if_database_is_lock(exc):
 
 
 class UserRelation(models.Model):
-    from_user_id = models.PositiveIntegerField()
+    from_user_id = models.IntegerField()
     from_username = models.CharField(max_length=39)
-    to_user_id = models.PositiveIntegerField()
+    to_user_id = models.IntegerField()
     to_username = models.CharField(max_length=39)
     relation = models.CharField(max_length=16)
 
@@ -48,12 +48,12 @@ class UserRelation(models.Model):
 
 
 class RepoStarring(models.Model):
-    from_user_id = models.PositiveIntegerField()
+    from_user_id = models.IntegerField()
     from_username = models.CharField(max_length=39)
-    repo_owner_id = models.PositiveIntegerField()
+    repo_owner_id = models.IntegerField()
     repo_owner_username = models.CharField(max_length=39)
     repo_owner_type = models.CharField(max_length=16)
-    repo_id = models.PositiveIntegerField()
+    repo_id = models.IntegerField()
     repo_name = models.CharField(max_length=100)
     repo_full_name = models.CharField(max_length=140)
     repo_url = models.URLField()
@@ -61,8 +61,8 @@ class RepoStarring(models.Model):
     repo_description = models.CharField(max_length=191)
     repo_created_at = models.DateTimeField()
     repo_updated_at = models.DateTimeField()
-    stargazers_count = models.PositiveIntegerField()
-    forks_count = models.PositiveIntegerField()
+    stargazers_count = models.IntegerField()
+    forks_count = models.IntegerField()
 
     class Meta:
         unique_together = (('from_user_id', 'repo_id'),)
