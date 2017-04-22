@@ -4,6 +4,7 @@ clean:
 
 .PHONY: up
 up:
+	mkdir -p ../albedo-data
 	mkdir -p ../albedo-dist-packages
 	docker-compose up
 

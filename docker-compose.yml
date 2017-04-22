@@ -1,20 +1,24 @@
-version: "2"
+version: "3"
 
 services:
-  mysql:
-    hostname: mysql
-    image: vinta/mysql:5.7
-    env_file: .docker-assets/all.env
-    ports:
-      - "3306:3306"
   django:
     hostname: django
     build: .
     working_dir: /app
-    env_file: .docker-assets/all.env
-    command: .docker-assets/start.sh
+    env_file: .docker-assets/django.env
+    command: .docker-assets/django_start.sh
     ports:
       - "8000:8000"
     volumes:
       - ".:/app"
       - "../albedo-dist-packages:/usr/local/lib/python3.5/dist-packages"
+    links:
+      - mysql
+  mysql:
+    hostname: mysql
+    image: vinta/mysql:5.7
+    env_file: .docker-assets/mysql.env
+    ports:
+      - "3306:3306"
+    volumes:
+      - "../albedo-data/mysql:/var/lib/mysql"
