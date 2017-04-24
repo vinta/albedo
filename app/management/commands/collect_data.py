@@ -94,7 +94,7 @@ class GitHubCrawler(object):
         return res.json()
 
     @timing_decorator
-    def fetch_followd_users(self, username):
+    def fetch_followed_users(self, username, fetch_more):
         from_user = self.fetch_user_info(username)
 
         try:
@@ -109,6 +109,8 @@ class GitHubCrawler(object):
                     UserRelation.create_one(from_user, 'followed', to_user)
                 except IntegrityError:
                     continue
+                if fetch_more:
+                    self.fetch_followed_users(to_user, fetch_more=False)
 
     @timing_decorator
     def fetch_starred_repos(self, username):
@@ -156,7 +158,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Start data collection'))
 
         crawler = GitHubCrawler(token=github_token)
-        crawler.fetch_followd_users(github_username)
+        crawler.fetch_followed_users(github_username, fetch_more=True)
         crawler.fetch_starred_repos(github_username)
 
         related_usernames = UserRelation.objects \
