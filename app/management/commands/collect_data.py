@@ -37,7 +37,7 @@ class GitHubCrawler(object):
 
         self.token = token
 
-        self.min_stargazers_count = 30
+        self.min_stargazers_count = 1
 
         self.session = requests.Session()
         self.session.headers = {
