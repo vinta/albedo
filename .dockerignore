@@ -1,0 +1,3 @@
+.git/
+metastore_db/
+spark-warehouse/
