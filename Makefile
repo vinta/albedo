@@ -1,6 +1,6 @@
 .PHONY: clean
 clean:
-	find . -regex "\(.*__pycache__.*\|*.py[co]\)" -delete
+	find . -name \*.pyc -o -name \*.pyo -o -name __pycache__ -exec rm -rf {} +
 
 .PHONY: up
 up:
@@ -35,3 +35,13 @@ upload:
 .PHONY: download
 download:
 	aws s3 cp s3://files.albedo.one/db.sqlite3 db.sqlite3
+
+.PHONY: spark
+spark:
+	export PYSPARK_DRIVER_PYTHON="jupyter" && \
+	export PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" && \
+	pyspark \
+	--packages "org.xerial:sqlite-jdbc:3.16.1,mysql:mysql-connector-java:5.1.41,com.github.fommil.netlib:all:1.1.2" \
+	--driver-memory 4g \
+	--executor-memory 4g \
+	--master "local[*]"
