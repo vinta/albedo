@@ -28,20 +28,38 @@ run:
 shell:
 	docker exec -i -t albedo_django_1 python manage.py shell_plus
 
-.PHONY: upload
-upload:
+.PHONY: upload_db
+upload_db:
 	aws s3 cp db.sqlite3 s3://files.albedo.one/db.sqlite3
 
-.PHONY: download
-download:
+.PHONY: download_db
+download_db:
 	aws s3 cp s3://files.albedo.one/db.sqlite3 db.sqlite3
 
-.PHONY: spark
-spark:
-	export PYSPARK_DRIVER_PYTHON="jupyter" && \
-	export PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" && \
+.PHONY: spark_standardalone
+spark_standardalone:
+	cd ${SPARK_HOME} && ./sbin/start-master.sh -h localhost
+	cd ${SPARK_HOME} && ./sbin/start-slave.sh spark://localhost:7077
+	open http://localhost:8080/
+
+.PHONY: spark_stop
+spark_stop:
+	cd ${SPARK_HOME} && ./sbin/stop-master.sh
+	cd ${SPARK_HOME} && ./sbin/stop-slave.sh
+
+.PHONY: spark_shell
+spark_shell:
+	PYSPARK_DRIVER_PYTHON="jupyter" \
+	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
-	--packages "org.xerial:sqlite-jdbc:3.16.1,mysql:mysql-connector-java:5.1.41,com.github.fommil.netlib:all:1.1.2" \
+	--packages "org.xerial:sqlite-jdbc:3.16.1,com.github.fommil.netlib:all:1.1.2" \
 	--driver-memory 4g \
-	--executor-memory 4g \
-	--master "local[*]"
+	--executor-memory 14g \
+	--master spark://localhost:7077
+
+.PHONY: spark_submit
+spark_submit:
+	spark-submit \
+	--packages "org.xerial:sqlite-jdbc:3.16.1,com.github.fommil.netlib:all:1.1.2" \
+	--master spark://localhost:7077 \
+	spark_app/src/train_als.py "vinta"
