@@ -34,12 +34,6 @@ spark = SparkSession \
 
 sc = spark.sparkContext
 
-ratingSchema = StructType([
-    StructField('user', IntegerType(), nullable=False),
-    StructField('item', IntegerType(), nullable=False),
-    StructField('rating', IntegerType(), nullable=False),
-])
-
 
 class NegativeSampleGenerator(Transformer, HasInputCol, HasOutputCol):
 
@@ -124,7 +118,7 @@ class OutputProcessor(Transformer, HasInputCol, HasOutputCol):
 
 # read data
 
-# url = 'jdbc:mysql://127.0.0.1/albedo'
+# url = 'jdbc:mysql://127.0.0.1:3306/albedo'
 # properties = {
 #     'driver': 'com.mysql.jdbc.Driver',
 #     'user': 'root',
@@ -143,6 +137,12 @@ rawDF.cache()
 # preprocess dataset
 
 minStargazersCount = 0
+
+ratingSchema = StructType([
+    StructField('user', IntegerType(), nullable=False),
+    StructField('item', IntegerType(), nullable=False),
+    StructField('rating', IntegerType(), nullable=False),
+])
 
 ratingDF = rawDF \
     .selectExpr('from_user_id AS user', 'repo_id AS item', '1 AS rating') \
@@ -174,20 +174,12 @@ pipeline = Pipeline(stages=[
     outputProcessor,
 ])
 
-# paramGrid = ParamGridBuilder() \
-#     .addGrid(negativeSampleGenerator.negativePositiveRatio, [1, 2, 3]) \
-#     .addGrid(als.rank, [50, 70]) \
-#     .addGrid(als.maxIter, [24, 26]) \
-#     .addGrid(als.regParam, [0.001, 0.01, 0.1, 0.5]) \
-#     .addGrid(als.alpha, [0.1, 1, 40]) \
-#     .build()
-
 paramGrid = ParamGridBuilder() \
-    .addGrid(negativeSampleGenerator.negativePositiveRatio, [1, 2, 3]) \
-    .addGrid(als.rank, [1, ]) \
-    .addGrid(als.maxIter, [1, ]) \
-    .addGrid(als.regParam, [0.1, ]) \
-    .addGrid(als.alpha, [1, ]) \
+    .addGrid(negativeSampleGenerator.negativePositiveRatio, [1, 2, 3, 4]) \
+    .addGrid(als.rank, [50, 70]) \
+    .addGrid(als.maxIter, [24, 26]) \
+    .addGrid(als.regParam, [0.001, 0.01, 0.1, 0.5]) \
+    .addGrid(als.alpha, [0.1, 1, 40]) \
     .build()
 
 evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
