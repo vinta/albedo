@@ -110,7 +110,8 @@ class GitHubCrawler(object):
                 except IntegrityError:
                     continue
                 if fetch_more:
-                    self.fetch_followed_users(to_user, fetch_more=False)
+                    username = to_user['login']
+                    self.fetch_followed_users(username, fetch_more=False)
 
     @timing_decorator
     def fetch_starred_repos(self, username):

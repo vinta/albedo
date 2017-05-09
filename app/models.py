@@ -37,11 +37,15 @@ class UserRelation(models.Model):
     @retry(retry_on_exception=retry_if_database_is_lock, **retry_kwargs)
     def create_one(from_user, relation, to_user):
         ur = UserRelation()
-        ur.from_user_id = from_user['id']
-        ur.from_username = from_user['login']
-        ur.relation = relation
-        ur.to_user_id = to_user['id']
-        ur.to_username = to_user['login']
+        try:
+            ur.from_user_id = from_user['id']
+            ur.from_username = from_user['login']
+            ur.relation = relation
+            ur.to_user_id = to_user['id']
+            ur.to_username = to_user['login']
+        except KeyError:
+            print('KeyError')
+            print(from_user)
         ur.save()
 
         return ur
@@ -74,21 +78,25 @@ class RepoStarring(models.Model):
     @retry(retry_on_exception=retry_if_database_is_lock, **retry_kwargs)
     def update_or_create_one(from_user, repo_dict):
         rs = RepoStarring()
-        rs.from_user_id = from_user['id']
-        rs.from_username = from_user['login']
-        rs.repo_owner_id = repo_dict['owner']['id']
-        rs.repo_owner_username = repo_dict['owner']['login']
-        rs.repo_owner_type = repo_dict['owner']['type']
-        rs.repo_id = repo_dict['id']
-        rs.repo_name = repo_dict['name']
-        rs.repo_full_name = repo_dict['full_name']
-        rs.repo_url = repo_dict['html_url']
-        rs.repo_language = repo_dict['language'] if repo_dict['language'] else ''
-        rs.repo_description = repo_dict['description'] if repo_dict['description'] else ''
-        rs.repo_created_at = repo_dict['created_at']
-        rs.repo_updated_at = repo_dict['updated_at']
-        rs.stargazers_count = repo_dict['stargazers_count']
-        rs.forks_count = repo_dict['forks_count']
+        try:
+            rs.from_user_id = from_user['id']
+            rs.from_username = from_user['login']
+            rs.repo_owner_id = repo_dict['owner']['id']
+            rs.repo_owner_username = repo_dict['owner']['login']
+            rs.repo_owner_type = repo_dict['owner']['type']
+            rs.repo_id = repo_dict['id']
+            rs.repo_name = repo_dict['name']
+            rs.repo_full_name = repo_dict['full_name']
+            rs.repo_url = repo_dict['html_url']
+            rs.repo_language = repo_dict['language'] if repo_dict['language'] else ''
+            rs.repo_description = repo_dict['description'] if repo_dict['description'] else ''
+            rs.repo_created_at = repo_dict['created_at']
+            rs.repo_updated_at = repo_dict['updated_at']
+            rs.stargazers_count = repo_dict['stargazers_count']
+            rs.forks_count = repo_dict['forks_count']
+        except KeyError:
+            print('KeyError')
+            print(from_user)
         try:
             rs.save()
         except IntegrityError:
