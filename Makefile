@@ -52,7 +52,7 @@ spark_shell:
 	PYSPARK_DRIVER_PYTHON="jupyter" \
 	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
-	--packages "org.xerial:sqlite-jdbc:3.16.1,com.github.fommil.netlib:all:1.1.2" \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.xerial:sqlite-jdbc:3.16.1" \
 	--driver-memory 4g \
 	--executor-memory 14g \
 	--master spark://localhost:7077
@@ -60,6 +60,6 @@ spark_shell:
 .PHONY: spark_submit
 spark_submit:
 	spark-submit \
-	--packages "org.xerial:sqlite-jdbc:3.16.1,com.github.fommil.netlib:all:1.1.2" \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.xerial:sqlite-jdbc:3.16.1" \
 	--master spark://localhost:7077 \
 	spark_app/src/train_als.py "vinta"

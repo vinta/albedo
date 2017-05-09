@@ -36,4 +36,15 @@ $ python manage.py train_content_based -u vinta
 # you have to install GraphLab Create manually
 # https://turi.com/download/install-graphlab-create.html
 $ python manage.py train_graphlab -u vinta
+
+# you could create a Spark 2.1.0 cluster on Google Cloud Dataproc
+# https://cloud.google.com/dataproc/
+$ spark-submit \
+--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.xerial:sqlite-jdbc:3.16.1" \
+--master spark://YOUR_SPARK_MASTER:7077 \
+spark_app/src/train_als.py "vinta"
 ```
+
+## Reference
+
+- [Setup Spark on macOS](https://vinta.ws/code/setup-spark-on-macos.html)
