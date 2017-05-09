@@ -6,7 +6,6 @@ RUN apt-get update && \
     apt-get install -Vy \
     -o APT::Install-Recommends=false -o APT::Install-Suggests=false \
     build-essential \
-    git-core \
     libmysqlclient-dev \
     mysql-client-5.7 \
     zlib1g-dev && \

@@ -20,5 +20,3 @@ services:
     env_file: .docker-assets/mysql.env
     ports:
       - "3306:3306"
-    volumes:
-      - "../albedo-data/mysql:/var/lib/mysql"
