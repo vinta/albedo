@@ -18,5 +18,6 @@ services:
     hostname: mysql
     image: vinta/mysql:5.7
     env_file: .docker-assets/mysql.env
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3306:3306"
