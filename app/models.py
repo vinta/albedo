@@ -58,7 +58,7 @@ class RepoStarring(models.Model):
     repo_full_name = models.CharField(max_length=140)
     repo_url = models.URLField()
     repo_language = models.CharField(max_length=32)
-    repo_description = models.CharField(max_length=191)
+    repo_description = models.TextField(max_length=191)
     repo_created_at = models.DateTimeField()
     repo_updated_at = models.DateTimeField()
     stargazers_count = models.IntegerField()
