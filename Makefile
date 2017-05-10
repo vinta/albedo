@@ -30,10 +30,12 @@ shell:
 
 .PHONY: upload_db
 upload_db:
+	aws s3 cp albedo.sql s3://files.albedo.one/albedo.sql
 	aws s3 cp db.sqlite3 s3://files.albedo.one/db.sqlite3
 
 .PHONY: download_db
 download_db:
+	aws s3 cp s3://files.albedo.one/albedo.sql albedo.sql
 	aws s3 cp s3://files.albedo.one/db.sqlite3 db.sqlite3
 
 .PHONY: spark_standardalone

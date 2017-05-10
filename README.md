@@ -1,7 +1,7 @@
 Albedo
 ======
 
-A practice of Recommender System for discovering GitHub repos you may like.
+A simple Recommender System for discovering GitHub repos you might like.
 
 **Albedo** is a fictional character in Dan Simmons's [Hyperion Cantos](https://en.wikipedia.org/wiki/Hyperion_Cantos) series. Councilor Albedo is the TechnoCore's AI Advisor to the Hegemony of Man.
 
@@ -22,6 +22,7 @@ You need to create your own `GITHUB_PERSONAL_TOKEN` on [your GitHub settings pag
 # this step might take a few hours to complete depends on how many repos you starred and how many users you followed
 $ python manage.py collect_data -t GITHUB_PERSONAL_TOKEN -u vinta
 # or
+$ wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albedo.sql -O albedo.sql
 $ wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/db.sqlite3 -O db.sqlite3
 
 # username: albedo
