@@ -23,8 +23,6 @@ import pyspark.sql.functions as F
 active_user = str(sys.argv[1]) if len(sys.argv) > 1 else 'vinta'
 
 conf = SparkConf()
-# conf.set('spark.executor.memory', '8G')
-# conf.set('spark.driver.memory', '8G')
 
 spark = SparkSession \
     .builder \
@@ -118,18 +116,18 @@ class OutputProcessor(Transformer, HasInputCol, HasOutputCol):
 
 # read data
 
-# url = 'jdbc:mysql://127.0.0.1:3306/albedo'
-# properties = {
-#     'driver': 'com.mysql.jdbc.Driver',
-#     'user': 'root',
-#     'password': '123',
-# }
-
-url = 'jdbc:sqlite:file:///Users/vinta/Projects/albedo/db.sqlite3'
+url = 'jdbc:mysql://127.0.0.1:3306/albedo?verifyServerCertificate=false&useSSL=false'
 properties = {
-    'driver': 'org.sqlite.JDBC',
-    'date_string_format': 'yyyy-MM-dd HH:mm:ss'
+    'driver': 'com.mysql.jdbc.Driver',
+    'user': 'root',
+    'password': '123',
 }
+
+# url = 'jdbc:sqlite:file:///Users/vinta/Projects/albedo/db.sqlite3'
+# properties = {
+#     'driver': 'org.sqlite.JDBC',
+#     'date_string_format': 'yyyy-MM-dd HH:mm:ss'
+# }
 
 rawDF = spark.read.jdbc(url, table='app_repostarring', properties=properties)
 rawDF.cache()
@@ -176,8 +174,8 @@ pipeline = Pipeline(stages=[
 
 paramGrid = ParamGridBuilder() \
     .addGrid(negativeSampleGenerator.negativePositiveRatio, [1, 2, 3, 4]) \
-    .addGrid(als.rank, [50, 70]) \
-    .addGrid(als.maxIter, [24, 26]) \
+    .addGrid(als.rank, [40, ]) \
+    .addGrid(als.maxIter, [22, ]) \
     .addGrid(als.regParam, [0.001, 0.01, 0.1, 0.5]) \
     .addGrid(als.alpha, [0.1, 1, 40]) \
     .build()
@@ -203,70 +201,66 @@ for pair in metric_params_pairs:
         print(k.name, v)
     print('\n')
 
-# # train model
+# train model
 
-# negativeSampleGenerator = NegativeSampleGenerator(negativePositiveRatio=0, bcPopularItems=bcPopularItems)
-# balancedDF = negativeSampleGenerator.transform(ratingDF)
+negativeSampleGenerator = NegativeSampleGenerator(negativePositiveRatio=0, bcPopularItems=bcPopularItems)
+balancedDF = negativeSampleGenerator.transform(ratingDF)
 
-# wholeDF = balancedDF
-# wholeDF.cache()
+wholeDF = balancedDF
+wholeDF.cache()
 
-# als = ALS(implicitPrefs=True, seed=42) \
-#     .setRank(2) \
-#     .setMaxIter(2) \
-#     .setRegParam(0.1) \
-#     .setAlpha(1)
-# # .setRank(50) \
-# # .setMaxIter(24) \
-# # .setRegParam(0.1) \
-# # .setAlpha(1)
+als = ALS(implicitPrefs=True, seed=42) \
+    .setRank(50) \
+    .setMaxIter(22) \
+    .setRegParam(0.1) \
+    .setAlpha(1)
 
-# alsModel = als.fit(wholeDF)
-# alsModel.save('spark_persistence/alsModel')
+alsModel = als.fit(wholeDF)
+alsModel.save('spark_persistence/alsModel')
 
-# # predict preferences
+# predict preferences
 
-# outputProcessor = OutputProcessor()
+outputProcessor = OutputProcessor()
 
-# predictionDF = alsModel.transform(wholeDF)
-# predictionDF = outputProcessor.transform(predictionDF)
+predictionDF = alsModel.transform(wholeDF)
+predictionDF = outputProcessor.transform(predictionDF)
 
-# # evaluate model
+# evaluate model
 
-# evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
-#                                           labelCol='rating',
-#                                           metricName='areaUnderROC')
-# aucROC = evaluator.evaluate(predictionDF)
-# print('areaUnderROC', aucROC)
+evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
+                                          labelCol='rating',
+                                          metricName='areaUnderROC')
+aucROC = evaluator.evaluate(predictionDF)
+print('areaUnderROC', aucROC)
 
-# # recommend items
+# recommend items
 
-# topN = 30
-# username = active_user
-# userID = rawDF \
-#     .where('from_username = "{0}"'.format(username)) \
-#     .select('from_user_id') \
-#     .take(1)[0]['from_user_id']
+topN = 30
+username = active_user
+userID = rawDF \
+    .where('from_username = "{0}"'.format(username)) \
+    .select('from_user_id') \
+    .take(1)[0]['from_user_id']
 
-# recommendItems = predictionDF \
-#     .where('user = {0}'.format(userID)) \
-#     .orderBy('prediction', ascending=False) \
-#     .select('item', 'prediction') \
-#     .limit(topN)
+recommendItems = predictionDF \
+    .where('user = {0}'.format(userID)) \
+    .orderBy('prediction', ascending=False) \
+    .select('item', 'prediction') \
+    .limit(topN)
 
-# repoDF = rawDF \
-#     .groupBy('repo_id', 'repo_full_name', 'repo_language') \
-#     .agg(F.max('stargazers_count').alias('stars')) \
-#     .selectExpr('repo_id AS id', 'repo_full_name AS name', 'repo_language AS language', 'stars')
+repoDF = rawDF \
+    .groupBy('repo_id', 'repo_full_name', 'repo_language') \
+    .agg(F.max('stargazers_count').alias('stars')) \
+    .selectExpr('repo_id AS id', 'repo_full_name AS name', 'repo_language AS language', 'stars')
 
-# recommendItemsWithInfo = recommendItems \
-#     .join(repoDF, recommendItems['item'] == repoDF['id'], 'inner') \
-#     .select('prediction', 'name', 'language', 'stars') \
-#     .orderBy('prediction', ascending=False)
+recommendItemsWithInfo = recommendItems \
+    .join(repoDF, recommendItems['item'] == repoDF['id'], 'inner') \
+    .select('prediction', 'name', 'language', 'stars') \
+    .orderBy('prediction', ascending=False)
 
-# for row in recommendItemsWithInfo.collect():
-#     repoName = row['name']
-#     repoUrl = 'https://github.com/{0}'.format(repoName)
-#     print(repoUrl, row['prediction'], row['language'], row['stars'])
+for row in recommendItemsWithInfo.collect():
+    repoName = row['name']
+    repoUrl = 'https://github.com/{0}'.format(repoName)
+    print(repoUrl, row['prediction'], row['language'], row['stars'])
 
 spark.stop()
