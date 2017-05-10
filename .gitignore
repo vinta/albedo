@@ -90,6 +90,7 @@ ENV/
 
 *.pickle
 *.sqlite3
+*.sql
 .DS_Store
 
 spark_persistence/*
