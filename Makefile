@@ -4,7 +4,6 @@ clean:
 
 .PHONY: up
 up:
-	mkdir -p ../albedo-data
 	mkdir -p ../albedo-dist-packages
 	docker-compose up
 
@@ -31,12 +30,10 @@ shell:
 .PHONY: upload_db
 upload_db:
 	aws s3 cp albedo.sql s3://files.albedo.one/albedo.sql
-	aws s3 cp db.sqlite3 s3://files.albedo.one/db.sqlite3
 
 .PHONY: download_db
 download_db:
 	aws s3 cp s3://files.albedo.one/albedo.sql albedo.sql
-	aws s3 cp s3://files.albedo.one/db.sqlite3 db.sqlite3
 
 .PHONY: spark_standardalone
 spark_standardalone:
@@ -54,14 +51,26 @@ spark_shell:
 	PYSPARK_DRIVER_PYTHON="jupyter" \
 	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.xerial:sqlite-jdbc:3.16.1" \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
-	--executor-memory 14g \
+	--executor-memory 15g \
 	--master spark://localhost:7077
 
 .PHONY: spark_submit
 spark_submit:
+	cd spark_app/src/deps/ && zip -r ../deps.zip * && cd .. && \
 	spark-submit \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.xerial:sqlite-jdbc:3.16.1" \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--driver-memory 4g \
+	--executor-memory 15g \
 	--master spark://localhost:7077 \
-	spark_app/src/train_als.py "vinta"
+	--py-files deps.zip \
+	train_als.py -- -u vinta
+
+.PHONY: spark_submit_gcp
+spark_submit_gcp:
+	cd spark_app/src/deps/ && zip -r ../deps.zip * && cd .. && \
+	gcloud dataproc jobs submit pyspark \
+	--cluster albedo \
+	--py-files deps.zip \
+	train_als.py -- -u vinta

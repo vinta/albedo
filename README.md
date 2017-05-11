@@ -23,7 +23,6 @@ You need to create your own `GITHUB_PERSONAL_TOKEN` on [your GitHub settings pag
 $ python manage.py collect_data -t GITHUB_PERSONAL_TOKEN -u vinta
 # or
 $ wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albedo.sql -O albedo.sql
-$ wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/db.sqlite3 -O db.sqlite3
 
 # username: albedo
 # password: hyperion
@@ -40,10 +39,14 @@ $ python manage.py train_graphlab -u vinta
 
 # you could create a Spark 2.1.0 cluster on Google Cloud Dataproc
 # https://cloud.google.com/dataproc/
-$ spark-submit \
---packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.xerial:sqlite-jdbc:3.16.1" \
+$ zip -j -r deps.zip spark_app/src/deps/ && \
+spark-submit \
+--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+--driver-memory 4g \
+--executor-memory 15g \
 --master spark://YOUR_SPARK_MASTER:7077 \
-spark_app/src/train_als.py "vinta"
+--py-files deps.zip \
+spark_app/src/train_als.py -u vinta
 ```
 
 ## Reference
