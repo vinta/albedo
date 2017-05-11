@@ -97,3 +97,4 @@ spark_persistence/*
 !spark_persistence/.keep
 metastore_db
 derby.log
+deps.zip
