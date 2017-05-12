@@ -37,16 +37,16 @@ $ python manage.py train_content_based -u vinta
 # https://turi.com/download/install-graphlab-create.html
 $ python manage.py train_graphlab -u vinta
 
-# you could create a Spark 2.1.0 cluster on Google Cloud Dataproc
+# you could also create a Spark 2.1.0 cluster on Google Cloud Dataproc
 # https://cloud.google.com/dataproc/
-$ zip -j -r deps.zip spark_app/src/deps/ && \
+$ cd spark_app/src/deps/ && zip -r ../deps.zip * && cd .. && \
 spark-submit \
 --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 --driver-memory 4g \
 --executor-memory 15g \
 --master spark://YOUR_SPARK_MASTER:7077 \
 --py-files deps.zip \
-spark_app/src/train_als.py -u vinta
+train_als.py -u vinta
 ```
 
 ## Reference
