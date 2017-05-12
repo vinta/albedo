@@ -6,9 +6,9 @@ from pyspark import SparkConf
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 
 from albedo_toolkit.common import loadRawData
+from albedo_toolkit.common import recommendItems
 from albedo_toolkit.transformers import NegativeGenerator
 from albedo_toolkit.transformers import OutputProcessor
 from albedo_toolkit.transformers import PopularItemsBuilder
@@ -35,7 +35,7 @@ rawDF.cache()
 
 # preprocess data
 
-ratingBuilder = RatingBuilder(minStargazersCount=100)
+ratingBuilder = RatingBuilder(minStargazersCount=10000)
 ratingDF = ratingBuilder.transform(rawDF)
 
 popularItemsBuilder = PopularItemsBuilder(minStargazersCount=1000)
@@ -43,7 +43,7 @@ popularItemsDF = popularItemsBuilder.transform(rawDF)
 popularItems = [row['item'] for row in popularItemsDF.select('item').collect()]
 bcPopularItems = sc.broadcast(popularItems)
 
-negativeGenerator = NegativeGenerator(negativePositiveRatio=2, bcPopularItems=bcPopularItems)
+negativeGenerator = NegativeGenerator(negativePositiveRatio=20, bcPopularItems=bcPopularItems)
 balancedDF = negativeGenerator.transform(ratingDF)
 
 # train model
@@ -54,11 +54,11 @@ wholeDF.cache()
 als = ALS(implicitPrefs=True, seed=42) \
     .setRank(50) \
     .setMaxIter(22) \
-    .setRegParam(0.1) \
-    .setAlpha(1)
+    .setRegParam(0.5) \
+    .setAlpha(40)
 
 alsModel = als.fit(wholeDF)
-alsModel.save('spark_persistence/alsModel')
+# alsModel.save('spark_persistence/alsModel')
 
 # predict preferences
 
@@ -77,32 +77,11 @@ print('areaUnderROC', areaUnderROC)
 
 # recommend items
 
-topN = 30
 username = args.username
-userID = rawDF \
-    .where('from_username = "{0}"'.format(username)) \
-    .select('from_user_id') \
-    .take(1)[0]['from_user_id']
-
-recommendItems = outputDF \
-    .where('user = {0}'.format(userID)) \
-    .orderBy('prediction', ascending=False) \
-    .select('item', 'prediction') \
-    .limit(topN)
-
-repoDF = rawDF \
-    .groupBy('repo_id', 'repo_full_name', 'repo_language') \
-    .agg(F.max('stargazers_count').alias('stars')) \
-    .selectExpr('repo_id AS id', 'repo_full_name AS name', 'repo_language AS language', 'stars')
-
-recommendItemsWithInfo = recommendItems \
-    .join(repoDF, recommendItems['item'] == repoDF['id'], 'inner') \
-    .select('prediction', 'name', 'language', 'stars') \
-    .orderBy('prediction', ascending=False)
-
-for row in recommendItemsWithInfo.collect():
-    repoName = row['name']
+recommendedItemsDF = recommendItems(rawDF, alsModel, username)
+for item in recommendedItemsDF.collect():
+    repoName = item['repo_full_name']
     repoUrl = 'https://github.com/{0}'.format(repoName)
-    print(repoUrl, row['prediction'], row['language'], row['stars'])
+    print(repoUrl, item['prediction'], item['repo_language'], item['stargazers_count'])
 
 spark.stop()

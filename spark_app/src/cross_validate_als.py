@@ -54,11 +54,11 @@ pipeline = Pipeline(stages=[
 ])
 
 paramGrid = ParamGridBuilder() \
-    .addGrid(negativeGenerator.negativePositiveRatio, [1, 2, 5, 10]) \
-    .addGrid(als.rank, [40, ]) \
+    .addGrid(negativeGenerator.negativePositiveRatio, [10, 20]) \
+    .addGrid(als.rank, [50, 60, 100]) \
     .addGrid(als.maxIter, [22, ]) \
-    .addGrid(als.regParam, [0.001, 0.01, 0.1, 0.5]) \
-    .addGrid(als.alpha, [0.1, 1, 40]) \
+    .addGrid(als.regParam, [0.01, 0.1, 0.5]) \
+    .addGrid(als.alpha, [1, 40, ]) \
     .build()
 
 evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
@@ -82,4 +82,4 @@ for pair in metric_params_pairs:
     print('metric', metric)
     for k, v in params.items():
         print(k.name, v)
-    print('\n')
+    print('')
