@@ -9,10 +9,10 @@ from pyspark.ml.tuning import ParamGridBuilder
 from pyspark.sql import SparkSession
 
 from albedo_toolkit.common import loadRawData
-from deps.transformers import NegativeGenerator
-from deps.transformers import OutputProcessor
-from deps.transformers import PopularItemsBuilder
-from deps.transformers import RatingBuilder
+from albedo_toolkit.transformers import NegativeGenerator
+from albedo_toolkit.transformers import OutputProcessor
+from albedo_toolkit.transformers import PopularItemsBuilder
+from albedo_toolkit.transformers import RatingBuilder
 
 
 conf = SparkConf()
