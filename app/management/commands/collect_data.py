@@ -120,14 +120,15 @@ class GitHubCrawler(object):
 
         endpoint = 'https://api.github.com/users/{0}/starred'.format(username)
         for repo_list in self._fetch_pages_concurrently(endpoint):
-            for repo in repo_list:
-                # these situations could happen!
-                if not isinstance(repo, dict):
+            for starred in repo_list:
+                # following situations could happen!
+                if not isinstance(starred, dict):
+                    continue
+                repo = starred['repo']
+                repo['starred_at'] = starred['starred_at']
+                if repo.get('stargazers_count', 0) <= self.min_stargazers_count:
                     continue
                 if not repo.get('owner'):
-                    continue
-
-                if repo.get('stargazers_count', 0) <= self.min_stargazers_count:
                     continue
 
                 RepoStarring.update_or_create_one(from_user, repo)
