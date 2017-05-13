@@ -41,8 +41,9 @@ class GitHubCrawler(object):
 
         self.session = requests.Session()
         self.session.headers = {
-            'User-Agent': 'Albedo 0.2.0',
+            'User-Agent': 'Albedo 1.0.0',
             'Authorization': 'token {0}'.format(self.token),
+            'Accept': 'application/vnd.github.v3.star+json',
         }
 
     @retry(retry_on_exception=retry_if_remote_disconnected, wait_fixed=1000 * 60)

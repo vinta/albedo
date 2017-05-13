@@ -65,6 +65,7 @@ class RepoStarring(models.Model):
     repo_description = models.TextField(max_length=191)
     repo_created_at = models.DateTimeField()
     repo_updated_at = models.DateTimeField()
+    starred_at = models.DateTimeField()
     stargazers_count = models.IntegerField()
     forks_count = models.IntegerField()
 
@@ -92,6 +93,7 @@ class RepoStarring(models.Model):
             rs.repo_description = repo_dict['description'] if repo_dict['description'] else ''
             rs.repo_created_at = repo_dict['created_at']
             rs.repo_updated_at = repo_dict['updated_at']
+            rs.starred_at = repo_dict['starred_at']
             rs.stargazers_count = repo_dict['stargazers_count']
             rs.forks_count = repo_dict['forks_count']
         except KeyError:
