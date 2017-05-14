@@ -2,8 +2,6 @@
 
 from pyspark import keyword_only
 from pyspark.ml import Transformer
-from pyspark.ml.param.shared import HasInputCol
-from pyspark.ml.param.shared import HasOutputCol
 from pyspark.ml.param.shared import Param
 from pyspark.sql import SparkSession
 from pyspark.sql import Window
@@ -15,10 +13,10 @@ import pyspark.sql.functions as F
 spark = SparkSession.builder.getOrCreate()
 
 
-class RatingBuilder(Transformer, HasInputCol, HasOutputCol):
+class RatingBuilder(Transformer):
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, minStargazersCount=0):
+    def __init__(self, minStargazersCount=0):
         super(RatingBuilder, self).__init__()
         self.minStargazersCount = Param(self, 'minStargazersCount', None)
         self._setDefault(minStargazersCount=0)
@@ -26,7 +24,7 @@ class RatingBuilder(Transformer, HasInputCol, HasOutputCol):
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, minStargazersCount=0):
+    def setParams(self, minStargazersCount=0):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
 
@@ -46,10 +44,10 @@ class RatingBuilder(Transformer, HasInputCol, HasOutputCol):
         return ratingDF
 
 
-class PopularItemsBuilder(Transformer, HasInputCol, HasOutputCol):
+class PopularItemsBuilder(Transformer):
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, minStargazersCount=0):
+    def __init__(self, minStargazersCount=0):
         super(PopularItemsBuilder, self).__init__()
         self.minStargazersCount = Param(self, 'minStargazersCount', None)
         self._setDefault(minStargazersCount=0)
@@ -57,7 +55,7 @@ class PopularItemsBuilder(Transformer, HasInputCol, HasOutputCol):
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, minStargazersCount=0):
+    def setParams(self, minStargazersCount=0):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
 
@@ -79,27 +77,26 @@ class PopularItemsBuilder(Transformer, HasInputCol, HasOutputCol):
 
 
 # TODO
-class OutlierRemover(Transformer, HasInputCol, HasOutputCol):
+class OutlierRemover(Transformer):
 
     def _transform(self, df):
         cleanDF = df
         return cleanDF
 
 
-class NegativeGenerator(Transformer, HasInputCol, HasOutputCol):
+class NegativeGenerator(Transformer):
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, negativePositiveRatio=1, bcPopularItems=()):
+    def __init__(self, negativePositiveRatio=1, bcPopularItems=None):
         super(NegativeGenerator, self).__init__()
         self.negativePositiveRatio = Param(self, 'negativePositiveRatio', None)
         self.bcPopularItems = Param(self, 'bcPopularItems', None)
-        self._setDefault(negativePositiveRatio=1)
-        self._setDefault(bcPopularItems=())
+        self._setDefault(negativePositiveRatio=1, bcPopularItems=None)
         kwargs = self.__init__._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, negativePositiveRatio=1, bcPopularItems=()):
+    def setParams(self, negativePositiveRatio=1, bcPopularItems=None):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
 
@@ -159,7 +156,7 @@ class NegativeGenerator(Transformer, HasInputCol, HasOutputCol):
         return balancedDF
 
 
-class OutputProcessor(Transformer, HasInputCol, HasOutputCol):
+class OutputProcessor(Transformer):
 
     def _transform(self, predictedDF):
         nonNullDF = predictedDF.dropna(subset=['prediction', ])
@@ -167,10 +164,43 @@ class OutputProcessor(Transformer, HasInputCol, HasOutputCol):
         return outputDF
 
 
-class PerUserActualItemsBuilder(Transformer, HasInputCol, HasOutputCol):
+class PerUserPredictedItemsBuilder(Transformer):
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, k=30):
+    def __init__(self, k=30):
+        super(PerUserPredictedItemsBuilder, self).__init__()
+        self.k = Param(self, 'k', None)
+        self._setDefault(k=0)
+        kwargs = self.__init__._input_kwargs
+        self.setParams(**kwargs)
+
+    @keyword_only
+    def setParams(self, k=30):
+        kwargs = self.setParams._input_kwargs
+        return self._set(**kwargs)
+
+    def setK(self, value):
+        self._paramMap[self.k] = value
+        return self
+
+    def getK(self):
+        return self.getOrDefault(self.k)
+
+    def _transform(self, outputDF):
+        k = self.getK()
+        windowSpec = Window.partitionBy('user').orderBy(col('prediction').desc())
+        predictedPerUserItemsDF = outputDF \
+            .select('user', 'item', 'prediction', F.rank().over(windowSpec).alias('rank')) \
+            .where('rank <= {0}'.format(k)) \
+            .groupBy('user') \
+            .agg(expr('collect_list(item) as items'))
+        return predictedPerUserItemsDF
+
+
+class PerUserActualItemsBuilder(Transformer):
+
+    @keyword_only
+    def __init__(self, k=30):
         super(PerUserActualItemsBuilder, self).__init__()
         self.k = Param(self, 'k', None)
         self._setDefault(k=0)
@@ -178,7 +208,7 @@ class PerUserActualItemsBuilder(Transformer, HasInputCol, HasOutputCol):
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, k=30):
+    def setParams(self, k=30):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
 
@@ -199,36 +229,3 @@ class PerUserActualItemsBuilder(Transformer, HasInputCol, HasOutputCol):
             .agg(expr('collect_list(repo_id) as items')) \
             .withColumnRenamed('from_user_id', 'user')
         return actualPerUserItemsDF
-
-
-class PerUserPredictedItemsBuilder(Transformer, HasInputCol, HasOutputCol):
-
-    @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, k=30):
-        super(PerUserPredictedItemsBuilder, self).__init__()
-        self.k = Param(self, 'k', None)
-        self._setDefault(k=0)
-        kwargs = self.__init__._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, k=30):
-        kwargs = self.setParams._input_kwargs
-        return self._set(**kwargs)
-
-    def setK(self, value):
-        self._paramMap[self.k] = value
-        return self
-
-    def getK(self):
-        return self.getOrDefault(self.k)
-
-    def _transform(self, outputDF):
-        k = self.getK()
-        windowSpec = Window.partitionBy('user').orderBy(col('prediction').desc())
-        predictedPerUserItemsDF = outputDF \
-            .select('user', 'item', 'prediction', F.rank().over(windowSpec).alias('rank')) \
-            .where('rank <= {0}'.format(k)) \
-            .groupBy('user') \
-            .agg(expr('collect_list(item) as items'))
-        return predictedPerUserItemsDF
