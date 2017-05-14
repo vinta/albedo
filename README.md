@@ -39,7 +39,7 @@ $ python manage.py train_graphlab -u vinta
 
 # you could also create a Spark 2.1.0 cluster on Google Cloud Dataproc
 # https://cloud.google.com/dataproc/
-$ cd spark_app/src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
+$ cd spark_app/src/main/python/deps/ && zip -x \*/__pycache__/\* -r ../deps.zip * && cd .. && \
 spark-submit \
 --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 --driver-memory 4g \
