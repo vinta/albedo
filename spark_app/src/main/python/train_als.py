@@ -9,6 +9,7 @@ from pyspark.sql import SparkSession
 
 from albedo_toolkit.common import loadRawData
 from albedo_toolkit.common import recommendItems
+from albedo_toolkit.evaluators import RankingEvaluator
 from albedo_toolkit.transformers import NegativeGenerator
 from albedo_toolkit.transformers import OutputProcessor
 from albedo_toolkit.transformers import PopularItemsBuilder
@@ -69,16 +70,23 @@ outputDF = outputProcessor.transform(predictedDF)
 
 # evaluate model
 
+k = 30
+
 evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
                                           labelCol='rating',
                                           metricName='areaUnderROC')
 areaUnderROC = evaluator.evaluate(outputDF)
+
+evaluator = rankingEvaluator = RankingEvaluator(k=k, rawDF=rawDF)
+ndcg = evaluator.evaluate(outputDF)
+
 print('areaUnderROC', areaUnderROC)
+print('NDCG', ndcg)
 
 # recommend items
 
 username = args.username
-recommendedItemsDF = recommendItems(rawDF, alsModel, username)
+recommendedItemsDF = recommendItems(rawDF, alsModel, username, topN=k)
 for item in recommendedItemsDF.collect():
     repoName = item['repo_full_name']
     repoUrl = 'https://github.com/{0}'.format(repoName)
