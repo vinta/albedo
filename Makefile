@@ -58,7 +58,7 @@ spark_shell:
 
 .PHONY: spark_submit
 spark_submit:
-	cd spark_app/src/deps/ && zip -r ../deps.zip * && cd .. && \
+	cd spark_app/src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	spark-submit \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
@@ -69,7 +69,7 @@ spark_submit:
 
 .PHONY: spark_submit_gcp
 spark_submit_gcp:
-	cd spark_app/src/deps/ && zip -r ../deps.zip * && cd .. && \
+	cd spark_app/src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	gcloud dataproc jobs submit pyspark \
 	--cluster albedo \
 	--py-files deps.zip \
