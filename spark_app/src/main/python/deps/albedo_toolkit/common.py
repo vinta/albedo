@@ -1,19 +1,10 @@
 # coding: utf-8
 
 from pyspark.sql import SparkSession
-from pyspark.sql.types import IntegerType
-from pyspark.sql.types import StructField
-from pyspark.sql.types import StructType
 import pyspark.sql.functions as F
 
 
 spark = SparkSession.builder.getOrCreate()
-
-ratingSchema = StructType([
-    StructField('user', IntegerType(), nullable=False),
-    StructField('item', IntegerType(), nullable=False),
-    StructField('rating', IntegerType(), nullable=False),
-])
 
 
 def loadRawData():

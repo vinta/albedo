@@ -6,9 +6,10 @@ from pyspark.ml.param.shared import HasInputCol
 from pyspark.ml.param.shared import HasOutputCol
 from pyspark.ml.param.shared import Param
 from pyspark.sql import SparkSession
+from pyspark.sql import Window
+from pyspark.sql.functions import col
+from pyspark.sql.functions import expr
 import pyspark.sql.functions as F
-
-from albedo_toolkit.common import ratingSchema
 
 
 spark = SparkSession.builder.getOrCreate()
@@ -41,8 +42,7 @@ class RatingBuilder(Transformer, HasInputCol, HasOutputCol):
         ratingDF = rawDF \
             .selectExpr('from_user_id AS user', 'repo_id AS item', '1 AS rating') \
             .where('stargazers_count > {0}'.format(minStargazersCount)) \
-            .orderBy('user')
-        ratingDF = spark.createDataFrame(ratingDF.rdd, ratingSchema)
+            .orderBy('user', 'starred_at')
         return ratingDF
 
 
@@ -151,7 +151,7 @@ class NegativeGenerator(Transformer, HasInputCol, HasOutputCol):
             .aggregateByKey(set(), seqFunc, combFunc) \
             .map(lambda x: getNegativeSamples(x)) \
             .flatMap(lambda x: expandNegativeSamples(x))
-        negativeDF = spark.createDataFrame(negativeRDD, ratingSchema)
+        negativeDF = spark.createDataFrame(negativeRDD, ratingDF.schema)
 
         # avoid "Union can only be performed on tables with the same number of columns" in cross-validation
         columns = ('user', 'item', 'rating')
@@ -165,3 +165,70 @@ class OutputProcessor(Transformer, HasInputCol, HasOutputCol):
         nonNullDF = predictedDF.dropna(subset=['prediction', ])
         outputDF = nonNullDF.withColumn('prediction', nonNullDF['prediction'].cast('double'))
         return outputDF
+
+
+class PerUserActualItemsBuilder(Transformer, HasInputCol, HasOutputCol):
+
+    @keyword_only
+    def __init__(self, inputCol=None, outputCol=None, k=30):
+        super(PerUserActualItemsBuilder, self).__init__()
+        self.k = Param(self, 'k', None)
+        self._setDefault(k=0)
+        kwargs = self.__init__._input_kwargs
+        self.setParams(**kwargs)
+
+    @keyword_only
+    def setParams(self, inputCol=None, outputCol=None, k=30):
+        kwargs = self.setParams._input_kwargs
+        return self._set(**kwargs)
+
+    def setK(self, value):
+        self._paramMap[self.k] = value
+        return self
+
+    def getK(self):
+        return self.getOrDefault(self.k)
+
+    def _transform(self, rawDF):
+        k = self.getK()
+        windowSpec = Window.partitionBy('from_user_id').orderBy(col('starred_at').desc())
+        actualPerUserItemsDF = rawDF \
+            .select('from_user_id', 'repo_id', 'starred_at', F.rank().over(windowSpec).alias('rank')) \
+            .where('rank <= {0}'.format(k)) \
+            .groupBy('from_user_id') \
+            .agg(expr('collect_list(repo_id) as items')) \
+            .withColumnRenamed('from_user_id', 'user')
+        return actualPerUserItemsDF
+
+
+class PerUserPredictedItemsBuilder(Transformer, HasInputCol, HasOutputCol):
+
+    @keyword_only
+    def __init__(self, inputCol=None, outputCol=None, k=30):
+        super(PerUserPredictedItemsBuilder, self).__init__()
+        self.k = Param(self, 'k', None)
+        self._setDefault(k=0)
+        kwargs = self.__init__._input_kwargs
+        self.setParams(**kwargs)
+
+    @keyword_only
+    def setParams(self, inputCol=None, outputCol=None, k=30):
+        kwargs = self.setParams._input_kwargs
+        return self._set(**kwargs)
+
+    def setK(self, value):
+        self._paramMap[self.k] = value
+        return self
+
+    def getK(self):
+        return self.getOrDefault(self.k)
+
+    def _transform(self, outputDF):
+        k = self.getK()
+        windowSpec = Window.partitionBy('user').orderBy(col('prediction').desc())
+        predictedPerUserItemsDF = outputDF \
+            .select('user', 'item', 'prediction', F.rank().over(windowSpec).alias('rank')) \
+            .where('rank <= {0}'.format(k)) \
+            .groupBy('user') \
+            .agg(expr('collect_list(item) as items'))
+        return predictedPerUserItemsDF
