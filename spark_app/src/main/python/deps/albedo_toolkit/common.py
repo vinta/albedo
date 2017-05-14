@@ -16,6 +16,17 @@ def loadRawData():
     return rawDF
 
 
+def printCrossValidationParameters(cvModel):
+    metric_params_pairs = list(zip(cvModel.avgMetrics, cvModel.getEstimatorParamMaps()))
+    metric_params_pairs.sort(key=lambda x: x[0], reverse=True)
+    for pair in metric_params_pairs:
+        metric, params = pair
+        print('metric', metric)
+        for k, v in params.items():
+            print(k.name, v)
+        print('')
+
+
 def recommendItems(rawDF, alsModel, username, topN=30):
     userID = rawDF \
         .where('from_username = "{0}"'.format(username)) \

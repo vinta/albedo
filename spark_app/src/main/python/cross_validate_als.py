@@ -9,6 +9,7 @@ from pyspark.ml.tuning import ParamGridBuilder
 from pyspark.sql import SparkSession
 
 from albedo_toolkit.common import loadRawData
+from albedo_toolkit.common import printCrossValidationParameters
 from albedo_toolkit.transformers import NegativeGenerator
 from albedo_toolkit.transformers import OutputProcessor
 from albedo_toolkit.transformers import PopularItemsBuilder
@@ -74,12 +75,4 @@ cvModel = cv.fit(ratingDF)
 
 # evaluate models
 
-metric_params_pairs = list(zip(cvModel.avgMetrics, cvModel.getEstimatorParamMaps()))
-metric_params_pairs.sort(key=lambda x: x[0], reverse=True)
-best_metric_params = metric_params_pairs[0][1]
-for pair in metric_params_pairs:
-    metric, params = pair
-    print('metric', metric)
-    for k, v in params.items():
-        print(k.name, v)
-    print('')
+printCrossValidationParameters(cvModel)
