@@ -35,8 +35,8 @@ upload_db:
 download_db:
 	aws s3 cp s3://files.albedo.one/albedo.sql albedo.sql
 
-.PHONY: spark_standardalone
-spark_standardalone:
+.PHONY: spark_standalone
+spark_standalone:
 	cd ${SPARK_HOME} && ./sbin/start-master.sh -h localhost
 	cd ${SPARK_HOME} && ./sbin/start-slave.sh spark://localhost:7077
 	open http://localhost:8080/
