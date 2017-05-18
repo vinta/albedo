@@ -43,12 +43,11 @@ class UserRelation(models.Model):
             ur.relation = relation
             ur.to_user_id = to_user['id']
             ur.to_username = to_user['login']
-        except KeyError:
-            print('KeyError')
+            ur.save()
+        except (KeyError, TypeError) as e:
+            print(e)
             print(from_user)
-        ur.save()
-
-        return ur
+            print(to_user)
 
 
 class RepoStarring(models.Model):
@@ -96,9 +95,11 @@ class RepoStarring(models.Model):
             rs.starred_at = repo_dict['starred_at']
             rs.stargazers_count = repo_dict['stargazers_count']
             rs.forks_count = repo_dict['forks_count']
-        except KeyError:
-            print('KeyError')
-            print(from_user)
+        except (KeyError, TypeError) as e:
+            print(e)
+            print(repo_dict)
+            return
+
         try:
             rs.save()
         except IntegrityError:

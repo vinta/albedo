@@ -95,14 +95,8 @@ class GitHubCrawler(object):
         return res.json()
 
     @timing_decorator
-    def fetch_followed_users(self, username, fetch_more):
+    def fetch_following_users(self, username, fetch_more):
         from_user = self.fetch_user_info(username)
-
-        try:
-            UserRelation.create_one(from_user, 'be', from_user)
-        except IntegrityError:
-            pass
-
         endpoint = 'https://api.github.com/users/{0}/following'.format(username)
         for user_list in self._fetch_pages_concurrently(endpoint):
             for to_user in user_list:
@@ -112,7 +106,21 @@ class GitHubCrawler(object):
                     continue
                 if fetch_more:
                     username = to_user['login']
-                    self.fetch_followed_users(username, fetch_more=False)
+                    self.fetch_following_users(username, fetch_more=False)
+
+    @timing_decorator
+    def fetch_follower_users(self, username, fetch_more):
+        to_user = self.fetch_user_info(username)
+        endpoint = 'https://api.github.com/users/{0}/followers'.format(username)
+        for user_list in self._fetch_pages_concurrently(endpoint):
+            for from_user in user_list:
+                try:
+                    UserRelation.create_one(from_user, 'followed', to_user)
+                except IntegrityError:
+                    continue
+                if fetch_more:
+                    username = from_user['login']
+                    self.fetch_following_users(username, fetch_more=False)
 
     @timing_decorator
     def fetch_starred_repos(self, username):
@@ -144,7 +152,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('-t', '--token', action='store', dest='token', required=True)
-        parser.add_argument('-u', '--username', action='store', dest='username', required=True)
+        parser.add_argument('-u', '--usernames', type=lambda x: x.split(','), dest='usernames', required=True)
 
     def handle(self, *args, **options):
         try:
@@ -153,27 +161,29 @@ class Command(BaseCommand):
             pass
 
         github_token = options['token']
-        github_username = options['username']
-
-        self.stdout.write(self.style.SUCCESS('GitHub token: {0}'.format(github_token)))
-        self.stdout.write(self.style.SUCCESS('GtiHub username: @{0}'.format(github_username)))
+        github_usernames = options['usernames']
 
         self.stdout.write(self.style.SUCCESS('Start data collection'))
-
+        self.stdout.write(self.style.SUCCESS('GitHub token: {0}'.format(github_token)))
         crawler = GitHubCrawler(token=github_token)
-        crawler.fetch_followed_users(github_username, fetch_more=True)
-        crawler.fetch_starred_repos(github_username)
+        for github_username in github_usernames:
+            self.stdout.write(self.style.SUCCESS('GtiHub username: @{0}'.format(github_username)))
+            crawler.fetch_following_users(github_username, fetch_more=True)
+            crawler.fetch_follower_users(github_username, fetch_more=False)
+            crawler.fetch_starred_repos(github_username)
 
-        related_usernames = UserRelation.objects \
-            .filter(from_username=github_username) \
-            .order_by('to_username') \
+        from_usernames = UserRelation.objects \
+            .values_list('from_username', flat=True) \
+            .distinct()
+        to_usernames = UserRelation.objects \
             .values_list('to_username', flat=True) \
             .distinct()
-        user_count = related_usernames.count()
+        related_usernames = set(from_usernames).union(set(to_usernames))
+        user_count = len(related_usernames)
         self.stdout.write(self.style.SUCCESS('Total number of related users: {0}'.format(user_count)))
 
-        for username in related_usernames.iterator():
-            if username != github_username:
+        for username in related_usernames:
+            if username not in github_usernames:
                 crawler.fetch_starred_repos(username)
 
         repositories = RepoStarring.objects \
