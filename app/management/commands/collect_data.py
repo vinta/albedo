@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from concurrent.futures import ThreadPoolExecutor
+import json
 import logging
 import re
 import time
@@ -82,7 +83,11 @@ class GitHubCrawler(object):
         def _fetch_page(page_number):
             url = '{0}?page={1}'.format(endpoint, page_number)
             res = self._make_reqeust('GET', url, params={'page': page_number})
-            return res.json()
+            try:
+                content = res.json()
+            except json.JSONDecodeError:
+                content = []
+            return content
 
         with ThreadPoolExecutor(max_workers=self.worker_number) as executor:
             response_gen = executor.map(_fetch_page, range(1, total_page + 1))
