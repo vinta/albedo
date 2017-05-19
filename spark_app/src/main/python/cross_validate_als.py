@@ -50,10 +50,10 @@ pipeline = Pipeline(stages=[
 
 paramGrid = ParamGridBuilder() \
     .addGrid(dataCleaner.minItemStargazersCount, [1, 10, 100]) \
-    .addGrid(dataCleaner.maxItemStargazersCount, [5000, ]) \
+    .addGrid(dataCleaner.maxItemStargazersCount, [4000, ]) \
     .addGrid(dataCleaner.minUserStarredCount, [1, 10, 100]) \
     .addGrid(dataCleaner.maxUserStarredCount, [1000, 4000, ]) \
-    .addGrid(als.rank, [50, ]) \
+    .addGrid(als.rank, [50, 100]) \
     .addGrid(als.maxIter, [22, ]) \
     .addGrid(als.regParam, [0.01, 0.1, 0.5]) \
     .addGrid(als.alpha, [0.01, 1, 40, ]) \

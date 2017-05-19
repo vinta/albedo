@@ -54,7 +54,7 @@ wholeDF.cache()
 
 als = ALS(implicitPrefs=True, seed=42) \
     .setRank(50) \
-    .setMaxIter(5) \
+    .setMaxIter(22) \
     .setRegParam(0.5) \
     .setAlpha(40)
 
