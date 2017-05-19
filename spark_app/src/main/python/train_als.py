@@ -77,7 +77,7 @@ print('NDCG', ndcg)
 # recommend items
 
 username = args.username
-recommendedItemsDF = recommendItems(rawDF, alsModel, username, topN=k)
+recommendedItemsDF = recommendItems(rawDF, alsModel, username, topN=k, excludeKnownItems=False)
 for item in recommendedItemsDF.collect():
     repoName = item['repo_full_name']
     repoUrl = 'https://github.com/{0}'.format(repoName)
