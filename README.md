@@ -51,6 +51,7 @@ spark-submit \
 train_als.py -u vinta
 ```
 
-## Reference
+## Related posts
 
 - [Setup Spark on macOS](https://vinta.ws/code/setup-spark-on-macos.html)
+- [Build a recommender system with PySpark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
