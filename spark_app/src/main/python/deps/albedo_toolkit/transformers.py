@@ -15,56 +15,95 @@ spark = SparkSession.builder.getOrCreate()
 
 class RatingBuilder(Transformer):
 
-    @keyword_only
-    def __init__(self, minStargazersCount=0):
-        super(RatingBuilder, self).__init__()
-        self.minStargazersCount = Param(self, 'minStargazersCount', None)
-        self._setDefault(minStargazersCount=0)
-        kwargs = self.__init__._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, minStargazersCount=0):
-        kwargs = self.setParams._input_kwargs
-        return self._set(**kwargs)
-
-    def setMinStargazersCount(self, value):
-        self._paramMap[self.minStargazersCount] = value
-        return self
-
-    def getMinStargazersCount(self):
-        return self.getOrDefault(self.minStargazersCount)
-
     def _transform(self, rawDF):
-        minStargazersCount = self.getMinStargazersCount()
         ratingDF = rawDF \
-            .selectExpr('from_user_id AS user', 'repo_id AS item', '1 AS rating') \
-            .where('stargazers_count > {0}'.format(minStargazersCount)) \
-            .orderBy('user', 'starred_at')
+            .selectExpr('from_user_id AS user', 'repo_id AS item', '1 AS rating', 'starred_at') \
+            .orderBy('user', F.col('starred_at').desc())
         return ratingDF
 
 
-class PopularItemsBuilder(Transformer):
+class DataCleaner(Transformer):
 
     @keyword_only
-    def __init__(self, minStargazersCount=0):
-        super(PopularItemsBuilder, self).__init__()
-        self.minStargazersCount = Param(self, 'minStargazersCount', None)
-        self._setDefault(minStargazersCount=0)
+    def __init__(self, minItemStargazersCount=None, maxItemStargazersCount=None, minUserStarredCount=None, maxUserStarredCount=None):
+        super(DataCleaner, self).__init__()
+        self.minItemStargazersCount = Param(self, 'minItemStargazersCount', '移除 stargazer 數低於這個數字的 item')
+        self.maxItemStargazersCount = Param(self, 'maxItemStargazersCount', '移除 stargazer 數超過這個數字的 item')
+        self.minUserStarredCount = Param(self, 'minUserStarredCount', '移除 starred repo 數低於這個數字的 user')
+        self.maxUserStarredCount = Param(self, 'maxUserStarredCount', '移除 starred repo 數超過這個數字的 user')
+        self._setDefault(minItemStargazersCount=1, maxItemStargazersCount=50000, minUserStarredCount=1, maxUserStarredCount=50000)
         kwargs = self.__init__._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, minStargazersCount=0):
+    def setParams(self, minItemStargazersCount=None, maxItemStargazersCount=None, minUserStarredCount=None, maxUserStarredCount=None):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
 
-    def setMinStargazersCount(self, value):
-        self._paramMap[self.minStargazersCount] = value
+    def setMinItemStargazersCount(self, value):
+        self._paramMap[self.minItemStargazersCount] = value
         return self
 
-    def getMinStargazersCount(self):
-        return self.getOrDefault(self.minStargazersCount)
+    def getMinItemStargazersCount(self):
+        return self.getOrDefault(self.minItemStargazersCount)
+
+    def setMaxItemStargazersCount(self, value):
+        self._paramMap[self.maxItemStargazersCount] = value
+        return self
+
+    def getMaxItemStargazersCount(self):
+        return self.getOrDefault(self.maxItemStargazersCount)
+
+    def setMinUserStarredCount(self, value):
+        self._paramMap[self.minUserStarredCount] = value
+        return self
+
+    def getMinUserStarredCount(self):
+        return self.getOrDefault(self.minUserStarredCount)
+
+    def setMaxUserStarredCount(self, value):
+        self._paramMap[self.maxUserStarredCount] = value
+        return self
+
+    def getMaxUserStarredCount(self):
+        return self.getOrDefault(self.maxUserStarredCount)
+
+    def _transform(self, ratingDF):
+        minItemStargazersCount = self.getMinItemStargazersCount()
+        maxItemStargazersCount = self.getMaxItemStargazersCount()
+        minUserStarredCount = self.getMinUserStarredCount()
+        maxUserStarredCount = self.getMaxUserStarredCount()
+
+        toKeepItemsDF = ratingDF \
+            .groupBy('item') \
+            .agg(F.count('user').alias('stargazers_count')) \
+            .where('stargazers_count >= {0} AND stargazers_count <= {1}'.format(minItemStargazersCount, maxItemStargazersCount)) \
+            .orderBy('stargazers_count', ascending=False) \
+            .select('item', 'stargazers_count')
+        temp1DF = ratingDF.join(toKeepItemsDF, 'item', 'inner')
+
+        toKeepUsersDF = temp1DF \
+            .groupBy('user') \
+            .agg(F.count('item').alias('starred_count')) \
+            .where('starred_count >= {0} AND starred_count <= {1}'.format(minUserStarredCount, maxUserStarredCount)) \
+            .orderBy('starred_count', ascending=False) \
+            .select('user', 'starred_count')
+        temp2DF = temp1DF.join(toKeepUsersDF, 'user', 'inner')
+
+        cleanDF = temp2DF.select('user', 'item', 'rating', 'starred_at')
+        return cleanDF
+
+
+class PredictionProcessor(Transformer):
+
+    def _transform(self, predictedDF):
+        nonNullDF = predictedDF.dropna(subset=['prediction', ])
+        predictionDF = nonNullDF.withColumn('prediction', nonNullDF['prediction'].cast('double'))
+        return predictionDF
+
+
+# DEPRECATE
+class PopularItemsBuilder(Transformer):
 
     def _transform(self, rawDF):
         popularItemsDF = rawDF \
@@ -76,29 +115,30 @@ class PopularItemsBuilder(Transformer):
         return popularItemsDF
 
 
-# TODO
-class OutlierRemover(Transformer):
-
-    def _transform(self, df):
-        cleanDF = df
-        return cleanDF
-
-
+# DEPRECATE
 class NegativeGenerator(Transformer):
 
     @keyword_only
-    def __init__(self, negativePositiveRatio=1, bcPopularItems=None):
+    def __init__(self, negativeRatingValue=None, negativePositiveRatio=None, bcPopularItems=None):
         super(NegativeGenerator, self).__init__()
-        self.negativePositiveRatio = Param(self, 'negativePositiveRatio', None)
-        self.bcPopularItems = Param(self, 'bcPopularItems', None)
-        self._setDefault(negativePositiveRatio=1, bcPopularItems=None)
+        self.negativeRatingValue = Param(self, 'negativeRatingValue', '負樣本的 rating 值')
+        self.negativePositiveRatio = Param(self, 'negativePositiveRatio', '負樣本與正樣本的比例')
+        self.bcPopularItems = Param(self, 'bcPopularItems', '熱門物品的列表，必須是 Broadcast variable')
+        self._setDefault(negativeRatingValue=0, negativePositiveRatio=1, bcPopularItems=None)
         kwargs = self.__init__._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, negativePositiveRatio=1, bcPopularItems=None):
+    def setParams(self, negativeRatingValue=None, negativePositiveRatio=None, bcPopularItems=None):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
+
+    def setNegativeRatingValue(self, value):
+        self._paramMap[self.negativeRatingValue] = value
+        return self
+
+    def getNegativeRatingValue(self):
+        return self.getOrDefault(self.negativeRatingValue)
 
     def setNegativePositiveRatio(self, value):
         self._paramMap[self.negativePositiveRatio] = value
@@ -115,7 +155,10 @@ class NegativeGenerator(Transformer):
         return self.getOrDefault(self.bcPopularItems)
 
     def _transform(self, ratingDF):
+        negativeRatingValue = self.getNegativeRatingValue()
         negativePositiveRatio = self.getNegativePositiveRatio()
+        if negativePositiveRatio <= 0:
+            return ratingDF
         popularItems = self.getBCpopularItems().value
 
         def seqFunc(itemSet, item):
@@ -129,7 +172,7 @@ class NegativeGenerator(Transformer):
             user, positiveItems = userItemsPair
             positiveItemsCount = len(positiveItems)
             negativeItems = []
-            negativeItemsCount = 0
+            negativeItemsCount = len(negativeItems)
             for popularItem in popularItems:
                 if popularItem not in positiveItems:
                     negativeItems.append(popularItem)
@@ -140,7 +183,7 @@ class NegativeGenerator(Transformer):
 
         def expandNegativeSamples(userItemsPair):
             user, negativeItems = userItemsPair
-            return ((user, negative, 0) for negative in negativeItems)
+            return ((user, negative, negativeRatingValue) for negative in negativeItems)
 
         negativeRDD = ratingDF \
             .select('user', 'item') \
@@ -154,78 +197,3 @@ class NegativeGenerator(Transformer):
         columns = ('user', 'item', 'rating')
         balancedDF = ratingDF.select(*columns).union(negativeDF.select(*columns))
         return balancedDF
-
-
-class OutputProcessor(Transformer):
-
-    def _transform(self, predictedDF):
-        nonNullDF = predictedDF.dropna(subset=['prediction', ])
-        outputDF = nonNullDF.withColumn('prediction', nonNullDF['prediction'].cast('double'))
-        return outputDF
-
-
-class PerUserPredictedItemsBuilder(Transformer):
-
-    @keyword_only
-    def __init__(self, k=30):
-        super(PerUserPredictedItemsBuilder, self).__init__()
-        self.k = Param(self, 'k', None)
-        self._setDefault(k=0)
-        kwargs = self.__init__._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, k=30):
-        kwargs = self.setParams._input_kwargs
-        return self._set(**kwargs)
-
-    def setK(self, value):
-        self._paramMap[self.k] = value
-        return self
-
-    def getK(self):
-        return self.getOrDefault(self.k)
-
-    def _transform(self, outputDF):
-        k = self.getK()
-        windowSpec = Window.partitionBy('user').orderBy(col('prediction').desc())
-        predictedPerUserItemsDF = outputDF \
-            .select('user', 'item', 'prediction', F.rank().over(windowSpec).alias('rank')) \
-            .where('rank <= {0}'.format(k)) \
-            .groupBy('user') \
-            .agg(expr('collect_list(item) as items'))
-        return predictedPerUserItemsDF
-
-
-class PerUserActualItemsBuilder(Transformer):
-
-    @keyword_only
-    def __init__(self, k=30):
-        super(PerUserActualItemsBuilder, self).__init__()
-        self.k = Param(self, 'k', None)
-        self._setDefault(k=0)
-        kwargs = self.__init__._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, k=30):
-        kwargs = self.setParams._input_kwargs
-        return self._set(**kwargs)
-
-    def setK(self, value):
-        self._paramMap[self.k] = value
-        return self
-
-    def getK(self):
-        return self.getOrDefault(self.k)
-
-    def _transform(self, rawDF):
-        k = self.getK()
-        windowSpec = Window.partitionBy('from_user_id').orderBy(col('starred_at').desc())
-        actualPerUserItemsDF = rawDF \
-            .select('from_user_id', 'repo_id', 'starred_at', F.rank().over(windowSpec).alias('rank')) \
-            .where('rank <= {0}'.format(k)) \
-            .groupBy('from_user_id') \
-            .agg(expr('collect_list(repo_id) as items')) \
-            .withColumnRenamed('from_user_id', 'user')
-        return actualPerUserItemsDF

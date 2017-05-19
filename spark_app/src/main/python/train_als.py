@@ -3,16 +3,14 @@
 import argparse
 
 from pyspark import SparkConf
-from pyspark.ml.evaluation import BinaryClassificationEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.sql import SparkSession
 
 from albedo_toolkit.common import loadRawData
 from albedo_toolkit.common import recommendItems
 from albedo_toolkit.evaluators import RankingEvaluator
-from albedo_toolkit.transformers import NegativeGenerator
-from albedo_toolkit.transformers import OutputProcessor
-from albedo_toolkit.transformers import PopularItemsBuilder
+from albedo_toolkit.transformers import DataCleaner
+from albedo_toolkit.transformers import PredictionProcessor
 from albedo_toolkit.transformers import RatingBuilder
 
 
@@ -32,55 +30,48 @@ sc = spark.sparkContext
 # load data
 
 rawDF = loadRawData()
-rawDF.cache()
 
-# preprocess data
+# format data
 
-ratingBuilder = RatingBuilder(minStargazersCount=10000)
+ratingBuilder = RatingBuilder()
 ratingDF = ratingBuilder.transform(rawDF)
+ratingDF.cache()
 
-popularItemsBuilder = PopularItemsBuilder(minStargazersCount=1000)
-popularItemsDF = popularItemsBuilder.transform(rawDF)
-popularItems = [row['item'] for row in popularItemsDF.select('item').collect()]
-bcPopularItems = sc.broadcast(popularItems)
+# clean data
 
-negativeGenerator = NegativeGenerator(negativePositiveRatio=20, bcPopularItems=bcPopularItems)
-balancedDF = negativeGenerator.transform(ratingDF)
+dataCleaner = DataCleaner(
+    minItemStargazersCount=2,
+    maxItemStargazersCount=4000,
+    minUserStarredCount=1,
+    maxUserStarredCount=4000
+)
+cleanDF = dataCleaner.transform(ratingDF)
 
 # train model
 
-wholeDF = balancedDF
+wholeDF = cleanDF
 wholeDF.cache()
 
 als = ALS(implicitPrefs=True, seed=42) \
     .setRank(50) \
-    .setMaxIter(22) \
+    .setMaxIter(5) \
     .setRegParam(0.5) \
     .setAlpha(40)
 
 alsModel = als.fit(wholeDF)
-# alsModel.save('spark_persistence/alsModel')
 
 # predict preferences
 
-outputProcessor = OutputProcessor()
-
 predictedDF = alsModel.transform(wholeDF)
-outputDF = outputProcessor.transform(predictedDF)
+
+predictionProcessor = PredictionProcessor()
+predictionDF = predictionProcessor.transform(predictedDF)
 
 # evaluate model
 
 k = 30
-
-evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
-                                          labelCol='rating',
-                                          metricName='areaUnderROC')
-areaUnderROC = evaluator.evaluate(outputDF)
-
-evaluator = rankingEvaluator = RankingEvaluator(k=k, rawDF=rawDF)
-ndcg = evaluator.evaluate(outputDF)
-
-print('areaUnderROC', areaUnderROC)
+rankingEvaluator = RankingEvaluator(k=k)
+ndcg = rankingEvaluator.evaluate(predictionDF)
 print('NDCG', ndcg)
 
 # recommend items

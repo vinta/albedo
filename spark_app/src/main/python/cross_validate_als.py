@@ -2,7 +2,6 @@
 
 from pyspark import SparkConf
 from pyspark.ml import Pipeline
-from pyspark.ml.evaluation import BinaryClassificationEvaluator
 from pyspark.ml.recommendation import ALS
 from pyspark.ml.tuning import CrossValidator
 from pyspark.ml.tuning import ParamGridBuilder
@@ -10,9 +9,9 @@ from pyspark.sql import SparkSession
 
 from albedo_toolkit.common import loadRawData
 from albedo_toolkit.common import printCrossValidationParameters
-from albedo_toolkit.transformers import NegativeGenerator
-from albedo_toolkit.transformers import OutputProcessor
-from albedo_toolkit.transformers import PopularItemsBuilder
+from albedo_toolkit.evaluators import RankingEvaluator
+from albedo_toolkit.transformers import DataCleaner
+from albedo_toolkit.transformers import PredictionProcessor
 from albedo_toolkit.transformers import RatingBuilder
 
 
@@ -28,47 +27,43 @@ sc = spark.sparkContext
 # load data
 
 rawDF = loadRawData()
-rawDF.cache()
 
-# preprocess data
+# format data
 
-ratingBuilder = RatingBuilder(minStargazersCount=100)
+ratingBuilder = RatingBuilder()
 ratingDF = ratingBuilder.transform(rawDF)
-
-popularItemsBuilder = PopularItemsBuilder(minStargazersCount=1000)
-popularItemsDF = popularItemsBuilder.transform(rawDF)
-popularItems = [row['item'] for row in popularItemsDF.select('item').collect()]
-bcPopularItems = sc.broadcast(popularItems)
+ratingDF.cache()
 
 # cross-validate models
 
-negativeGenerator = NegativeGenerator(bcPopularItems=bcPopularItems)
+dataCleaner = DataCleaner()
 
 als = ALS(implicitPrefs=True, seed=42)
 
-outputProcessor = OutputProcessor()
+predictionProcessor = PredictionProcessor()
 
 pipeline = Pipeline(stages=[
-    negativeGenerator,
+    dataCleaner,
     als,
-    outputProcessor,
+    predictionProcessor,
 ])
 
 paramGrid = ParamGridBuilder() \
-    .addGrid(negativeGenerator.negativePositiveRatio, [10, 20]) \
-    .addGrid(als.rank, [50, 60, 100]) \
+    .addGrid(dataCleaner.minItemStargazersCount, [1, 10, 100]) \
+    .addGrid(dataCleaner.maxItemStargazersCount, [5000, ]) \
+    .addGrid(dataCleaner.minUserStarredCount, [1, 10, 100]) \
+    .addGrid(dataCleaner.maxUserStarredCount, [1000, 4000, ]) \
+    .addGrid(als.rank, [50, ]) \
     .addGrid(als.maxIter, [22, ]) \
     .addGrid(als.regParam, [0.01, 0.1, 0.5]) \
-    .addGrid(als.alpha, [1, 40, ]) \
+    .addGrid(als.alpha, [0.01, 1, 40, ]) \
     .build()
 
-evaluator = BinaryClassificationEvaluator(rawPredictionCol='prediction',
-                                          labelCol='rating',
-                                          metricName='areaUnderROC')
+rankingEvaluator = RankingEvaluator(k=30)
 
 cv = CrossValidator(estimator=pipeline,
                     estimatorParamMaps=paramGrid,
-                    evaluator=evaluator,
+                    evaluator=rankingEvaluator,
                     numFolds=2)
 
 cvModel = cv.fit(ratingDF)
