@@ -1,6 +1,6 @@
+# coding: utf-8
 
 from pyspark.sql import SparkSession
-# coding: utf-8
 import pyspark.sql.functions as F
 
 
