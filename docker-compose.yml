@@ -9,9 +9,11 @@ services:
     command: .docker-assets/django_start.sh
     ports:
       - "8000:8000"
+      - "8888:8888"
     volumes:
       - ".:/app"
-      - "../albedo-dist-packages:/usr/local/lib/python3.5/dist-packages"
+      - "../albedo-vendors/bin:/usr/local/bin"
+      - "../albedo-vendors/dist-packages:/usr/local/lib/python3.5/dist-packages"
     links:
       - mysql
   mysql:

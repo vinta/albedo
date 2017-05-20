@@ -4,7 +4,8 @@ clean:
 
 .PHONY: up
 up:
-	mkdir -p ../albedo-dist-packages
+	mkdir -p ../albedo-vendors/bin
+	mkdir -p ../albedo-vendors/dist-packages
 	docker-compose up
 
 .PHONY: stop
@@ -23,9 +24,9 @@ install:
 run:
 	docker exec -i -t albedo_django_1 python manage.py runserver 0.0.0.0:8000
 
-.PHONY: shell
-shell:
-	docker exec -i -t albedo_django_1 python manage.py shell_plus
+.PHONY: notebook
+notebook:
+	docker exec -i -t albedo_django_1 jupyter notebook --ip 0.0.0.0 --allow-root --no-browser
 
 .PHONY: upload_db
 upload_db:
@@ -39,7 +40,6 @@ download_db:
 spark_standalone:
 	cd ${SPARK_HOME} && ./sbin/start-master.sh -h localhost
 	cd ${SPARK_HOME} && ./sbin/start-slave.sh spark://localhost:7077
-	open http://localhost:8080/
 
 .PHONY: spark_stop
 spark_stop:

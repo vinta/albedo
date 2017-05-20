@@ -10,8 +10,7 @@ A recommender system for discovering GitHub repos you might like.
 ```bash
 $ git clone https://github.com/vinta/albedo.git
 $ cd albedo
-$ pip install -r requirements.txt
-$ python manage.py migrate
+$ make up
 ```
 
 ## Usage
@@ -19,7 +18,11 @@ $ python manage.py migrate
 You need to create your own `GITHUB_PERSONAL_TOKEN` on [your GitHub settings page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/).
 
 ```bash
+# get into the main container
+$ make attach
+
 # this step might take a few hours to complete depends on how many repos you starred and how many users you followed
+$ python manage.py migrate
 $ python manage.py collect_data -t GITHUB_PERSONAL_TOKEN -u vinta
 # or
 $ wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albedo.sql -O albedo.sql
