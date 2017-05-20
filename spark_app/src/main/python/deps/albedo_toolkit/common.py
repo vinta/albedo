@@ -16,6 +16,16 @@ def loadRawData():
     return rawDF
 
 
+def calculateSparsity(ratingDF):
+    result = ratingDF.agg(F.count('rating'), F.countDistinct('user'), F.countDistinct('item')).collect()[0]
+    totalUserCount = result['count(DISTINCT user)']
+    totalItemCount = result['count(DISTINCT item)']
+    zonZeroRatingCount = result['count(rating)']
+    density = (zonZeroRatingCount / (totalUserCount * totalItemCount)) * 100
+    sparsity = 100 - density
+    return sparsity
+
+
 def randomSplitByUser(df, weights, seed=None):
     trainingRation = weights[0]
     fractions = {row['user']: trainingRation for row in df.select('user').distinct().collect()}
