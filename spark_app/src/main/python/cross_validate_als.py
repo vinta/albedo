@@ -55,7 +55,7 @@ paramGrid = ParamGridBuilder() \
     .addGrid(dataCleaner.maxUserStarredCount, [1000, 4000, ]) \
     .addGrid(als.rank, [50, 100]) \
     .addGrid(als.regParam, [0.01, 0.1, 0.5]) \
-    .addGrid(als.alpha, [0.01, 1, 40, ]) \
+    .addGrid(als.alpha, [0.01, 0.89, 1, 40, ]) \
     .addGrid(als.maxIter, [22, ]) \
     .build()
 
