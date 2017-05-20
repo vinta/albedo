@@ -45,17 +45,17 @@ def printCrossValidationParameters(cvModel):
 
 
 def recommendItems(rawDF, alsModel, username, topN=30, excludeKnownItems=False):
-    userId = rawDF \
+    userID = rawDF \
         .where('from_username = "{0}"'.format(username)) \
         .select('from_user_id') \
         .take(1)[0]['from_user_id']
 
     userItemsDF = alsModel \
         .itemFactors. \
-        selectExpr('{0} AS user'.format(userId), 'id AS item')
+        selectExpr('{0} AS user'.format(userID), 'id AS item')
     if excludeKnownItems:
         userKnownItemsDF = rawDF \
-            .where('from_user_id = {0}'.format(userId)) \
+            .where('from_user_id = {0}'.format(userID)) \
             .selectExpr('repo_id AS item')
         userItemsDF = userItemsDF.join(userKnownItemsDF, 'item', 'left_anti')
 
