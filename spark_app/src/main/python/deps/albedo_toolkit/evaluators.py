@@ -42,8 +42,6 @@ class RankingEvaluator(Evaluator):
     def _evaluate(self, predictedDF):
         k = self.getK()
 
-        predictedDF.show()
-
         windowSpec = Window.partitionBy('user').orderBy(col('prediction').desc())
         perUserPredictedItemsDF = predictedDF \
             .select('user', 'item', 'prediction', F.rank().over(windowSpec).alias('rank')) \

@@ -42,8 +42,8 @@ ratingDF.cache()
 dataCleaner = DataCleaner(
     minItemStargazersCount=2,
     maxItemStargazersCount=4000,
-    minUserStarredCount=1,
-    maxUserStarredCount=4000
+    minUserStarredCount=2,
+    maxUserStarredCount=5000
 )
 cleanDF = dataCleaner.transform(ratingDF)
 
@@ -54,9 +54,9 @@ wholeDF.cache()
 
 als = ALS(implicitPrefs=True, seed=42) \
     .setRank(50) \
-    .setMaxIter(22) \
     .setRegParam(0.5) \
-    .setAlpha(40)
+    .setAlpha(40) \
+    .setMaxIter(22)
 
 alsModel = als.fit(wholeDF)
 

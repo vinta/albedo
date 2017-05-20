@@ -9,9 +9,7 @@ spark = SparkSession.builder.getOrCreate()
 
 def loadRawData():
     url = 'jdbc:mysql://127.0.0.1:3306/albedo?user=root&password=123&verifyServerCertificate=false&useSSL=false'
-    properties = {
-        'driver': 'com.mysql.jdbc.Driver',
-    }
+    properties = {'driver': 'com.mysql.jdbc.Driver'}
     rawDF = spark.read.jdbc(url, table='app_repostarring', properties=properties)
     return rawDF
 
@@ -47,17 +45,17 @@ def printCrossValidationParameters(cvModel):
 
 
 def recommendItems(rawDF, alsModel, username, topN=30, excludeKnownItems=False):
-    userID = rawDF \
+    userId = rawDF \
         .where('from_username = "{0}"'.format(username)) \
         .select('from_user_id') \
         .take(1)[0]['from_user_id']
 
     userItemsDF = alsModel \
         .itemFactors. \
-        selectExpr('{0} AS user'.format(userID), 'id AS item')
+        selectExpr('{0} AS user'.format(userId), 'id AS item')
     if excludeKnownItems:
         userKnownItemsDF = rawDF \
-            .where('from_user_id = {0}'.format(userID)) \
+            .where('from_user_id = {0}'.format(userId)) \
             .selectExpr('repo_id AS item')
         userItemsDF = userItemsDF.join(userKnownItemsDF, 'item', 'left_anti')
 
