@@ -1,7 +1,7 @@
 Albedo
 ======
 
-A simple Recommender System for discovering GitHub repos you might like.
+A recommender system for discovering GitHub repos you might like.
 
 **Albedo** is a fictional character in Dan Simmons's [Hyperion Cantos](https://en.wikipedia.org/wiki/Hyperion_Cantos) series. Councilor Albedo is the TechnoCore's AI Advisor to the Hegemony of Man.
 
