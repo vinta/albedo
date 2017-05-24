@@ -9,7 +9,6 @@ services:
     command: .docker-assets/django_start.sh
     ports:
       - "8000:8000"
-      - "8888:8888"
     volumes:
       - ".:/app"
       - "../albedo-vendors/bin:/usr/local/bin"

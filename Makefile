@@ -24,10 +24,6 @@ install:
 run:
 	docker exec -i -t albedo_django_1 python manage.py runserver 0.0.0.0:8000
 
-.PHONY: notebook
-notebook:
-	docker exec -i -t albedo_django_1 jupyter notebook --ip 0.0.0.0 --allow-root --no-browser
-
 .PHONY: upload_db
 upload_db:
 	aws s3 cp albedo.sql s3://files.albedo.one/albedo.sql
@@ -36,8 +32,18 @@ upload_db:
 download_db:
 	aws s3 cp s3://files.albedo.one/albedo.sql albedo.sql
 
-.PHONY: spark_standalone
-spark_standalone:
+.PHONY: zeppelin_start
+zeppelin_start:
+	zeppelin-daemon.sh start
+	open http://localhost:8080/
+	open http://localhost:4040/jobs/
+
+.PHONY: zeppelin_stop
+zeppelin_stop:
+	zeppelin-daemon.sh stop
+
+.PHONY: spark_start
+spark_start:
 	cd ${SPARK_HOME} && ./sbin/start-master.sh -h localhost
 	cd ${SPARK_HOME} && ./sbin/start-slave.sh spark://localhost:7077
 
@@ -46,8 +52,8 @@ spark_stop:
 	cd ${SPARK_HOME} && ./sbin/stop-master.sh
 	cd ${SPARK_HOME} && ./sbin/stop-slave.sh
 
-.PHONY: spark_shell
-spark_shell:
+.PHONY: spark_notebook
+spark_notebook:
 	PYSPARK_DRIVER_PYTHON="jupyter" \
 	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
@@ -67,8 +73,8 @@ spark_submit:
 	--py-files deps.zip \
 	train_als.py -- -u vinta
 
-.PHONY: spark_submit_gcp
-spark_submit_gcp:
+.PHONY: dataproc_submit
+dataproc_submit:
 	cd src/main/python/deps/ && zip -x \*/__pycache__/\* -r ../deps.zip * && cd .. && \
 	gcloud dataproc jobs submit pyspark \
 	--cluster albedo \
