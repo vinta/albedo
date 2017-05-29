@@ -3,16 +3,16 @@
     {
       "text": "import java.util.Properties\n\nval dbUrl \u003d \"jdbc:mysql://127.0.0.1:3306/albedo?user\u003droot\u0026password\u003d123\u0026verifyServerCertificate\u003dfalse\u0026useSSL\u003dfalse\"\nval prop \u003d new Properties()\nprop.put(\"driver\", \"com.mysql.jdbc.Driver\")\nval rawDF \u003d spark.read.jdbc(dbUrl, \"app_repostarring\", prop)",
       "user": "anonymous",
-      "dateUpdated": "May 25, 2017 9:59:12 PM",
+      "dateUpdated": "May 30, 2017 2:20:42 AM",
       "config": {
         "colWidth": 12.0,
         "enabled": true,
         "results": {},
         "editorSetting": {
-          "language": "text",
+          "language": "scala",
           "editOnDblClick": false
         },
-        "editorMode": "ace/mode/text"
+        "editorMode": "ace/mode/scala"
       },
       "settings": {
         "params": {},
@@ -23,7 +23,7 @@
         "msg": [
           {
             "type": "TEXT",
-            "data": "\nimport java.util.Properties\n\ndbUrl: String \u003d jdbc:mysql://127.0.0.1:3306/albedo?user\u003droot\u0026password\u003d123\u0026verifyServerCertificate\u003dfalse\u0026useSSL\u003dfalse\n\nprop: java.util.Properties \u003d {}\n\nres0: Object \u003d null\n\nrawDF: org.apache.spark.sql.DataFrame \u003d [id: int, from_user_id: int ... 15 more fields]\n"
+            "data": "\nimport java.util.Properties\n\ndbUrl: String \u003d jdbc:mysql://127.0.0.1:3306/albedo?user\u003droot\u0026password\u003d123\u0026verifyServerCertificate\u003dfalse\u0026useSSL\u003dfalse\n\nprop: java.util.Properties \u003d {}\n\nres6: Object \u003d null\n\nrawDF: org.apache.spark.sql.DataFrame \u003d [id: int, from_user_id: int ... 15 more fields]\n"
           }
         ]
       },
@@ -31,195 +31,15 @@
       "jobName": "paragraph_1495712919886_1517910494",
       "id": "20170525-194839_1243066028",
       "dateCreated": "May 25, 2017 7:48:39 PM",
-      "dateStarted": "May 25, 2017 9:59:12 PM",
-      "dateFinished": "May 25, 2017 9:59:35 PM",
+      "dateStarted": "May 30, 2017 2:20:42 AM",
+      "dateFinished": "May 30, 2017 2:20:44 AM",
       "status": "FINISHED",
       "progressUpdateIntervalMs": 500
     },
     {
       "text": "rawDF.printSchema()",
       "user": "anonymous",
-      "dateUpdated": "May 25, 2017 9:59:12 PM",
-      "config": {
-        "colWidth": 12.0,
-        "enabled": true,
-        "results": {},
-        "editorSetting": {
-          "language": "text",
-          "editOnDblClick": false
-        },
-        "editorMode": "ace/mode/text"
-      },
-      "settings": {
-        "params": {},
-        "forms": {}
-      },
-      "results": {
-        "code": "SUCCESS",
-        "msg": [
-          {
-            "type": "TEXT",
-            "data": "root\n |-- id: integer (nullable \u003d false)\n |-- from_user_id: integer (nullable \u003d false)\n |-- from_username: string (nullable \u003d false)\n |-- repo_owner_id: integer (nullable \u003d false)\n |-- repo_owner_username: string (nullable \u003d false)\n |-- repo_owner_type: string (nullable \u003d false)\n |-- repo_id: integer (nullable \u003d false)\n |-- repo_name: string (nullable \u003d false)\n |-- repo_full_name: string (nullable \u003d false)\n |-- repo_url: string (nullable \u003d false)\n |-- repo_language: string (nullable \u003d false)\n |-- repo_description: string (nullable \u003d false)\n |-- repo_created_at: timestamp (nullable \u003d false)\n |-- repo_updated_at: timestamp (nullable \u003d false)\n |-- starred_at: timestamp (nullable \u003d false)\n |-- stargazers_count: integer (nullable \u003d false)\n |-- forks_count: integer (nullable \u003d false)\n\n"
-          }
-        ]
-      },
-      "apps": [],
-      "jobName": "paragraph_1495712938207_-1288853514",
-      "id": "20170525-194858_342519718",
-      "dateCreated": "May 25, 2017 7:48:58 PM",
-      "dateStarted": "May 25, 2017 9:59:15 PM",
-      "dateFinished": "May 25, 2017 9:59:35 PM",
-      "status": "FINISHED",
-      "progressUpdateIntervalMs": 500
-    },
-    {
-      "text": "import spark.implicits._\n\nval ratingDF \u003d rawDF\n    .selectExpr(\"from_user_id AS user\", \"repo_id AS item\", \"1 AS rating\", \"starred_at\")\n    .orderBy($\"user\", $\"starred_at\".desc)",
-      "user": "anonymous",
-      "dateUpdated": "May 25, 2017 11:51:42 PM",
-      "config": {
-        "colWidth": 12.0,
-        "enabled": true,
-        "results": {},
-        "editorSetting": {
-          "language": "text",
-          "editOnDblClick": false
-        },
-        "editorMode": "ace/mode/text"
-      },
-      "settings": {
-        "params": {},
-        "forms": {}
-      },
-      "results": {
-        "code": "SUCCESS",
-        "msg": [
-          {
-            "type": "TEXT",
-            "data": "\nimport spark.implicits._\n\nratingDF: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] \u003d [user: int, item: int ... 2 more fields]\n"
-          }
-        ]
-      },
-      "apps": [],
-      "jobName": "paragraph_1495713634894_-1085877949",
-      "id": "20170525-200034_737283393",
-      "dateCreated": "May 25, 2017 8:00:34 PM",
-      "dateStarted": "May 25, 2017 11:51:42 PM",
-      "dateFinished": "May 25, 2017 11:51:43 PM",
-      "status": "FINISHED",
-      "progressUpdateIntervalMs": 500
-    },
-    {
-      "text": "ratingDF.show()",
-      "user": "anonymous",
-      "dateUpdated": "May 25, 2017 9:59:14 PM",
-      "config": {
-        "colWidth": 12.0,
-        "enabled": true,
-        "results": {},
-        "editorSetting": {
-          "language": "text",
-          "editOnDblClick": false
-        },
-        "editorMode": "ace/mode/text"
-      },
-      "settings": {
-        "params": {},
-        "forms": {}
-      },
-      "results": {
-        "code": "SUCCESS",
-        "msg": [
-          {
-            "type": "TEXT",
-            "data": "+----+-------+------+--------------------+\n|user|   item|rating|          starred_at|\n+----+-------+------+--------------------+\n|   5|5226605|     1|2012-07-29 23:27:...|\n|   5|4983331|     1|2012-07-11 02:04:...|\n|   5|3717526|     1|2012-03-14 12:48:...|\n|   5|1742412|     1|2011-05-13 08:12:...|\n|   5|1740408|     1|2011-05-12 20:55:...|\n|   5|1602291|     1|2011-04-12 03:02:...|\n|   5|1602287|     1|2011-04-12 03:01:...|\n|   5|1602284|     1|2011-04-12 03:00:...|\n|   5|1363875|     1|2011-02-14 03:51:...|\n|   5|1357116|     1|2011-02-11 23:33:...|\n|   5|1345201|     1|2011-02-09 05:51:...|\n|   5|1313980|     1|2011-01-31 22:18:...|\n|   5|1185986|     1|2010-12-21 01:16:...|\n|   5|1104253|     1|2010-11-23 01:55:...|\n|   5|1103712|     1|2010-11-22 21:57:...|\n|   5|1099441|     1|2010-11-21 10:29:...|\n|   5|1057813|     1|2010-11-06 20:47:...|\n|   5|1038468|     1|2010-10-30 22:35:...|\n|   5| 772910|     1|2010-07-13 17:34:...|\n|   5| 699695|     1|2010-06-02 18:24:...|\n+----+-------+------+--------------------+\nonly showing top 20 rows\n\n"
-          }
-        ]
-      },
-      "apps": [],
-      "jobName": "paragraph_1495713885276_-1776919267",
-      "id": "20170525-200445_268949382",
-      "dateCreated": "May 25, 2017 8:04:45 PM",
-      "dateStarted": "May 25, 2017 9:59:35 PM",
-      "dateFinished": "May 25, 2017 10:00:00 PM",
-      "status": "FINISHED",
-      "progressUpdateIntervalMs": 500
-    },
-    {
-      "text": "import org.apache.spark.ml.{Pipeline, PipelineStage, Transformer}",
-      "user": "anonymous",
-      "dateUpdated": "May 25, 2017 9:59:14 PM",
-      "config": {
-        "colWidth": 12.0,
-        "enabled": true,
-        "results": {},
-        "editorSetting": {
-          "language": "text",
-          "editOnDblClick": false
-        },
-        "editorMode": "ace/mode/text"
-      },
-      "settings": {
-        "params": {},
-        "forms": {}
-      },
-      "results": {
-        "code": "SUCCESS",
-        "msg": [
-          {
-            "type": "TEXT",
-            "data": "\nimport org.apache.spark.ml.{Pipeline, PipelineStage, Transformer}\n"
-          }
-        ]
-      },
-      "apps": [],
-      "jobName": "paragraph_1495713060980_694343176",
-      "id": "20170525-195100_401166893",
-      "dateCreated": "May 25, 2017 7:51:00 PM",
-      "dateStarted": "May 25, 2017 9:59:38 PM",
-      "dateFinished": "May 25, 2017 10:00:01 PM",
-      "status": "FINISHED",
-      "progressUpdateIntervalMs": 500
-    },
-    {
-      "text": "object HelloWorld {\n  def main(args: Array[String]): Unit \u003d {\n    println(\"Hello, world!\")\n  }\n}\n\nHelloWorld.main(Array())",
-      "user": "anonymous",
-      "dateUpdated": "May 25, 2017 11:58:18 PM",
-      "config": {
-        "colWidth": 12.0,
-        "enabled": true,
-        "results": {},
-        "editorSetting": {
-          "language": "text",
-          "editOnDblClick": false
-        },
-        "editorMode": "ace/mode/text"
-      },
-      "settings": {
-        "params": {},
-        "forms": {}
-      },
-      "results": {
-        "code": "SUCCESS",
-        "msg": [
-          {
-            "type": "TEXT",
-            "data": "\ndefined object HelloWorld\nHello, world!\n"
-          }
-        ]
-      },
-      "apps": [],
-      "jobName": "paragraph_1495713497766_2019629638",
-      "id": "20170525-195817_2041082038",
-      "dateCreated": "May 25, 2017 7:58:17 PM",
-      "dateStarted": "May 25, 2017 11:58:18 PM",
-      "dateFinished": "May 25, 2017 11:58:19 PM",
-      "status": "FINISHED",
-      "progressUpdateIntervalMs": 500
-    },
-    {
-      "text": "object HelloWorld extends App {\n  println(\"Hello, world!\")\n}",
-      "user": "anonymous",
-      "dateUpdated": "May 25, 2017 11:58:51 PM",
+      "dateUpdated": "May 30, 2017 2:20:58 AM",
       "config": {
         "colWidth": 12.0,
         "enabled": true,
@@ -238,16 +58,52 @@
         "msg": [
           {
             "type": "TEXT",
-            "data": "\ndefined object HelloWorld\n"
+            "data": "root\n |-- id: integer (nullable \u003d false)\n |-- from_user_id: integer (nullable \u003d false)\n |-- from_username: string (nullable \u003d false)\n |-- repo_owner_id: integer (nullable \u003d false)\n |-- repo_owner_username: string (nullable \u003d false)\n |-- repo_owner_type: string (nullable \u003d false)\n |-- repo_id: integer (nullable \u003d false)\n |-- repo_name: string (nullable \u003d false)\n |-- repo_full_name: string (nullable \u003d false)\n |-- repo_url: string (nullable \u003d false)\n |-- repo_language: string (nullable \u003d false)\n |-- repo_description: string (nullable \u003d false)\n |-- repo_created_at: timestamp (nullable \u003d false)\n |-- repo_updated_at: timestamp (nullable \u003d false)\n |-- starred_at: timestamp (nullable \u003d false)\n |-- stargazers_count: integer (nullable \u003d false)\n |-- forks_count: integer (nullable \u003d false)\n\n"
           }
         ]
       },
       "apps": [],
-      "jobName": "paragraph_1495727860308_1503522527",
-      "id": "20170525-235740_125203157",
-      "dateCreated": "May 25, 2017 11:57:40 PM",
-      "dateStarted": "May 25, 2017 11:58:51 PM",
-      "dateFinished": "May 25, 2017 11:58:52 PM",
+      "jobName": "paragraph_1496082051881_1856877174",
+      "id": "20170530-022051_1404253427",
+      "dateCreated": "May 30, 2017 2:20:51 AM",
+      "dateStarted": "May 30, 2017 2:20:58 AM",
+      "dateFinished": "May 30, 2017 2:20:59 AM",
+      "status": "FINISHED",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "import spark.implicits._\n\nval ratingDF \u003d rawDF\n    .selectExpr(\"from_user_id AS user\", \"repo_id AS item\", \"1 AS rating\", \"starred_at\")\n    .orderBy($\"user\", $\"starred_at\".desc)",
+      "user": "anonymous",
+      "dateUpdated": "May 26, 2017 8:26:32 PM",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "scala",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/scala"
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "\nimport spark.implicits._\n\nratingDF: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] \u003d [user: int, item: int ... 2 more fields]\n"
+          }
+        ]
+      },
+      "apps": [],
+      "jobName": "paragraph_1495713634894_-1085877949",
+      "id": "20170525-200034_737283393",
+      "dateCreated": "May 25, 2017 8:00:34 PM",
+      "dateStarted": "May 26, 2017 8:26:35 PM",
+      "dateFinished": "May 26, 2017 8:26:37 PM",
       "status": "FINISHED",
       "progressUpdateIntervalMs": 500
     },
@@ -259,9 +115,9 @@
         "forms": {}
       },
       "apps": [],
-      "jobName": "paragraph_1495727931611_583278134",
-      "id": "20170525-235851_1264033176",
-      "dateCreated": "May 25, 2017 11:58:51 PM",
+      "jobName": "paragraph_1496057326378_1005575864",
+      "id": "20170529-192846_501895574",
+      "dateCreated": "May 29, 2017 7:28:46 PM",
       "status": "READY",
       "progressUpdateIntervalMs": 500
     }
