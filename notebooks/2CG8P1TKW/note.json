@@ -3,7 +3,7 @@
     {
       "text": "import java.util.Properties\n\nval dbUrl \u003d \"jdbc:mysql://127.0.0.1:3306/albedo?user\u003droot\u0026password\u003d123\u0026verifyServerCertificate\u003dfalse\u0026useSSL\u003dfalse\"\nval prop \u003d new Properties()\nprop.put(\"driver\", \"com.mysql.jdbc.Driver\")\nval rawDF \u003d spark.read.jdbc(dbUrl, \"app_repostarring\", prop)",
       "user": "anonymous",
-      "dateUpdated": "May 30, 2017 2:20:42 AM",
+      "dateUpdated": "May 30, 2017 3:07:09 PM",
       "config": {
         "colWidth": 12.0,
         "enabled": true,
@@ -23,7 +23,7 @@
         "msg": [
           {
             "type": "TEXT",
-            "data": "\nimport java.util.Properties\n\ndbUrl: String \u003d jdbc:mysql://127.0.0.1:3306/albedo?user\u003droot\u0026password\u003d123\u0026verifyServerCertificate\u003dfalse\u0026useSSL\u003dfalse\n\nprop: java.util.Properties \u003d {}\n\nres6: Object \u003d null\n\nrawDF: org.apache.spark.sql.DataFrame \u003d [id: int, from_user_id: int ... 15 more fields]\n"
+            "data": "\nimport java.util.Properties\n\ndbUrl: String \u003d jdbc:mysql://127.0.0.1:3306/albedo?user\u003droot\u0026password\u003d123\u0026verifyServerCertificate\u003dfalse\u0026useSSL\u003dfalse\n\nprop: java.util.Properties \u003d {}\n\nres1: Object \u003d null\n\nrawDF: org.apache.spark.sql.DataFrame \u003d [id: int, from_user_id: int ... 15 more fields]\n"
           }
         ]
       },
@@ -31,8 +31,8 @@
       "jobName": "paragraph_1495712919886_1517910494",
       "id": "20170525-194839_1243066028",
       "dateCreated": "May 25, 2017 7:48:39 PM",
-      "dateStarted": "May 30, 2017 2:20:42 AM",
-      "dateFinished": "May 30, 2017 2:20:44 AM",
+      "dateStarted": "May 30, 2017 3:07:09 PM",
+      "dateFinished": "May 30, 2017 3:07:11 PM",
       "status": "FINISHED",
       "progressUpdateIntervalMs": 500
     },
@@ -72,16 +72,15 @@
       "progressUpdateIntervalMs": 500
     },
     {
-      "text": "import spark.implicits._\n\nval ratingDF \u003d rawDF\n    .selectExpr(\"from_user_id AS user\", \"repo_id AS item\", \"1 AS rating\", \"starred_at\")\n    .orderBy($\"user\", $\"starred_at\".desc)",
+      "text": "val small \u003d rawDF.limit(5)",
       "user": "anonymous",
-      "dateUpdated": "May 26, 2017 8:26:32 PM",
+      "dateUpdated": "May 30, 2017 3:39:22 AM",
       "config": {
         "colWidth": 12.0,
         "enabled": true,
         "results": {},
         "editorSetting": {
-          "language": "scala",
-          "editOnDblClick": false
+          "language": "scala"
         },
         "editorMode": "ace/mode/scala"
       },
@@ -94,16 +93,16 @@
         "msg": [
           {
             "type": "TEXT",
-            "data": "\nimport spark.implicits._\n\nratingDF: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] \u003d [user: int, item: int ... 2 more fields]\n"
+            "data": "\nsmall: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] \u003d [id: int, from_user_id: int ... 15 more fields]\n"
           }
         ]
       },
       "apps": [],
-      "jobName": "paragraph_1495713634894_-1085877949",
-      "id": "20170525-200034_737283393",
-      "dateCreated": "May 25, 2017 8:00:34 PM",
-      "dateStarted": "May 26, 2017 8:26:35 PM",
-      "dateFinished": "May 26, 2017 8:26:37 PM",
+      "jobName": "paragraph_1496057326378_1005575864",
+      "id": "20170529-192846_501895574",
+      "dateCreated": "May 29, 2017 7:28:46 PM",
+      "dateStarted": "May 30, 2017 3:39:22 AM",
+      "dateFinished": "May 30, 2017 3:39:23 AM",
       "status": "FINISHED",
       "progressUpdateIntervalMs": 500
     },
@@ -115,9 +114,9 @@
         "forms": {}
       },
       "apps": [],
-      "jobName": "paragraph_1496057326378_1005575864",
-      "id": "20170529-192846_501895574",
-      "dateCreated": "May 29, 2017 7:28:46 PM",
+      "jobName": "paragraph_1496162860296_-434680157",
+      "id": "20170531-004740_1274870574",
+      "dateCreated": "May 31, 2017 12:47:40 AM",
       "status": "READY",
       "progressUpdateIntervalMs": 500
     }
