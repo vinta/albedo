@@ -178,4 +178,6 @@ ENV/
 *.sqlite3
 deps.zip
 derby.log
-metastore_db
+metastore_db/
+notebooks/
+spark-warehouse/
