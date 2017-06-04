@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/albedo.iml" filepath="$PROJECT_DIR$/.idea/modules/albedo.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/albedo-build.iml" filepath="$PROJECT_DIR$/.idea/modules/albedo-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/albedo.iml" filepath="$PROJECT_DIR$/albedo.iml" />
     </modules>
   </component>
 </project>
