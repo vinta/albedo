@@ -1,7 +1,6 @@
 package ws.vinta.albedo
 
 import java.util.Properties
-
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 package object utils {
