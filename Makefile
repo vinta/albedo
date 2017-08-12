@@ -44,7 +44,7 @@ zeppelin_stop:
 
 .PHONY: spark_start
 spark_start:
-	cd ${SPARK_HOME} && ./sbin/start-master.sh -h localhost
+	cd ${SPARK_HOME} && ./sbin/start-master.sh -h 0.0.0.0
 	cd ${SPARK_HOME} && ./sbin/start-slave.sh spark://localhost:7077
 
 .PHONY: spark_stop
@@ -54,29 +54,35 @@ spark_stop:
 
 .PHONY: spark_notebook
 spark_notebook:
+	find . -name __pycache__ | xargs rm -Rf
+	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	PYSPARK_DRIVER_PYTHON="jupyter" \
 	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
-	--executor-memory 15g \
-	--master spark://localhost:7077
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--py-files deps.zip
 
-.PHONY: spark_submit
-spark_submit:
-	cd src/main/python/deps/ && zip -x \*/__pycache__/\* -r ../deps.zip * && cd .. && \
-	spark-submit \
+.PHONY: train_als
+train_als:
+	find . -name __pycache__ | xargs rm -Rf
+	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
+	time spark-submit \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
-	--executor-memory 15g \
+	--executor-memory 12g \
+	--executor-cores 4 \
 	--master spark://localhost:7077 \
 	--py-files deps.zip \
 	train_als.py -- -u vinta
 
-.PHONY: dataproc_submit
-dataproc_submit:
-	cd src/main/python/deps/ && zip -x \*/__pycache__/\* -r ../deps.zip * && cd .. && \
-	gcloud dataproc jobs submit pyspark \
+.PHONY: train_als_datapro
+train_als_dataproc
+	find . -name __pycache__ | xargs rm -Rf
+	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
+	time gcloud dataproc jobs submit pyspark \
 	--cluster albedo \
 	--py-files deps.zip \
 	train_als.py -- -u vinta
