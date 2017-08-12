@@ -180,4 +180,5 @@ deps.zip
 derby.log
 metastore_db/
 notebooks/
+spark-data/
 spark-warehouse/
