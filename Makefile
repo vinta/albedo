@@ -78,8 +78,8 @@ train_als:
 	--py-files deps.zip \
 	train_als.py -- -u vinta
 
-.PHONY: train_als_datapro
-train_als_dataproc
+.PHONY: train_als_dataproc
+train_als_dataproc:
 	find . -name __pycache__ | xargs rm -Rf
 	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	time gcloud dataproc jobs submit pyspark \
