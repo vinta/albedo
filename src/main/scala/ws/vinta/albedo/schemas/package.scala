@@ -6,23 +6,23 @@ import org.apache.spark.sql.types._
 
 package object schemas {
   case class RawStarring(
-                          id: Int,
-                          from_user_id: Int,
-                          from_username: String,
-                          repo_owner_id: Int,
-                          repo_owner_username: String,
-                          repo_owner_type: String,
-                          repo_id: Int,
-                          repo_name: String,
-                          repo_full_name: String,
-                          repo_url: String,
-                          repo_language: String,
-                          repo_description: String,
-                          repo_created_at: Timestamp,
-                          starred_at: Timestamp,
-                          stargazers_count: Timestamp,
-                          forks_count: Timestamp
-                        )
+    id: Int,
+    from_user_id: Int,
+    from_username: String,
+    repo_owner_id: Int,
+    repo_owner_username: String,
+    repo_owner_type: String,
+    repo_id: Int,
+    repo_name: String,
+    repo_full_name: String,
+    repo_url: String,
+    repo_language: String,
+    repo_description: String,
+    repo_created_at: Timestamp,
+    starred_at: Timestamp,
+    stargazers_count: Timestamp,
+    forks_count: Timestamp
+  )
 
   val rawStarringSchema = StructType(
     Array(
