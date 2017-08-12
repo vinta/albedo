@@ -1,6 +1,6 @@
 package ws.vinta.albedo
 
-import org.apache.spark.SparkConf
+import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import ws.vinta.albedo.preprocessors.{NegativeGenerator, popularItemsBuilder, starringBuilder}
 import ws.vinta.albedo.schemas.{PopularItem, Starring}
@@ -8,19 +8,15 @@ import ws.vinta.albedo.utils.CommonUtils
 
 import scala.collection.mutable
 
-object TrainLogisticRegression {
-  val appName = "TrainLogisticRegression"
+object LogisticRegressionTrainer {
+  val appName = "LogisticRegressionTrainer"
 
   def main(args: Array[String]): Unit = {
     val activeUser = args(1)
     println(activeUser)
 
-    val conf = new SparkConf()
-    conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-
     implicit val spark = SparkSession
       .builder()
-      .config(conf)
       .appName(appName)
       .getOrCreate()
 
@@ -29,8 +25,25 @@ object TrainLogisticRegression {
 
     import spark.implicits._
 
-    val rawDF: DataFrame = CommonUtils.loadRawData()
+    val dateFormater = new java.text.SimpleDateFormat("yyyyMMdd")
+    val today = dateFormater.format(new java.util.Date())
+
+    val rawDFfilename = s"spark-data/$today/rawDF.parquet"
+    val rawDF: DataFrame = try {
+      spark.read.parquet(rawDFfilename)
+    } catch {
+      case e: AnalysisException => {
+        if (e.getMessage().contains("Path does not exist")) {
+          val tempRawDF = CommonUtils.loadRawData()
+          tempRawDF.write.parquet(rawDFfilename)
+          tempRawDF
+        } else {
+          throw e
+        }
+      }
+    }
     rawDF.cache()
+    rawDF.show()
 
     val starringDS: Dataset[Starring] = starringBuilder.transform(rawDF).as[Starring]
     starringDS.show()
