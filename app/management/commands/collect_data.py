@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
+import random
 import re
 import time
 
@@ -34,20 +35,22 @@ def retry_if_remote_disconnected(exc):
 
 class GitHubCrawler(object):
 
-    def __init__(self, token):
+    def __init__(self, tokens):
+        self.tokens = tokens
         self.worker_number = 10
-        logger.info('worker_number: {0}'.format(self.worker_number))
-
-        self.token = token
-
         self.min_stargazers_count = 1
-
         self.session = requests.Session()
         self.session.headers = {
             'User-Agent': 'Albedo 1.0.0',
             'Authorization': 'token {0}'.format(self.token),
             'Accept': 'application/vnd.github.mercy-preview+json,application/vnd.github.v3.star+json',
         }
+
+        logger.info('worker_number: {0}'.format(self.worker_number))
+
+    @property
+    def token(self):
+        return random.choice(self.tokens)
 
     @retry(retry_on_exception=retry_if_remote_disconnected, wait_fixed=1000 * 60)
     def _make_reqeust(self, method, url, **kwargs):
@@ -155,7 +158,7 @@ class GitHubCrawler(object):
 class Command(BaseCommand):
 
     def add_arguments(self, parser):
-        parser.add_argument('-t', '--token', action='store', dest='token', required=True)
+        parser.add_argument('-t', '--tokens', type=lambda x: x.split(','), dest='tokens', required=True)
         parser.add_argument('-u', '--usernames', type=lambda x: x.split(','), dest='usernames', required=True)
 
     def handle(self, *args, **options):
@@ -164,11 +167,11 @@ class Command(BaseCommand):
         except IntegrityError:
             pass
 
-        github_token = options['token']
+        github_tokens = options['tokens']
         github_usernames = options['usernames']
 
         self.stdout.write(self.style.SUCCESS('Start data collection'))
-        crawler = GitHubCrawler(token=github_token)
+        crawler = GitHubCrawler(tokens=github_tokens)
         for github_username in github_usernames:
             self.stdout.write(self.style.SUCCESS('GtiHub username: @{0}'.format(github_username)))
             crawler.fetch_following_users(github_username, fetch_more=True)
