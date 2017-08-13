@@ -3,21 +3,123 @@
 from django.db import IntegrityError
 from django.db import models
 
-from retrying import retry
+from django_mysql.models import ListTextField
 
 
-retry_kwargs = {
-    'stop_max_attempt_number': 10,
-    'wait_random_min': 100, 'wait_random_max': 2000,
-}
+class UserInfo(models.Model):
+    login = models.CharField(max_length=39, unique=True)
+    type = models.CharField(max_length=16)
+    name = models.CharField(max_length=255)
+    company = models.CharField(max_length=255, null=True, blank=True)
+    blog = models.URLField(null=True, blank=True)
+    location = models.CharField(max_length=255, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
+    bio = models.CharField(max_length=160, null=True, blank=True)
+    public_repos = models.IntegerField()
+    public_gists = models.IntegerField()
+    followers = models.IntegerField()
+    following = models.IntegerField()
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    def __str__(self):
+        return '@{0}'.format(self.login)
+
+    @staticmethod
+    def create_one(user_dict):
+        user = UserInfo()
+        try:
+            user.id = user_dict['id']
+            user.login = user_dict['login']
+            user.type = user_dict['type']
+            user.name = user_dict['name']
+            user.company = user_dict['company']
+            user.blog = user_dict['blog']
+            user.location = user_dict['location']
+            user.email = user_dict['email']
+            user.bio = user_dict['bio']
+            user.public_repos = user_dict['public_repos']
+            user.public_gists = user_dict['public_gists']
+            user.followers = user_dict['followers']
+            user.following = user_dict['following']
+            user.created_at = user_dict['created_at']
+            user.updated_at = user_dict['updated_at']
+        except (KeyError, TypeError) as e:
+            print(e)
+            print(user_dict)
+            return
+
+        try:
+            user.save()
+        except IntegrityError:
+            pass
 
 
-def retry_if_database_is_lock(exc):
-    from django.db import OperationalError
-    if isinstance(exc, OperationalError):
-        if str(exc) == 'database is locked':
-            return True
-    return False
+class RepoInfo(models.Model):
+    owner_id = models.IntegerField()
+    owner_username = models.CharField(max_length=39)
+    owner_type = models.CharField(max_length=16)
+    name = models.CharField(max_length=100)
+    full_name = models.CharField(max_length=140, unique=True)
+    description = models.TextField(max_length=191)
+    language = models.CharField(max_length=32)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    pushed_at = models.DateTimeField()
+    homepage = models.URLField(null=True, blank=True)
+    size = models.IntegerField()
+    stargazers_count = models.IntegerField()
+    forks_count = models.IntegerField()
+    subscribers_count = models.IntegerField()
+    fork = models.BooleanField()
+    has_issues = models.BooleanField()
+    has_projects = models.BooleanField()
+    has_downloads = models.BooleanField()
+    has_wiki = models.BooleanField()
+    has_pages = models.BooleanField()
+    open_issues_count = models.IntegerField()
+    topics = ListTextField(base_field=models.CharField(max_length=255))
+
+    def __str__(self):
+        return self.full_name
+
+    @staticmethod
+    def create_one(repo_dict):
+        repo = RepoInfo()
+        try:
+            repo.id = repo_dict['id']
+            repo.owner_id = repo_dict['owner']['id']
+            repo.owner_username = repo_dict['owner']['login']
+            repo.owner_type = repo_dict['owner']['type']
+            repo.name = repo_dict['name']
+            repo.full_name = repo_dict['full_name']
+            repo.description = repo_dict['description']
+            repo.language = repo_dict['language']
+            repo.created_at = repo_dict['created_at']
+            repo.updated_at = repo_dict['updated_at']
+            repo.pushed_at = repo_dict['pushed_at']
+            repo.homepage = repo_dict['homepage']
+            repo.size = repo_dict['size']
+            repo.subscribers_count = repo_dict['subscribers_count']
+            repo.stargazers_count = repo_dict['stargazers_count']
+            repo.forks_count = repo_dict['forks_count']
+            repo.fork = repo_dict['fork']
+            repo.has_issues = repo_dict['has_issues']
+            repo.has_projects = repo_dict['has_projects']
+            repo.has_downloads = repo_dict['has_downloads']
+            repo.has_wiki = repo_dict['has_wiki']
+            repo.has_pages = repo_dict['has_pages']
+            repo.open_issues_count = repo_dict['open_issues_count']
+            repo.topics = repo_dict['topics']
+        except (KeyError, TypeError) as e:
+            print(e)
+            print(repo_dict)
+            return
+
+        try:
+            repo.save()
+        except IntegrityError:
+            pass
 
 
 class UserRelation(models.Model):
@@ -34,7 +136,6 @@ class UserRelation(models.Model):
         return '@{0} {1} @{2}'.format(self.from_username, self.relation, self.to_username)
 
     @staticmethod
-    @retry(retry_on_exception=retry_if_database_is_lock, **retry_kwargs)
     def create_one(from_user, relation, to_user):
         ur = UserRelation()
         try:
@@ -43,30 +144,24 @@ class UserRelation(models.Model):
             ur.relation = relation
             ur.to_user_id = to_user['id']
             ur.to_username = to_user['login']
-            ur.save()
         except (KeyError, TypeError) as e:
             print(e)
             print(from_user)
             print(to_user)
+            return
+
+        try:
+            ur.save()
+        except IntegrityError:
+            pass
 
 
 class RepoStarring(models.Model):
     from_user_id = models.IntegerField()
     from_username = models.CharField(max_length=39)
-    repo_owner_id = models.IntegerField()
-    repo_owner_username = models.CharField(max_length=39)
-    repo_owner_type = models.CharField(max_length=16)
     repo_id = models.IntegerField()
-    repo_name = models.CharField(max_length=100)
     repo_full_name = models.CharField(max_length=140)
-    repo_url = models.URLField()
-    repo_language = models.CharField(max_length=32)
-    repo_description = models.TextField(max_length=191)
-    repo_created_at = models.DateTimeField()
-    repo_updated_at = models.DateTimeField()
     starred_at = models.DateTimeField()
-    stargazers_count = models.IntegerField()
-    forks_count = models.IntegerField()
 
     class Meta:
         unique_together = (('from_user_id', 'repo_id'),)
@@ -75,34 +170,21 @@ class RepoStarring(models.Model):
         return '@{0} starred {1}'.format(self.from_username, self.repo_full_name)
 
     @staticmethod
-    @retry(retry_on_exception=retry_if_database_is_lock, **retry_kwargs)
-    def update_or_create_one(from_user, repo_dict):
+    def create_one(from_user, repo_dict):
         rs = RepoStarring()
         try:
             rs.from_user_id = from_user['id']
             rs.from_username = from_user['login']
-            rs.repo_owner_id = repo_dict['owner']['id']
-            rs.repo_owner_username = repo_dict['owner']['login']
-            rs.repo_owner_type = repo_dict['owner']['type']
             rs.repo_id = repo_dict['id']
-            rs.repo_name = repo_dict['name']
             rs.repo_full_name = repo_dict['full_name']
-            rs.repo_url = repo_dict['html_url']
-            rs.repo_language = repo_dict['language'] if repo_dict['language'] else ''
-            rs.repo_description = repo_dict['description'] if repo_dict['description'] else ''
-            rs.repo_created_at = repo_dict['created_at']
-            rs.repo_updated_at = repo_dict['updated_at']
             rs.starred_at = repo_dict['starred_at']
-            rs.stargazers_count = repo_dict['stargazers_count']
-            rs.forks_count = repo_dict['forks_count']
         except (KeyError, TypeError) as e:
             print(e)
+            print(from_user)
             print(repo_dict)
             return
 
         try:
             rs.save()
         except IntegrityError:
-            RepoStarring.objects \
-                .filter(from_user_id=rs.from_user_id, repo_id=rs.repo_id) \
-                .update(repo_updated_at=rs.repo_updated_at, stargazers_count=rs.stargazers_count, forks_count=rs.forks_count)
+            pass
