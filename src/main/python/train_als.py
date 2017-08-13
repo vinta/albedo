@@ -9,7 +9,7 @@ from pyspark.sql import SparkSession
 from albedo_toolkit.common import load_raw_data
 from albedo_toolkit.common import recommend_items
 from albedo_toolkit.evaluators import RankingEvaluator
-from albedo_toolkit.transformers import DataCleaner
+# from albedo_toolkit.transformers import DataCleaner
 from albedo_toolkit.transformers import PredictionProcessor
 from albedo_toolkit.transformers import RatingBuilder
 
@@ -39,17 +39,17 @@ rating_df.cache()
 
 # clean data
 
-data_cleaner = DataCleaner(
-    min_item_stargazers_count=2,
-    max_item_stargazers_count=4000,
-    min_user_starred_count=2,
-    max_user_starred_count=5000
-)
-clean_df = data_cleaner.transform(rating_df)
+# data_cleaner = DataCleaner(
+#     min_item_stargazers_count=2,
+#     max_item_stargazers_count=4000,
+#     min_user_starred_count=2,
+#     max_user_starred_count=5000
+# )
+# clean_df = data_cleaner.transform(rating_df)
 
 # train model
 
-whole_df = clean_df
+whole_df = rating_df
 whole_df.cache()
 
 als = ALS(implicitPrefs=True, seed=42) \

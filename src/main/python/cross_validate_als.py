@@ -10,7 +10,7 @@ from pyspark.sql import SparkSession
 from albedo_toolkit.common import load_raw_data
 from albedo_toolkit.common import print_cross_validation_parameters
 from albedo_toolkit.evaluators import RankingEvaluator
-from albedo_toolkit.transformers import DataCleaner
+# from albedo_toolkit.transformers import DataCleaner
 from albedo_toolkit.transformers import PredictionProcessor
 from albedo_toolkit.transformers import RatingBuilder
 
@@ -36,23 +36,23 @@ rating_df.cache()
 
 # cross-validate models
 
-data_cleaner = DataCleaner()
+# data_cleaner = DataCleaner()
 
 als = ALS(implicitPrefs=True, seed=42)
 
 prediction_processor = PredictionProcessor()
 
 pipeline = Pipeline(stages=[
-    data_cleaner,
+    # data_cleaner,
     als,
     prediction_processor,
 ])
 
+# .addGrid(data_cleaner.min_item_stargazers_count, [1, 10, 100]) \
+# .addGrid(data_cleaner.max_item_stargazers_count, [4000, ]) \
+# .addGrid(data_cleaner.min_user_starred_count, [1, 10, 100]) \
+# .addGrid(data_cleaner.max_user_starred_count, [1000, 4000, ]) \
 param_grid = ParamGridBuilder() \
-    .addGrid(data_cleaner.min_item_stargazers_count, [1, 10, 100]) \
-    .addGrid(data_cleaner.max_item_stargazers_count, [4000, ]) \
-    .addGrid(data_cleaner.min_user_starred_count, [1, 10, 100]) \
-    .addGrid(data_cleaner.max_user_starred_count, [1000, 4000, ]) \
     .addGrid(als.rank, [50, 100]) \
     .addGrid(als.regParam, [0.01, 0.1, 0.5]) \
     .addGrid(als.alpha, [0.01, 0.89, 1, 40, ]) \

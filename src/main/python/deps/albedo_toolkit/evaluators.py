@@ -32,15 +32,15 @@ class RankingEvaluator(Evaluator):
     def isLargerBetter(self):
         return True
 
-    def setK(self, value):
+    def set_k(self, value):
         self._paramMap[self.k] = value
         return self
 
-    def getK(self):
+    def get_k(self):
         return self.getOrDefault(self.k)
 
     def _evaluate(self, predicted_df):
-        k = self.getK()
+        k = self.get_k()
 
         window_spec = Window.partitionBy('user').orderBy(col('prediction').desc())
         per_user_predicted_items_df = predicted_df \

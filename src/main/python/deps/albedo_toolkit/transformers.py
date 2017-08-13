@@ -19,6 +19,7 @@ class RatingBuilder(Transformer):
         return rating_df
 
 
+# TODO: 不適用新版的資料庫 schema 了，待處理
 class DataCleaner(Transformer):
 
     @keyword_only

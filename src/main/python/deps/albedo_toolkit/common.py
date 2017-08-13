@@ -63,14 +63,9 @@ def recommend_items(raw_df, als_model, username, top_n=30, exclude_known_items=F
         .select('item', 'prediction') \
         .orderBy('prediction', ascending=False) \
         .limit(top_n)
-
-    repo_df = raw_df \
-        .groupBy('repo_id', 'repo_full_name', 'repo_language') \
-        .agg(F.max('stargazers_count').alias('stargazers_count'))
-
     recommended_items_df = user_predicted_df \
-        .join(repo_df, user_predicted_df['item'] == repo_df['repo_id'], 'inner') \
-        .select('prediction', 'repo_full_name', 'repo_language', 'stargazers_count') \
+        .join(raw_df, user_predicted_df['item'] == raw_df['repo_id'], 'inner') \
+        .select('prediction', 'repo_full_name') \
         .orderBy('prediction', ascending=False)
 
     return recommended_items_df
