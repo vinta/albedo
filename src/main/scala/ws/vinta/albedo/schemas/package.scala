@@ -21,7 +21,8 @@ package object schemas {
     repo_created_at: Timestamp,
     starred_at: Timestamp,
     stargazers_count: Timestamp,
-    forks_count: Timestamp
+    forks_count: Timestamp,
+    starring: Int
   )
 
   val rawStarringSchema = StructType(
@@ -42,20 +43,21 @@ package object schemas {
       StructField("repo_updated_at", TimestampType, nullable = false),
       StructField("starred_at", TimestampType, nullable = false),
       StructField("stargazers_count", IntegerType, nullable = false),
-      StructField("forks_count", IntegerType, nullable = false)
+      StructField("forks_count", IntegerType, nullable = false),
+      StructField("starring", IntegerType, nullable = false)
     )
   )
 
-  case class Starring(user: Int, item: Int, star: Int, starred_at: Timestamp)
+  case class SimpleStarring(from_user_id: Int, repo_id: Int, starring: Int, starred_at: Timestamp)
 
-  val starringSchema = StructType(
+  val simpleStarringSchema = StructType(
     Array(
-      StructField("user", IntegerType, nullable = false),
-      StructField("item", IntegerType, nullable = false),
-      StructField("star", IntegerType, nullable = false),
+      StructField("from_user_id", IntegerType, nullable = false),
+      StructField("repo_id", IntegerType, nullable = false),
+      StructField("starring", IntegerType, nullable = false),
       StructField("starred_at", TimestampType, nullable = false)
     )
   )
 
-  case class PopularItem(item: Int, stars: Int)
+  case class PopularRepo(repo_id: Int, stars: Int)
 }

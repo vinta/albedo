@@ -2,8 +2,9 @@ package ws.vinta.albedo
 
 import org.apache.spark.sql.AnalysisException
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
-import ws.vinta.albedo.preprocessors.{NegativeGenerator, popularItemsBuilder, starringBuilder}
-import ws.vinta.albedo.schemas.{PopularItem, Starring}
+import org.apache.spark.sql.functions.lit
+import ws.vinta.albedo.preprocessors.{NegativeGenerator, popularReposBuilder}
+import ws.vinta.albedo.schemas.{PopularRepo, RawStarring}
 import ws.vinta.albedo.utils.CommonUtils
 
 import scala.collection.mutable
@@ -25,61 +26,41 @@ object LogisticRegressionTrainer {
 
     import spark.implicits._
 
-    val dateFormater = new java.text.SimpleDateFormat("yyyyMMdd")
-    val today = dateFormater.format(new java.util.Date())
+    val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
+    val today = dateFormatter.format(new java.util.Date())
 
-    val rawDFfilename = s"spark-data/$today/rawDF.parquet"
-    val rawDF: DataFrame = try {
-      spark.read.parquet(rawDFfilename)
+    // load data
+
+    val rawDFpath = s"spark-data/$today/rawDF.parquet"
+    val rawDF: Dataset[RawStarring] = try {
+      spark.read.parquet(rawDFpath).as[RawStarring]
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          val tempRawDF = CommonUtils.loadRawData()
-          tempRawDF.write.parquet(rawDFfilename)
-          tempRawDF
+          val tempRawDF = CommonUtils.loadRawData().withColumn("starring", lit(1))
+          tempRawDF.write.parquet(rawDFpath)
+          tempRawDF.as[RawStarring]
         } else {
           throw e
         }
       }
     }
     rawDF.cache()
-    rawDF.show()
 
-    val starringDS: Dataset[Starring] = starringBuilder.transform(rawDF).as[Starring]
-    starringDS.show()
-    println(starringDS.count())
-
-    val popularItems: mutable.LinkedHashSet[Int] = popularItemsBuilder.transform(rawDF).as[PopularItem]
-      .select("item")
-      .map(r => r(0).asInstanceOf[Int])
-      .collect()
-      .to[mutable.LinkedHashSet]
-
-    //val list = Seq(
-    //  (1, 1, 1, "2017-05-16 20:01:00.0"),
-    //  (1, 2, 1, "2017-05-17 21:01:00.0"),
-    //  (1, 4, 1, "2017-05-17 21:01:00.0"),
-    //  (2, 1, 1, "2017-05-18 22:01:00.0"),
-    //  (3, 1, 1, "2017-05-10 22:01:00.0"),
-    //  (3, 2, 1, "2017-05-10 22:01:00.0"),
-    //  (3, 5, 1, "2017-05-10 22:01:00.0"),
-    //  (3, 10, 1, "2017-05-10 22:01:00.0")
-    //)
-    //import org.apache.spark.sql.functions._
-    //val starringDS = list
-    //  .toDF("user", "item", "star", "starred_at")
-    //  .withColumn("starred_at", unix_timestamp(col("starred_at")).cast("timestamp"))
-    //  .as[Starring]
-    //val popularItems = mutable.LinkedHashSet(1, 2, 7, 3, 10, 14, 4, 21, 9)
-
-    val bcPopularItems = sc.broadcast(popularItems)
-    val negativeGenerator = new NegativeGenerator(bcPopularItems)
-    negativeGenerator
-      .setNegativeValue(0)
-      .setNegativePositiveRatio(1.0)
-    val balancedDF: DataFrame = negativeGenerator.transform(starringDS)
-    balancedDF.show()
-    println(balancedDF.count())
+    //val popularRepos: mutable.LinkedHashSet[Int] = popularReposBuilder.transform(rawDF).as[PopularRepo]
+    //  .select("item")
+    //  .map(row => row(0).asInstanceOf[Int])
+    //  .collect()
+    //  .to[mutable.LinkedHashSet]
+    //
+    //val bcPopularRepos = sc.broadcast(popularRepos)
+    //val negativeGenerator = new NegativeGenerator(bcPopularRepos)
+    //negativeGenerator
+    //  .setNegativeValue(0)
+    //  .setNegativePositiveRatio(1.0)
+    //val balancedDF: DataFrame = negativeGenerator.transform(rawDF)
+    //balancedDF.show()
+    //println(balancedDF.count())
 
     spark.stop()
   }

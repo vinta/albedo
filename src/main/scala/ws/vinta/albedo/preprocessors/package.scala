@@ -3,21 +3,21 @@ package ws.vinta.albedo
 import org.apache.spark.ml.feature.SQLTransformer
 
 package object preprocessors {
-  val starringBuilder = new SQLTransformer()
-  val starringSQL = """
-  SELECT from_user_id AS user, repo_id AS item, 1 AS star, starred_at
+  val simpleStarringBuilder = new SQLTransformer()
+  val simpleStarringSQL = """
+  SELECT from_user_id, repo_id, 1 AS starring, starred_at
   FROM __THIS__
-  ORDER BY user, starred_at DESC
+  ORDER BY from_user_id, starred_at DESC
   """
-  starringBuilder.setStatement(starringSQL)
+  simpleStarringBuilder.setStatement(simpleStarringSQL)
 
-  val popularItemsBuilder = new SQLTransformer()
-  val popularItemsSQL = """
-  SELECT repo_id AS item, MAX(stargazers_count) AS stars
+  val popularReposBuilder = new SQLTransformer()
+  val popularReposSQL = """
+  SELECT repo_id, MAX(stargazers_count) AS stars
   FROM __THIS__
   WHERE stargazers_count > 1000
   GROUP BY repo_id
   ORDER BY stars DESC
   """
-  popularItemsBuilder.setStatement(popularItemsSQL)
+  popularReposBuilder.setStatement(popularReposSQL)
 }
