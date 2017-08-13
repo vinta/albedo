@@ -37,7 +37,7 @@ class GitHubCrawler(object):
 
     def __init__(self, tokens):
         self.tokens = tokens
-        self.worker_number = 10
+        self.worker_number = 4
         self.min_stargazers_count = 1
         self.session = requests.Session()
 
