@@ -70,8 +70,8 @@ prediction_df = prediction_processor.transform(predicted_df)
 # evaluate model
 
 k = 30
-rankingEvaluator = RankingEvaluator(k=k)
-ndcg = rankingEvaluator.evaluate(prediction_df)
+ranking_evaluator = RankingEvaluator(k=k)
+ndcg = ranking_evaluator.evaluate(prediction_df)
 print('NDCG', ndcg)
 
 # recommend items
