@@ -8,7 +8,7 @@ from django_mysql.models import ListTextField
 
 class UserInfo(models.Model):
     login = models.CharField(max_length=39, unique=True)
-    type = models.CharField(max_length=16)
+    account_type = models.CharField(max_length=16)
     name = models.CharField(max_length=255)
     company = models.CharField(max_length=255, null=True, blank=True)
     blog = models.URLField(null=True, blank=True)
@@ -31,7 +31,7 @@ class UserInfo(models.Model):
         try:
             user.id = user_dict['id']
             user.login = user_dict['login']
-            user.type = user_dict['type']
+            user.account_type = user_dict['type']
             user.name = user_dict['name']
             user.company = user_dict['company']
             user.blog = user_dict['blog']
