@@ -4,9 +4,6 @@ from pyspark import keyword_only
 from pyspark.ml import Transformer
 from pyspark.ml.param.shared import Param
 from pyspark.sql import SparkSession
-from pyspark.sql import Window
-from pyspark.sql.functions import col
-from pyspark.sql.functions import expr
 import pyspark.sql.functions as F
 
 
@@ -15,185 +12,88 @@ spark = SparkSession.builder.getOrCreate()
 
 class RatingBuilder(Transformer):
 
-    def _transform(self, rawDF):
-        ratingDF = rawDF \
+    def _transform(self, raw_df):
+        rating_df = raw_df \
             .selectExpr('from_user_id AS user', 'repo_id AS item', '1 AS rating', 'starred_at') \
             .orderBy('user', F.col('starred_at').desc())
-        return ratingDF
+        return rating_df
 
 
 class DataCleaner(Transformer):
 
     @keyword_only
-    def __init__(self, minItemStargazersCount=None, maxItemStargazersCount=None, minUserStarredCount=None, maxUserStarredCount=None):
+    def __init__(self, min_item_stargazers_count=None, max_item_stargazers_count=None, min_user_starred_count=None, max_user_starred_count=None):
         super(DataCleaner, self).__init__()
-        self.minItemStargazersCount = Param(self, 'minItemStargazersCount', '移除 stargazer 數低於這個數字的 item')
-        self.maxItemStargazersCount = Param(self, 'maxItemStargazersCount', '移除 stargazer 數超過這個數字的 item')
-        self.minUserStarredCount = Param(self, 'minUserStarredCount', '移除 starred repo 數低於這個數字的 user')
-        self.maxUserStarredCount = Param(self, 'maxUserStarredCount', '移除 starred repo 數超過這個數字的 user')
-        self._setDefault(minItemStargazersCount=1, maxItemStargazersCount=50000, minUserStarredCount=1, maxUserStarredCount=50000)
+        self.min_item_stargazers_count = Param(self, 'min_item_stargazers_count', '移除 stargazer 數低於這個數字的 item')
+        self.max_item_stargazers_count = Param(self, 'max_item_stargazers_count', '移除 stargazer 數超過這個數字的 item')
+        self.min_user_starred_count = Param(self, 'min_user_starred_count', '移除 starred repo 數低於這個數字的 user')
+        self.max_user_starred_count = Param(self, 'max_user_starred_count', '移除 starred repo 數超過這個數字的 user')
+        self._setDefault(min_item_stargazers_count=1, max_item_stargazers_count=50000, min_user_starred_count=1, max_user_starred_count=50000)
         kwargs = self.__init__._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, minItemStargazersCount=None, maxItemStargazersCount=None, minUserStarredCount=None, maxUserStarredCount=None):
+    def setParams(self, min_item_stargazers_count=None, max_item_stargazers_count=None, min_user_starred_count=None, max_user_starred_count=None):
         kwargs = self.setParams._input_kwargs
         return self._set(**kwargs)
 
-    def setMinItemStargazersCount(self, value):
-        self._paramMap[self.minItemStargazersCount] = value
+    def set_min_item_stargazers_count(self, value):
+        self._paramMap[self.min_item_stargazers_count] = value
         return self
 
-    def getMinItemStargazersCount(self):
-        return self.getOrDefault(self.minItemStargazersCount)
+    def get_min_item_stargazers_count(self):
+        return self.getOrDefault(self.min_item_stargazers_count)
 
-    def setMaxItemStargazersCount(self, value):
-        self._paramMap[self.maxItemStargazersCount] = value
+    def set_max_item_stargazers_count(self, value):
+        self._paramMap[self.max_item_stargazers_count] = value
         return self
 
-    def getMaxItemStargazersCount(self):
-        return self.getOrDefault(self.maxItemStargazersCount)
+    def get_max_item_stargazers_count(self):
+        return self.getOrDefault(self.max_item_stargazers_count)
 
-    def setMinUserStarredCount(self, value):
-        self._paramMap[self.minUserStarredCount] = value
+    def set_min_user_starred_count(self, value):
+        self._paramMap[self.min_user_starred_count] = value
         return self
 
-    def getMinUserStarredCount(self):
-        return self.getOrDefault(self.minUserStarredCount)
+    def get_min_user_starred_count(self):
+        return self.getOrDefault(self.min_user_starred_count)
 
-    def setMaxUserStarredCount(self, value):
-        self._paramMap[self.maxUserStarredCount] = value
+    def set_max_user_starred_count(self, value):
+        self._paramMap[self.max_user_starred_count] = value
         return self
 
-    def getMaxUserStarredCount(self):
-        return self.getOrDefault(self.maxUserStarredCount)
+    def get_max_user_starred_count(self):
+        return self.getOrDefault(self.max_user_starred_count)
 
-    def _transform(self, ratingDF):
-        minItemStargazersCount = self.getMinItemStargazersCount()
-        maxItemStargazersCount = self.getMaxItemStargazersCount()
-        minUserStarredCount = self.getMinUserStarredCount()
-        maxUserStarredCount = self.getMaxUserStarredCount()
+    def _transform(self, rating_df):
+        min_item_stargazers_count = self.get_min_item_stargazers_count()
+        max_item_stargazers_count = self.get_max_item_stargazers_count()
+        min_user_starred_count = self.get_min_user_starred_count()
+        max_user_starred_count = self.get_max_user_starred_count()
 
-        toKeepItemsDF = ratingDF \
+        to_keep_items_df = rating_df \
             .groupBy('item') \
             .agg(F.count('user').alias('stargazers_count')) \
-            .where('stargazers_count >= {0} AND stargazers_count <= {1}'.format(minItemStargazersCount, maxItemStargazersCount)) \
+            .where('stargazers_count >= {0} AND stargazers_count <= {1}'.format(min_item_stargazers_count, max_item_stargazers_count)) \
             .orderBy('stargazers_count', ascending=False) \
             .select('item', 'stargazers_count')
-        temp1DF = ratingDF.join(toKeepItemsDF, 'item', 'inner')
+        temp1_df = rating_df.join(to_keep_items_df, 'item', 'inner')
 
-        toKeepUsersDF = temp1DF \
+        to_keep_users_df = temp1_df \
             .groupBy('user') \
             .agg(F.count('item').alias('starred_count')) \
-            .where('starred_count >= {0} AND starred_count <= {1}'.format(minUserStarredCount, maxUserStarredCount)) \
+            .where('starred_count >= {0} AND starred_count <= {1}'.format(min_user_starred_count, max_user_starred_count)) \
             .orderBy('starred_count', ascending=False) \
             .select('user', 'starred_count')
-        temp2DF = temp1DF.join(toKeepUsersDF, 'user', 'inner')
+        temp2_df = temp1_df.join(to_keep_users_df, 'user', 'inner')
 
-        cleanDF = temp2DF.select('user', 'item', 'rating', 'starred_at')
-        return cleanDF
+        clean_df = temp2_df.select('user', 'item', 'rating', 'starred_at')
+        return clean_df
 
 
 class PredictionProcessor(Transformer):
 
-    def _transform(self, predictedDF):
-        nonNullDF = predictedDF.dropna(subset=['prediction', ])
-        predictionDF = nonNullDF.withColumn('prediction', nonNullDF['prediction'].cast('double'))
-        return predictionDF
-
-
-# DEPRECATE
-class PopularItemsBuilder(Transformer):
-
-    def _transform(self, rawDF):
-        popularItemsDF = rawDF \
-            .where('stargazers_count > 1000') \
-            .groupBy('repo_id') \
-            .agg(F.max('stargazers_count').alias('stars')) \
-            .orderBy('stars', ascending=False) \
-            .withColumnRenamed('repo_id', 'item')
-        return popularItemsDF
-
-
-# DEPRECATE
-class NegativeGenerator(Transformer):
-
-    @keyword_only
-    def __init__(self, negativeRatingValue=None, negativePositiveRatio=None, bcPopularItems=None):
-        super(NegativeGenerator, self).__init__()
-        self.negativeRatingValue = Param(self, 'negativeRatingValue', '負樣本的 rating 值')
-        self.negativePositiveRatio = Param(self, 'negativePositiveRatio', '負樣本與正樣本的比例')
-        self.bcPopularItems = Param(self, 'bcPopularItems', '熱門物品的列表，必須是 Broadcast variable')
-        self._setDefault(negativeRatingValue=0, negativePositiveRatio=1, bcPopularItems=None)
-        kwargs = self.__init__._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, negativeRatingValue=None, negativePositiveRatio=None, bcPopularItems=None):
-        kwargs = self.setParams._input_kwargs
-        return self._set(**kwargs)
-
-    def setNegativeRatingValue(self, value):
-        self._paramMap[self.negativeRatingValue] = value
-        return self
-
-    def getNegativeRatingValue(self):
-        return self.getOrDefault(self.negativeRatingValue)
-
-    def setNegativePositiveRatio(self, value):
-        self._paramMap[self.negativePositiveRatio] = value
-        return self
-
-    def getNegativePositiveRatio(self):
-        return self.getOrDefault(self.negativePositiveRatio)
-
-    def setBCpopularItems(self, value):
-        self._paramMap[self.bcPopularItems] = value
-        return self
-
-    def getBCpopularItems(self):
-        return self.getOrDefault(self.bcPopularItems)
-
-    def _transform(self, ratingDF):
-        negativeRatingValue = self.getNegativeRatingValue()
-        negativePositiveRatio = self.getNegativePositiveRatio()
-        if negativePositiveRatio <= 0:
-            return ratingDF
-        popularItems = self.getBCpopularItems().value
-
-        def seqFunc(itemSet, item):
-            itemSet.add(item)
-            return itemSet
-
-        def combFunc(itemSet1, itemSet2):
-            return itemSet1.union(itemSet2)
-
-        def getNegativeSamples(userItemsPair):
-            user, positiveItems = userItemsPair
-            positiveItemsCount = len(positiveItems)
-            negativeItems = []
-            negativeItemsCount = len(negativeItems)
-            for popularItem in popularItems:
-                if popularItem not in positiveItems:
-                    negativeItems.append(popularItem)
-                    negativeItemsCount += 1
-                    if negativeItemsCount >= positiveItemsCount * negativePositiveRatio:
-                        break
-            return (user, negativeItems)
-
-        def expandNegativeSamples(userItemsPair):
-            user, negativeItems = userItemsPair
-            return ((user, negative, negativeRatingValue) for negative in negativeItems)
-
-        negativeRDD = ratingDF \
-            .select('user', 'item') \
-            .rdd \
-            .aggregateByKey(set(), seqFunc, combFunc) \
-            .map(lambda x: getNegativeSamples(x)) \
-            .flatMap(lambda x: expandNegativeSamples(x))
-        negativeDF = spark.createDataFrame(negativeRDD, ratingDF.schema)
-
-        # avoid "Union can only be performed on tables with the same number of columns" in cross-validation
-        columns = ('user', 'item', 'rating')
-        balancedDF = ratingDF.select(*columns).union(negativeDF.select(*columns))
-        return balancedDF
+    def _transform(self, predicted_df):
+        non_null_df = predicted_df.dropna(subset=['prediction', ])
+        prediction_df = non_null_df.withColumn('prediction', non_null_df['prediction'].cast('double'))
+        return prediction_df

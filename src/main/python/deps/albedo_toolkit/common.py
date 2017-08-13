@@ -7,34 +7,34 @@ import pyspark.sql.functions as F
 spark = SparkSession.builder.getOrCreate()
 
 
-def loadRawData():
+def load_raw_data():
     url = 'jdbc:mysql://127.0.0.1:3306/albedo?user=root&password=123&verifyServerCertificate=false&useSSL=false'
     properties = {'driver': 'com.mysql.jdbc.Driver'}
-    rawDF = spark.read.jdbc(url, table='app_repostarring', properties=properties)
-    return rawDF
+    raw_df = spark.read.jdbc(url, table='app_repostarring', properties=properties)
+    return raw_df
 
 
-def calculateSparsity(ratingDF):
-    result = ratingDF.agg(F.count('rating'), F.countDistinct('user'), F.countDistinct('item')).collect()[0]
-    totalUserCount = result['count(DISTINCT user)']
-    totalItemCount = result['count(DISTINCT item)']
-    zonZeroRatingCount = result['count(rating)']
-    density = (zonZeroRatingCount / (totalUserCount * totalItemCount)) * 100
+def calculate_sparsity(rating_df):
+    result = rating_df.agg(F.count('rating'), F.countDistinct('user'), F.countDistinct('item')).collect()[0]
+    total_user_count = result['count(DISTINCT user)']
+    total_item_count = result['count(DISTINCT item)']
+    zon_zero_rating_count = result['count(rating)']
+    density = (zon_zero_rating_count / (total_user_count * total_item_count)) * 100
     sparsity = 100 - density
     return sparsity
 
 
-def randomSplitByUser(df, weights, seed=None):
-    trainingRation = weights[0]
-    fractions = {row['user']: trainingRation for row in df.select('user').distinct().collect()}
+def random_split_by_user(df, weights, seed=None):
+    training_ration = weights[0]
+    fractions = {row['user']: training_ration for row in df.select('user').distinct().collect()}
     training = df.sampleBy('user', fractions, seed)
-    testRDD = df.rdd.subtract(training.rdd)
-    test = spark.createDataFrame(testRDD, df.schema)
+    test_rdd = df.rdd.subtract(training.rdd)
+    test = spark.createDataFrame(test_rdd, df.schema)
     return training, test
 
 
-def printCrossValidationParameters(cvModel):
-    metric_params_pairs = list(zip(cvModel.avgMetrics, cvModel.getEstimatorParamMaps()))
+def print_cross_validation_parameters(cv_model):
+    metric_params_pairs = list(zip(cv_model.avgMetrics, cv_model.getEstimatorParamMaps()))
     metric_params_pairs.sort(key=lambda x: x[0], reverse=True)
     for pair in metric_params_pairs:
         metric, params = pair
@@ -44,34 +44,33 @@ def printCrossValidationParameters(cvModel):
         print('')
 
 
-def recommendItems(rawDF, alsModel, username, topN=30, excludeKnownItems=False):
-    userID = rawDF \
+def recommend_items(raw_df, als_model, username, top_n=30, exclude_known_items=False):
+    user_id = raw_df \
         .where('from_username = "{0}"'.format(username)) \
         .select('from_user_id') \
         .take(1)[0]['from_user_id']
 
-    userItemsDF = alsModel \
+    user_items_df = als_model \
         .itemFactors. \
-        selectExpr('{0} AS user'.format(userID), 'id AS item')
-    if excludeKnownItems:
-        userKnownItemsDF = rawDF \
-            .where('from_user_id = {0}'.format(userID)) \
+        selectExpr('{0} AS user'.format(user_id), 'id AS item')
+    if exclude_known_items:
+        user_known_items_df = raw_df \
+            .where('from_user_id = {0}'.format(user_id)) \
             .selectExpr('repo_id AS item')
-        userItemsDF = userItemsDF.join(userKnownItemsDF, 'item', 'left_anti')
-
-    userPredictedDF = alsModel \
-        .transform(userItemsDF) \
+        user_items_df = user_items_df.join(user_known_items_df, 'item', 'left_anti')
+    user_predicted_df = als_model \
+        .transform(user_items_df) \
         .select('item', 'prediction') \
         .orderBy('prediction', ascending=False) \
-        .limit(topN)
+        .limit(top_n)
 
-    repoDF = rawDF \
+    repo_df = raw_df \
         .groupBy('repo_id', 'repo_full_name', 'repo_language') \
         .agg(F.max('stargazers_count').alias('stargazers_count'))
 
-    recommendedItemsDF = userPredictedDF \
-        .join(repoDF, userPredictedDF['item'] == repoDF['repo_id'], 'inner') \
+    recommended_items_df = user_predicted_df \
+        .join(repo_df, user_predicted_df['item'] == repo_df['repo_id'], 'inner') \
         .select('prediction', 'repo_full_name', 'repo_language', 'stargazers_count') \
         .orderBy('prediction', ascending=False)
 
-    return recommendedItemsDF
+    return recommended_items_df

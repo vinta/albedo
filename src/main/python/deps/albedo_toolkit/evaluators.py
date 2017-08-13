@@ -39,30 +39,30 @@ class RankingEvaluator(Evaluator):
     def getK(self):
         return self.getOrDefault(self.k)
 
-    def _evaluate(self, predictedDF):
+    def _evaluate(self, predicted_df):
         k = self.getK()
 
-        windowSpec = Window.partitionBy('user').orderBy(col('prediction').desc())
-        perUserPredictedItemsDF = predictedDF \
-            .select('user', 'item', 'prediction', F.rank().over(windowSpec).alias('rank')) \
+        window_spec = Window.partitionBy('user').orderBy(col('prediction').desc())
+        per_user_predicted_items_df = predicted_df \
+            .select('user', 'item', 'prediction', F.rank().over(window_spec).alias('rank')) \
             .where('rank <= {0}'.format(k)) \
             .groupBy('user') \
             .agg(expr('collect_list(item) as items'))
 
-        windowSpec = Window.partitionBy('user').orderBy(col('starred_at').desc())
-        perUserActualItemsDF = predictedDF \
-            .select('user', 'item', 'starred_at', F.rank().over(windowSpec).alias('rank')) \
+        window_spec = Window.partitionBy('user').orderBy(col('starred_at').desc())
+        per_user_actual_items_df = predicted_df \
+            .select('user', 'item', 'starred_at', F.rank().over(window_spec).alias('rank')) \
             .where('rank <= {0}'.format(k)) \
             .groupBy('user') \
             .agg(expr('collect_list(item) as items'))
 
-        perUserItemsRDD = perUserPredictedItemsDF.join(F.broadcast(perUserActualItemsDF), 'user', 'inner') \
+        per_user_items_rdd = per_user_predicted_items_df.join(F.broadcast(per_user_actual_items_df), 'user', 'inner') \
             .rdd \
             .map(lambda row: (row[1], row[2]))
 
-        if perUserItemsRDD.isEmpty():
+        if per_user_items_rdd.isEmpty():
             return 0.0
 
-        rankingMetrics = RankingMetrics(perUserItemsRDD)
-        metric = rankingMetrics.ndcgAt(k)
+        ranking_metrics = RankingMetrics(per_user_items_rdd)
+        metric = ranking_metrics.ndcgAt(k)
         return metric

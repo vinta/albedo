@@ -7,8 +7,8 @@ from pyspark.ml.tuning import CrossValidator
 from pyspark.ml.tuning import ParamGridBuilder
 from pyspark.sql import SparkSession
 
-from albedo_toolkit.common import loadRawData
-from albedo_toolkit.common import printCrossValidationParameters
+from albedo_toolkit.common import load_raw_data
+from albedo_toolkit.common import print_cross_validation_parameters
 from albedo_toolkit.evaluators import RankingEvaluator
 from albedo_toolkit.transformers import DataCleaner
 from albedo_toolkit.transformers import PredictionProcessor
@@ -26,48 +26,48 @@ sc = spark.sparkContext
 
 # load data
 
-rawDF = loadRawData()
+raw_df = load_raw_data()
 
 # format data
 
-ratingBuilder = RatingBuilder()
-ratingDF = ratingBuilder.transform(rawDF)
-ratingDF.cache()
+rating_builder = RatingBuilder()
+rating_df = rating_builder.transform(raw_df)
+rating_df.cache()
 
 # cross-validate models
 
-dataCleaner = DataCleaner()
+data_cleaner = DataCleaner()
 
 als = ALS(implicitPrefs=True, seed=42)
 
-predictionProcessor = PredictionProcessor()
+prediction_processor = PredictionProcessor()
 
 pipeline = Pipeline(stages=[
-    dataCleaner,
+    data_cleaner,
     als,
-    predictionProcessor,
+    prediction_processor,
 ])
 
-paramGrid = ParamGridBuilder() \
-    .addGrid(dataCleaner.minItemStargazersCount, [1, 10, 100]) \
-    .addGrid(dataCleaner.maxItemStargazersCount, [4000, ]) \
-    .addGrid(dataCleaner.minUserStarredCount, [1, 10, 100]) \
-    .addGrid(dataCleaner.maxUserStarredCount, [1000, 4000, ]) \
+param_grid = ParamGridBuilder() \
+    .addGrid(data_cleaner.min_item_stargazers_count, [1, 10, 100]) \
+    .addGrid(data_cleaner.max_item_stargazers_count, [4000, ]) \
+    .addGrid(data_cleaner.min_user_starred_count, [1, 10, 100]) \
+    .addGrid(data_cleaner.max_user_starred_count, [1000, 4000, ]) \
     .addGrid(als.rank, [50, 100]) \
     .addGrid(als.regParam, [0.01, 0.1, 0.5]) \
     .addGrid(als.alpha, [0.01, 0.89, 1, 40, ]) \
     .addGrid(als.maxIter, [22, ]) \
     .build()
 
-rankingEvaluator = RankingEvaluator(k=30)
+ranking_evaluator = RankingEvaluator(k=30)
 
 cv = CrossValidator(estimator=pipeline,
-                    estimatorParamMaps=paramGrid,
-                    evaluator=rankingEvaluator,
+                    estimatorParamMaps=param_grid,
+                    evaluator=ranking_evaluator,
                     numFolds=2)
 
-cvModel = cv.fit(ratingDF)
+cv_model = cv.fit(rating_df)
 
 # show results
 
-printCrossValidationParameters(cvModel)
+print_cross_validation_parameters(cv_model)
