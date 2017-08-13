@@ -13,8 +13,10 @@ from django.db import IntegrityError
 from retrying import retry
 import requests
 
-from app.models import UserRelation
+from app.models import RepoInfo
 from app.models import RepoStarring
+from app.models import UserInfo
+from app.models import UserRelation
 from app.utils_timing import timing_decorator
 
 
@@ -44,7 +46,7 @@ class GitHubCrawler(object):
         self.session.headers = {
             'User-Agent': 'Albedo 1.0.0',
             'Authorization': 'token {0}'.format(self.token),
-            'Accept': 'application/vnd.github.v3.star+json',
+            'Accept': 'application/vnd.github.mercy-preview+json,application/vnd.github.v3.star+json',
         }
 
     @retry(retry_on_exception=retry_if_remote_disconnected, wait_fixed=1000 * 60)
@@ -97,7 +99,16 @@ class GitHubCrawler(object):
     def fetch_user_info(self, username):
         endpoint = 'https://api.github.com/users/{0}'.format(username)
         res = self._make_reqeust('GET', endpoint)
-        return res.json()
+        user_dict = res.json()
+        UserInfo.create_one(user_dict)
+        return user_dict
+
+    def fetch_repo_info(self, repo_full_name):
+        endpoint = 'https://api.github.com/repos/{0}'.format(repo_full_name)
+        res = self._make_reqeust('GET', endpoint)
+        repo_dict = res.json()
+        RepoInfo.create_one(repo_dict)
+        return repo_dict
 
     @timing_decorator
     def fetch_following_users(self, username, fetch_more):
@@ -105,10 +116,7 @@ class GitHubCrawler(object):
         endpoint = 'https://api.github.com/users/{0}/following'.format(username)
         for user_list in self._fetch_pages_concurrently(endpoint):
             for to_user in user_list:
-                try:
-                    UserRelation.create_one(from_user, 'followed', to_user)
-                except IntegrityError:
-                    continue
+                UserRelation.create_one(from_user, 'followed', to_user)
                 if fetch_more:
                     username = to_user['login']
                     self.fetch_following_users(username, fetch_more=False)
@@ -119,10 +127,7 @@ class GitHubCrawler(object):
         endpoint = 'https://api.github.com/users/{0}/followers'.format(username)
         for user_list in self._fetch_pages_concurrently(endpoint):
             for from_user in user_list:
-                try:
-                    UserRelation.create_one(from_user, 'followed', to_user)
-                except IntegrityError:
-                    continue
+                UserRelation.create_one(from_user, 'followed', to_user)
                 if fetch_more:
                     username = from_user['login']
                     self.fetch_following_users(username, fetch_more=False)
@@ -130,7 +135,6 @@ class GitHubCrawler(object):
     @timing_decorator
     def fetch_starred_repos(self, username):
         from_user = self.fetch_user_info(username)
-
         endpoint = 'https://api.github.com/users/{0}/starred'.format(username)
         for repo_list in self._fetch_pages_concurrently(endpoint):
             for starred in repo_list:
@@ -143,14 +147,9 @@ class GitHubCrawler(object):
                     continue
                 if not repo.get('owner'):
                     continue
-
-                RepoStarring.update_or_create_one(from_user, repo)
-
+                RepoStarring.create_one(from_user, repo)
                 if repo['owner']['type'] == 'User':
-                    try:
-                        UserRelation.create_one(from_user, 'starred', repo['owner'])
-                    except IntegrityError:
-                        pass
+                    UserRelation.create_one(from_user, 'starred', repo['owner'])
 
 
 class Command(BaseCommand):
@@ -169,7 +168,6 @@ class Command(BaseCommand):
         github_usernames = options['usernames']
 
         self.stdout.write(self.style.SUCCESS('Start data collection'))
-        self.stdout.write(self.style.SUCCESS('GitHub token: {0}'.format(github_token)))
         crawler = GitHubCrawler(token=github_token)
         for github_username in github_usernames:
             self.stdout.write(self.style.SUCCESS('GtiHub username: @{0}'.format(github_username)))
@@ -183,16 +181,22 @@ class Command(BaseCommand):
         to_usernames = UserRelation.objects \
             .values_list('to_username', flat=True) \
             .distinct()
-        related_usernames = set(from_usernames).union(set(to_usernames))
-        user_count = len(related_usernames)
-        self.stdout.write(self.style.SUCCESS('Total number of related users: {0}'.format(user_count)))
+        usernames = set(from_usernames).union(set(to_usernames))
+        user_count = len(usernames)
+        self.stdout.write(self.style.SUCCESS('Total number of fetched users: {0}'.format(user_count)))
 
-        for username in related_usernames:
+        for username in usernames:
             if username not in github_usernames:
+                crawler.fetch_user_info(username)
                 crawler.fetch_starred_repos(username)
 
         repositories = RepoStarring.objects \
             .values_list('repo_full_name', flat=True) \
             .distinct()
         repo_count = repositories.count()
-        self.stdout.write(self.style.SUCCESS('Total number of repositories: {0}'.format(repo_count)))
+        self.stdout.write(self.style.SUCCESS('Total number of fetched repositories: {0}'.format(repo_count)))
+
+        for repo_full_name in repositories[:5]:
+            crawler.fetch_repo_info(repo_full_name)
+
+        self.stdout.write(self.style.SUCCESS('Done'))
