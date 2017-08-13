@@ -40,29 +40,29 @@ class GitHubCrawler(object):
         self.worker_number = 10
         self.min_stargazers_count = 1
         self.session = requests.Session()
-        self.session.headers = {
-            'User-Agent': 'Albedo 1.0.0',
-            'Authorization': 'token {0}'.format(self.token),
-            'Accept': 'application/vnd.github.mercy-preview+json,application/vnd.github.v3.star+json',
-        }
 
         logger.info('worker_number: {0}'.format(self.worker_number))
 
     @property
-    def token(self):
+    def random_token(self):
         return random.choice(self.tokens)
 
     @retry(retry_on_exception=retry_if_remote_disconnected, wait_fixed=1000 * 60)
     def _make_reqeust(self, method, url, **kwargs):
         logger.info('make_reqeust: {0} {1}'.format(method, url))
-        res = self.session.request('GET', url, **kwargs)
 
+        headers = {
+            'User-Agent': 'Albedo 1.0.0',
+            'Accept': 'application/vnd.github.mercy-preview+json,application/vnd.github.v3.star+json',
+            'Authorization': 'token {0}'.format(self.random_token),
+        }
+        res = self.session.request('GET', url, headers=headers, **kwargs)
         if res.status_code == 403:
             # https://developer.github.com/v3/#rate-limiting
             if 'API rate limit exceeded' in res.json().get('message'):
                 logger.info('Wait 15 minutes before retrying')
                 time.sleep(60 * 15)
-                res = self.session.request('GET', url, **kwargs)
+                res = self.session.request('GET', url, headers=headers, **kwargs)
 
         return res
 
