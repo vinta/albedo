@@ -1,7 +1,7 @@
 Albedo
 ======
 
-A recommender system for discovering GitHub repos you might like.
+A recommender system for discovering GitHub repos you might like - built with [Apache Spark](https://spark.apache.org/).
 
 **Albedo** is a fictional character in Dan Simmons's [Hyperion Cantos](https://en.wikipedia.org/wiki/Hyperion_Cantos) series. Councilor Albedo is the TechnoCore's AI Advisor to the Hegemony of Man.
 
@@ -21,37 +21,23 @@ You need to create your own `GITHUB_PERSONAL_TOKEN` on [your GitHub settings pag
 # get into the main container
 $ make attach
 
-# this step might take a few hours to complete depends on how many repos you starred and how many users you followed
-$ python manage.py migrate
-$ python manage.py collect_data -t GITHUB_PERSONAL_TOKEN -u vinta
+# this step might take a few hours to complete
+# depends on how many repos you starred and how many users you followed
+$ (container) python manage.py migrate
+$ (container) python manage.py collect_data -t GITHUB_PERSONAL_TOKEN -u GITHUB_USERNAME
 # or
-$ wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albedo.sql -O albedo.sql
+$ (container) wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albedo.sql -O albedo.sql
 
 # username: albedo
 # password: hyperion
-$ python manage.py runserver 0.0.0.0:8000
+$ make run
 $ open http://127.0.0.1:8000/admin/
 
-$ python manage.py train_user_cf -u vinta
-
-$ python manage.py train_item_cf -u vinta
-
-$ python manage.py train_content_based -u vinta
-
-# you have to install GraphLab Create manually
-# https://turi.com/download/install-graphlab-create.html
-$ python manage.py train_graphlab -u vinta
-
-# you could also create a Spark 2.1.0 cluster on Google Cloud Dataproc
+# you could also create an Apache Spark cluster on Google Cloud Dataproc
 # https://cloud.google.com/dataproc/
-$ cd src/main/python/deps/ && zip -x \*/__pycache__/\* -r ../deps.zip * && cd .. && \
-spark-submit \
---packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
---driver-memory 4g \
---executor-memory 15g \
---master spark://YOUR_SPARK_MASTER:7077 \
---py-files deps.zip \
-train_als.py -u vinta
+$ make spark_start
+
+$ make train_als
 ```
 
 ## Related Posts

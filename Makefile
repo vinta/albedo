@@ -32,16 +32,6 @@ upload_db:
 download_db:
 	aws s3 cp s3://files.albedo.one/albedo.sql albedo.sql
 
-.PHONY: zeppelin_start
-zeppelin_start:
-	zeppelin-daemon.sh start
-	open http://localhost:8080/
-	open http://localhost:4040/jobs/
-
-.PHONY: zeppelin_stop
-zeppelin_stop:
-	zeppelin-daemon.sh stop
-
 .PHONY: spark_start
 spark_start:
 	cd ${SPARK_HOME} && ./sbin/start-master.sh -h 0.0.0.0
@@ -64,6 +54,16 @@ spark_notebook:
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--py-files deps.zip
+
+.PHONY: zeppelin_start
+zeppelin_start:
+	zeppelin-daemon.sh start
+	open http://localhost:8080/
+	open http://localhost:4040/jobs/
+
+.PHONY: zeppelin_stop
+zeppelin_stop:
+	zeppelin-daemon.sh stop
 
 .PHONY: train_als
 train_als:
