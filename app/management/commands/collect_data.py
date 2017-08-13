@@ -58,10 +58,11 @@ class GitHubCrawler(object):
         }
         res = self.session.request('GET', url, headers=headers, **kwargs)
         if res.status_code == 403:
+            # TODO: 改到 @retry() 裡面做
             # https://developer.github.com/v3/#rate-limiting
             if 'API rate limit exceeded' in res.json().get('message'):
-                logger.info('Wait 15 minutes before retrying')
-                time.sleep(60 * 15)
+                logger.info('Wait 70 minutes before retrying')
+                time.sleep(60 * 70)
                 res = self.session.request('GET', url, headers=headers, **kwargs)
 
         return res
