@@ -5,27 +5,74 @@ import java.sql.Timestamp
 import org.apache.spark.sql.types._
 
 package object schemas {
-  case class RawStarring(
+  case class UserInfo(
+    id: Int,
+    login: String,
+    account_type: String,
+    name: String,
+    company: String,
+    blog: String,
+    location: String,
+    email: String,
+    bio: String,
+    public_repos: Int,
+    public_gists: Int,
+    followers: Int,
+    following: Int,
+    created_at: Timestamp,
+    updated_at: Timestamp
+  )
+
+  case class RepoInfo(
+    id: Int,
+    owner_id: Int,
+    owner_username: String,
+    owner_type: String,
+    name: String,
+    full_name: String,
+    description: String,
+    language: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    pushed_at: Timestamp,
+    homepage: String,
+    size: Int,
+    stargazers_count: Int,
+    forks_count: Int,
+    subscribers_count: Int,
+    has_issues: Boolean,
+    has_projects: Boolean,
+    has_downloads: Boolean,
+    has_wiki: Boolean,
+    has_pages: Boolean,
+    open_issues_count: Int,
+    topics: String
+  )
+
+  case class UserRelation(
     id: Int,
     from_user_id: Int,
     from_username: String,
-    repo_owner_id: Int,
-    repo_owner_username: String,
-    repo_owner_type: String,
+    to_user_id: Int,
+    to_username: String,
+    relation: String
+  )
+
+  case class RepoStarring(
+    from_user_id: Int,
+    from_username: String,
     repo_id: Int,
-    repo_name: String,
     repo_full_name: String,
-    repo_url: String,
-    repo_language: String,
-    repo_description: String,
-    repo_created_at: Timestamp,
     starred_at: Timestamp,
-    stargazers_count: Timestamp,
-    forks_count: Timestamp,
     starring: Int
   )
 
-  val rawStarringSchema = StructType(
+  case class PopularRepo(
+    repo_id: Int,
+    stars: Int
+  )
+
+  val fullStarringSchema = StructType(
     Array(
       StructField("id", IntegerType, nullable = false),
       StructField("from_user_id", IntegerType, nullable = false),
@@ -48,8 +95,6 @@ package object schemas {
     )
   )
 
-  case class SimpleStarring(from_user_id: Int, repo_id: Int, starring: Int, starred_at: Timestamp)
-
   val simpleStarringSchema = StructType(
     Array(
       StructField("from_user_id", IntegerType, nullable = false),
@@ -58,6 +103,4 @@ package object schemas {
       StructField("starred_at", TimestampType, nullable = false)
     )
   )
-
-  case class PopularRepo(repo_id: Int, stars: Int)
 }

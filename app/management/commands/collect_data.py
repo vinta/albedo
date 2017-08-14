@@ -103,15 +103,23 @@ class GitHubCrawler(object):
     def fetch_user_info(self, username):
         endpoint = 'https://api.github.com/users/{0}'.format(username)
         res = self._make_reqeust('GET', endpoint)
-        user_dict = res.json()
-        UserInfo.create_one(user_dict)
+        try:
+            user_dict = res.json()
+        except json.JSONDecodeError:
+            user_dict = {}
+        else:
+            UserInfo.create_one(user_dict)
         return user_dict
 
     def fetch_repo_info(self, repo_full_name):
         endpoint = 'https://api.github.com/repos/{0}'.format(repo_full_name)
         res = self._make_reqeust('GET', endpoint)
-        repo_dict = res.json()
-        RepoInfo.create_one(repo_dict)
+        try:
+            repo_dict = res.json()
+        except json.JSONDecodeError:
+            repo_dict = {}
+        else:
+            RepoInfo.create_one(repo_dict)
         return repo_dict
 
     @timing_decorator
@@ -189,18 +197,19 @@ class Command(BaseCommand):
         user_count = len(usernames)
         self.stdout.write(self.style.SUCCESS('Total number of fetched users: {0}'.format(user_count)))
 
-        for username in usernames:
+        for username in sorted(usernames):
             if username not in github_usernames:
                 crawler.fetch_user_info(username)
                 crawler.fetch_starred_repos(username)
 
         repositories = RepoStarring.objects \
             .values_list('repo_full_name', flat=True) \
+            .order_by('id') \
             .distinct()
         repo_count = repositories.count()
         self.stdout.write(self.style.SUCCESS('Total number of fetched repositories: {0}'.format(repo_count)))
 
-        for repo_full_name in repositories[:5]:
+        for repo_full_name in repositories:
             crawler.fetch_repo_info(repo_full_name)
 
         self.stdout.write(self.style.SUCCESS('Done'))
