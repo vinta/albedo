@@ -4,7 +4,7 @@ import java.util.Properties
 
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset, SparkSession}
-import ws.vinta.albedo.schemas.{RepoInfo, RepoStarring}
+import ws.vinta.albedo.schemas.{RepoInfo, RepoStarring, UserInfo, UserRelation}
 
 object DataSourceUtils {
   private val dbUrl = "jdbc:mysql://127.0.0.1:3306/albedo?verifyServerCertificate=false&useSSL=false&rewriteBatchedStatements=true"
@@ -16,44 +16,85 @@ object DataSourceUtils {
   private val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
   private val today = dateFormatter.format(new java.util.Date())
 
-  def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
+  def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    val savePath = s"spark-data/$today/repoInfoDS.parquet"
-    val repoInfoDF: DataFrame = try {
+    val savePath = s"spark-data/$today/userInfoDS.parquet"
+    val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          val tempRepoInfoDF = spark.read.jdbc(dbUrl, "app_repoinfo", props)
-          tempRepoInfoDF.write.parquet(savePath)
-          tempRepoInfoDF
+          val df = spark.read.jdbc(dbUrl, "app_userinfo", props)
+          df.write.parquet(savePath)
+          df
         } else {
           throw e
         }
       }
     }
-    repoInfoDF.as[RepoInfo]
+    df.as[UserInfo]
+  }
+
+  def loadUserRelation()(implicit spark: SparkSession): Dataset[UserRelation] = {
+    import spark.implicits._
+
+    val savePath = s"spark-data/$today/userRelationDS.parquet"
+    val df: DataFrame = try {
+      spark.read.parquet(savePath)
+    } catch {
+      case e: AnalysisException => {
+        if (e.getMessage().contains("Path does not exist")) {
+          var df = spark.read.jdbc(dbUrl, "app_userrelation", props)
+          df = df.drop("id")
+          df.write.parquet(savePath)
+          df
+        } else {
+          throw e
+        }
+      }
+    }
+    df.as[UserRelation]
+  }
+
+  def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
+    import spark.implicits._
+
+    val savePath = s"spark-data/$today/repoInfoDS.parquet"
+    val df: DataFrame = try {
+      spark.read.parquet(savePath)
+    } catch {
+      case e: AnalysisException => {
+        if (e.getMessage().contains("Path does not exist")) {
+          val df = spark.read.jdbc(dbUrl, "app_repoinfo", props)
+          df.write.parquet(savePath)
+          df
+        } else {
+          throw e
+        }
+      }
+    }
+    df.as[RepoInfo]
   }
 
   def loadRepoStarring()(implicit spark: SparkSession): Dataset[RepoStarring] = {
     import spark.implicits._
 
     val savePath = s"spark-data/$today/repoStarringDS.parquet"
-    val repoStarringDF: DataFrame = try {
+    val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          var tempRepoStarringDF = spark.read.jdbc(dbUrl, "app_repostarring", props)
-          tempRepoStarringDF = tempRepoStarringDF.withColumn("starring", lit(1))
-          tempRepoStarringDF.write.parquet(savePath)
-          tempRepoStarringDF
+          var df = spark.read.jdbc(dbUrl, "app_repostarring", props)
+          df = df.drop("id").withColumn("starring", lit(1))
+          df.write.parquet(savePath)
+          df
         } else {
           throw e
         }
       }
     }
-    repoStarringDF.as[RepoStarring]
+    df.as[RepoStarring]
   }
 }

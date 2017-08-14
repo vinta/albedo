@@ -50,7 +50,6 @@ package object schemas {
   )
 
   case class UserRelation(
-    id: Int,
     from_user_id: Int,
     from_username: String,
     to_user_id: Int,
