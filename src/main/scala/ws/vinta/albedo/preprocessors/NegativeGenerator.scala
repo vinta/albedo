@@ -2,7 +2,7 @@ package ws.vinta.albedo.preprocessors
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.Transformer
-import org.apache.spark.ml.param.{DoubleParam, IntParam, ParamMap}
+import org.apache.spark.ml.param.{DoubleParam, IntParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.types.{IntegerType, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
@@ -16,6 +16,27 @@ class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[
   def this(bcPopularItems: Broadcast[mutable.LinkedHashSet[Int]]) = {
     this(Identifiable.randomUID("negativeGenerator"), bcPopularItems)
   }
+
+  val userCol = new Param[String](this, "userCol", "User id 所在的欄位名稱")
+
+  def getUserCol: String = $(userCol)
+
+  def setUserCol(value: String): this.type = set(userCol, value)
+  setDefault(userCol -> "user")
+
+  val itemCol = new Param[String](this, "itemCol", "Item id 所在的欄位名稱")
+
+  def getItemCol: String = $(itemCol)
+
+  def setItemCol(value: String): this.type = set(itemCol, value)
+  setDefault(itemCol -> "item")
+
+  val labelCol = new Param[String](this, "labelCol", "Label 所在的欄位名稱")
+
+  def getLabelCol: String = $(labelCol)
+
+  def setLabelCol(value: String): this.type = set(labelCol, value)
+  setDefault(labelCol -> "label")
 
   val negativeValue = new IntParam(this, "negativeValue", "負樣本的值")
 
@@ -32,9 +53,9 @@ class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[
   setDefault(negativePositiveRatio -> 1.0)
 
   override def transformSchema(schema: StructType): StructType = {
-    SchemaUtils.checkColumnType(schema, "user", IntegerType)
-    SchemaUtils.checkColumnType(schema, "item", IntegerType)
-    SchemaUtils.checkColumnType(schema, "star", IntegerType)
+    SchemaUtils.checkColumnType(schema, $(userCol), IntegerType)
+    SchemaUtils.checkColumnType(schema, $(itemCol), IntegerType)
+    SchemaUtils.checkColumnType(schema, $(labelCol), IntegerType)
 
     schema
   }
@@ -56,13 +77,14 @@ class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[
     }
     val expandNegativeItems = (userItemsPair: (Int, mutable.LinkedHashSet[Int])) => {
       val (user, negativeItems) = userItemsPair
-      negativeItems.map({(user, _, this.getNegativeValue)})
+      negativeItems.map({(user, _, $(negativeValue))})
     }
 
     import dataset.sparkSession.implicits._
 
+    // TODO: 目前是假設傳進來的 dataset 都是 positive samples，之後可能得處理含有 negative samples 的情況
     val negativeDF = dataset
-      .select("user", "item")
+      .select($(userCol), $(itemCol))
       .rdd
       .map({
         case Row(user: Int, item: Int) => (user, item)
@@ -70,9 +92,9 @@ class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[
       .aggregateByKey(emptyItemSet)(addToItemSet, mergeItemSets)
       .map(getUserNegativeItems)
       .flatMap(expandNegativeItems)
-      .toDF("user", "item", "star")
+      .toDF($(userCol), $(itemCol), $(labelCol))
 
-    dataset.select("user", "item", "star").union(negativeDF.select("user", "item", "star"))
+    dataset.select($(userCol), $(itemCol), $(labelCol)).union(negativeDF)
   }
 
   override def copy(extra: ParamMap): NegativeGenerator = {

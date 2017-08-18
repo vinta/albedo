@@ -23,6 +23,14 @@ package object schemas {
     updated_at: Timestamp
   )
 
+  case class UserRelation(
+    from_user_id: Int,
+    from_username: String,
+    to_user_id: Int,
+    to_username: String,
+    relation: String
+  )
+
   case class RepoInfo(
     id: Int,
     owner_id: Int,
@@ -49,26 +57,16 @@ package object schemas {
     topics: String
   )
 
-  case class UserRelation(
-    from_user_id: Int,
-    from_username: String,
-    to_user_id: Int,
-    to_username: String,
-    relation: String
-  )
-
   case class RepoStarring(
-    from_user_id: Int,
-    from_username: String,
+    user_id: Int,
     repo_id: Int,
-    repo_full_name: String,
     starred_at: Timestamp,
     starring: Int
   )
 
   case class PopularRepo(
-    repo_id: Int,
-    stars: Int
+    id: Int,
+    stargazers_count: Int
   )
 
   val fullStarringSchema = StructType(
@@ -96,10 +94,10 @@ package object schemas {
 
   val simpleStarringSchema = StructType(
     Array(
-      StructField("from_user_id", IntegerType, nullable = false),
+      StructField("user_id", IntegerType, nullable = false),
       StructField("repo_id", IntegerType, nullable = false),
-      StructField("starring", IntegerType, nullable = false),
-      StructField("starred_at", TimestampType, nullable = false)
+      StructField("starred_at", TimestampType, nullable = false),
+      StructField("starring", IntegerType, nullable = false)
     )
   )
 }

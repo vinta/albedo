@@ -1,7 +1,6 @@
 package ws.vinta.albedo.utils
 
 import java.util.Properties
-
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset, SparkSession}
 import ws.vinta.albedo.schemas.{RepoInfo, RepoStarring, UserInfo, UserRelation}
@@ -45,8 +44,8 @@ object DataSourceUtils {
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          var df = spark.read.jdbc(dbUrl, "app_userrelation", props)
-          df = df.drop("id")
+          val df = spark.read.jdbc(dbUrl, "app_userrelation", props)
+            .select("from_user_id", "to_user_id", "relation")
           df.write.parquet(savePath)
           df
         } else {
@@ -86,8 +85,9 @@ object DataSourceUtils {
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          var df = spark.read.jdbc(dbUrl, "app_repostarring", props)
-          df = df.drop("id").withColumn("starring", lit(1))
+          val df = spark.read.jdbc(dbUrl, "app_repostarring", props)
+            .select("user_id", "repo_id", "starred_at")
+            .withColumn("starring", lit(1))
           df.write.parquet(savePath)
           df
         } else {
