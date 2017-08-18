@@ -157,30 +157,30 @@ class UserRelation(models.Model):
 
 
 class RepoStarring(models.Model):
-    from_user_id = models.IntegerField()
-    from_username = models.CharField(max_length=39)
+    user_id = models.IntegerField()
+    user_username = models.CharField(max_length=39)
     repo_id = models.IntegerField()
     repo_full_name = models.CharField(max_length=140)
     starred_at = models.DateTimeField()
 
     class Meta:
-        unique_together = (('from_user_id', 'repo_id'),)
+        unique_together = (('user_id', 'repo_id'),)
 
     def __str__(self):
-        return '@{0} starred {1}'.format(self.from_username, self.repo_full_name)
+        return '@{0} starred {1}'.format(self.user_username, self.repo_full_name)
 
     @staticmethod
-    def create_one(from_user, repo_dict):
+    def create_one(user_dict, repo_dict):
         rs = RepoStarring()
         try:
-            rs.from_user_id = from_user['id']
-            rs.from_username = from_user['login']
+            rs.user_id = user_dict['id']
+            rs.user_username = user_dict['login']
             rs.repo_id = repo_dict['id']
             rs.repo_full_name = repo_dict['full_name']
             rs.starred_at = repo_dict['starred_at']
         except (KeyError, TypeError) as e:
             print(e)
-            print(from_user)
+            print(user_dict)
             print(repo_dict)
             return
 
