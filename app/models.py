@@ -14,7 +14,7 @@ class UserInfo(models.Model):
     blog = models.URLField(max_length=255, null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
-    bio = models.CharField(max_length=160, null=True, blank=True)
+    bio = models.CharField(max_length=255, null=True, blank=True)
     public_repos = models.IntegerField()
     public_gists = models.IntegerField()
     followers = models.IntegerField()

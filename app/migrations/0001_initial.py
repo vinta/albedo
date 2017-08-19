@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
                 ('blog', models.URLField(blank=True, max_length=255, null=True)),
                 ('location', models.CharField(blank=True, max_length=255, null=True)),
                 ('email', models.EmailField(blank=True, max_length=254, null=True)),
-                ('bio', models.CharField(blank=True, max_length=160, null=True)),
+                ('bio', models.CharField(blank=True, max_length=255, null=True)),
                 ('public_repos', models.IntegerField()),
                 ('public_gists', models.IntegerField()),
                 ('followers', models.IntegerField()),
