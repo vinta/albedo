@@ -61,12 +61,7 @@ package object schemas {
     user_id: Int,
     repo_id: Int,
     starred_at: Timestamp,
-    starring: Int
-  )
-
-  case class PopularRepo(
-    id: Int,
-    stargazers_count: Int
+    starring: Double
   )
 
   val fullStarringSchema = StructType(
@@ -88,7 +83,7 @@ package object schemas {
       StructField("starred_at", TimestampType, nullable = false),
       StructField("stargazers_count", IntegerType, nullable = false),
       StructField("forks_count", IntegerType, nullable = false),
-      StructField("starring", IntegerType, nullable = false)
+      StructField("starring", DoubleType, nullable = false)
     )
   )
 
@@ -97,7 +92,7 @@ package object schemas {
       StructField("user_id", IntegerType, nullable = false),
       StructField("repo_id", IntegerType, nullable = false),
       StructField("starred_at", TimestampType, nullable = false),
-      StructField("starring", IntegerType, nullable = false)
+      StructField("starring", DoubleType, nullable = false)
     )
   )
 }

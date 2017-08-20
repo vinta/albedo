@@ -15,10 +15,13 @@ object DataSourceUtils {
   private val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
   private val today = dateFormatter.format(new java.util.Date())
 
+  private val dataDir = "."
+  //private val dataDir = "/mnt/albedo_s3"
+
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    val savePath = s"spark-data/$today/userInfoDS.parquet"
+    val savePath = s"$dataDir/spark-data/$today/userInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -38,7 +41,7 @@ object DataSourceUtils {
   def loadUserRelation()(implicit spark: SparkSession): Dataset[UserRelation] = {
     import spark.implicits._
 
-    val savePath = s"spark-data/$today/userRelationDS.parquet"
+    val savePath = s"$dataDir/spark-data/$today/userRelationDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -59,7 +62,7 @@ object DataSourceUtils {
   def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    val savePath = s"spark-data/$today/repoInfoDS.parquet"
+    val savePath = s"$dataDir/spark-data/$today/repoInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -79,7 +82,7 @@ object DataSourceUtils {
   def loadRepoStarring()(implicit spark: SparkSession): Dataset[RepoStarring] = {
     import spark.implicits._
 
-    val savePath = s"spark-data/$today/repoStarringDS.parquet"
+    val savePath = s"$dataDir/spark-data/$today/repoStarringDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -87,7 +90,7 @@ object DataSourceUtils {
         if (e.getMessage().contains("Path does not exist")) {
           val df = spark.read.jdbc(dbUrl, "app_repostarring", props)
             .select("user_id", "repo_id", "starred_at")
-            .withColumn("starring", lit(1))
+            .withColumn("starring", lit(1.0))
           df.write.parquet(savePath)
           df
         } else {

@@ -1,10 +1,10 @@
 package ws.vinta.albedo
 
-import org.apache.spark.ml.classification.LogisticRegression
+import org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary, LogisticRegression}
+import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.preprocessors.{NegativeGenerator, popularReposBuilder}
-import ws.vinta.albedo.schemas.PopularRepo
-import ws.vinta.albedo.utils.DataSourceUtils.{loadRepoInfo, loadRepoStarring}
+import ws.vinta.albedo.utils.DataSourceUtils.{loadRepoInfo, loadRepoStarring, loadUserInfo, loadUserRelation}
 
 import scala.collection.mutable
 
@@ -25,21 +25,24 @@ object LogisticRegressionTrainer {
 
     import spark.implicits._
 
-    // load data
+    // Load Data
 
-    val repoInfoDS = loadRepoInfo()
-    repoInfoDS.cache()
+    val rawUserInfoDS = loadUserInfo()
+    rawUserInfoDS.cache()
 
-    val repoStarringDS = loadRepoStarring()
-    repoStarringDS.cache()
-    println(repoStarringDS.count())
+    val rawUserRelationDS = loadUserRelation()
+    rawUserRelationDS.cache()
 
-    // handle imbalanced samples
+    val rawRepoInfoDS = loadRepoInfo()
+    rawRepoInfoDS.cache()
 
-    val popularReposDS = popularReposBuilder
-      .transform(repoInfoDS)
-      .as[PopularRepo]
-    val popularRepos: mutable.LinkedHashSet[Int] = popularReposDS
+    val rawRepoStarringDS = loadRepoStarring()
+    rawRepoStarringDS.cache()
+
+    // Handle Imbalanced Samples
+
+    val popularReposDF = popularReposBuilder.transform(rawRepoInfoDS)
+    val popularRepos: mutable.LinkedHashSet[Int] = popularReposDF
       .select("id")
       .map(row => row(0).asInstanceOf[Int])
       .collect()
@@ -51,35 +54,52 @@ object LogisticRegressionTrainer {
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setLabelCol("starring")
-      .setNegativeValue(0)
+      .setNegativeValue(0.0)
       .setNegativePositiveRatio(1.0)
-    val balancedDF = negativeGenerator.transform(repoStarringDS)
-    println(balancedDF.count())
+    val balanceStarringDF = negativeGenerator.transform(rawRepoStarringDS)
 
-    // train the model
+    // Impute Missing Values
 
-    val fullDF = balancedDF.join(repoInfoDS, balancedDF.col("repo_id") === repoInfoDS.col("id"))
+    val repoInfoDF = rawRepoInfoDS.na.fill("", Array("description", "homepage"))
+    repoInfoDF.cache()
 
-    val Array(training, test) = fullDF.randomSplit(Array(0.8, 0.2))
+    // Feature Engineering
 
-    import org.apache.spark.ml.feature.VectorAssembler
+    // Train a Model
+
+    val fullDF = balanceStarringDF.join(repoInfoDF, balanceStarringDF.col("repo_id") === rawRepoInfoDS.col("id"))
+
+    val Array(trainingDF, testDF) = fullDF.randomSplit(Array(0.8, 0.2))
 
     val vectorAssembler = new VectorAssembler()
-      .setInputCols(Array("stargazers_count", "forks_count", "subscribers_count"))
+      .setInputCols(Array("size", "stargazers_count", "forks_count", "subscribers_count"))
       .setOutputCol("features")
 
-    val outputDF = vectorAssembler.transform(training)
+    val vectorTrainingDF = vectorAssembler.transform(trainingDF)
+    val vectorTestDF = vectorAssembler.transform(testDF)
 
     val lr = new LogisticRegression()
-      .setMaxIter(10)
-      .setRegParam(0.3)
-      .setElasticNetParam(0.8)
+      .setMaxIter(30)
+      .setRegParam(0.0)
+      .setElasticNetParam(0.0)
       .setFeaturesCol("features")
       .setLabelCol("starring")
 
-    val lrModel = lr.fit(outputDF)
+    val lrModel = lr.fit(vectorTrainingDF)
+
+    // Show the Model Summary
+
     println(s"Coefficients: ${lrModel.coefficients}")
     println(s"Intercept: ${lrModel.intercept}")
+
+    val modelSummary = lrModel.summary.asInstanceOf[BinaryLogisticRegressionSummary]
+    println(s"Area Under ROC: ${modelSummary.areaUnderROC}")
+
+    // Evaluate the Model
+
+    // Predict
+
+    // Rank
 
     spark.stop()
   }
