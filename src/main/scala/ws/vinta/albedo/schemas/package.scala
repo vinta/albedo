@@ -6,7 +6,7 @@ import org.apache.spark.sql.types._
 
 package object schemas {
   case class UserInfo(
-    id: Int,
+    user_id: Int,
     login: String,
     account_type: String,
     name: String,
@@ -32,7 +32,7 @@ package object schemas {
   )
 
   case class RepoInfo(
-    id: Int,
+    repo_id: Int,
     owner_id: Int,
     owner_username: String,
     owner_type: String,

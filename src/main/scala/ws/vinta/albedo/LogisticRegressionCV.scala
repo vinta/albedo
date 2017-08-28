@@ -31,6 +31,7 @@ object LogisticRegressionCV {
       .addGrid(lr.maxIter, Array(20))
       .addGrid(lr.regParam, Array(0.0))
       .addGrid(lr.elasticNetParam, Array(0.0))
+      .addGrid(lr.standardization, Array(true, false))
       .build()
 
     val evaluator = new BinaryClassificationEvaluator()
@@ -44,13 +45,14 @@ object LogisticRegressionCV {
       .setEvaluator(evaluator)
       .setNumFolds(2)
 
-    val cvModel = cv.fit(vectorTrainingDF)
-
-    // Show best parameters
-
-    val bestPipelineModel = cvModel.bestModel.asInstanceOf[PipelineModel]
-    val lrModel = bestPipelineModel.stages(0).asInstanceOf[LogisticRegressionModel]
-    lrModel.explainParams()
+    //val cvModel = cv.fit(vectorTrainingDF)
+    //
+    //// Show best parameters
+    //
+    //val bestPipelineModel = cvModel.bestModel.asInstanceOf[PipelineModel]
+    //val lrModel = bestPipelineModel.stages(0).asInstanceOf[LogisticRegressionModel]
+    //lrModel.explainParams()
 
     spark.stop()
+  }
 }

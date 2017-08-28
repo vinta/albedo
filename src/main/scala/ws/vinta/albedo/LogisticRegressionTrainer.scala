@@ -1,6 +1,7 @@
 package ws.vinta.albedo
 
 import org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary, LogisticRegression}
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.preprocessors.{NegativeGenerator, popularReposBuilder}
@@ -39,11 +40,19 @@ object LogisticRegressionTrainer {
     val rawRepoStarringDS = loadRepoStarring()
     rawRepoStarringDS.cache()
 
+    // Impute Missing Values
+
+    // Clean Data
+
+    // TODO: 過濾掉 star 數 <= 1 的 repo
+
     // Handle Imbalanced Samples
+
+    // TODO: repoStarring join repoInfo join userInfo，過濾掉為 null 的 repoStarring
 
     val popularReposDF = popularReposBuilder.transform(rawRepoInfoDS)
     val popularRepos: mutable.LinkedHashSet[Int] = popularReposDF
-      .select("id")
+      .select("repo_id")
       .map(row => row(0).asInstanceOf[Int])
       .collect()
       .to[mutable.LinkedHashSet]
@@ -63,7 +72,21 @@ object LogisticRegressionTrainer {
     val repoInfoDF = rawRepoInfoDS.na.fill("", Array("description", "homepage"))
     repoInfoDF.cache()
 
+    // 移除 repoStarring 中 user id 和 item id 不在 userInfo 和 repoInfo 的紀錄
+
     // Feature Engineering
+
+    import org.apache.spark.ml.feature.StringIndexer
+    import org.apache.spark.ml.feature.OneHotEncoder
+
+    val stringIndexer = new StringIndexer()
+      .setInputCol("repo_language")
+      .setOutputCol("repo_language_index")
+      .setHandleInvalid("keep")
+    val stringIndexerModel = stringIndexer.fit(df1)
+
+    val indexedDF = stringIndexerModel.transform(df2)
+    indexedDF.show()
 
     // Train a Model
 
@@ -96,6 +119,15 @@ object LogisticRegressionTrainer {
     println(s"Area Under ROC: ${modelSummary.areaUnderROC}")
 
     // Evaluate the Model
+
+    //val resultTestDF = lrModel.transform(vectorTestDF)
+    //
+    //val evaluator = new BinaryClassificationEvaluator()
+    //  .setMetricName("areaUnderROC")
+    //  .setRawPredictionCol("rawPrediction")
+    //  .setLabelCol("starring")
+    //val metric = evaluator.evaluate(resultTestDF)
+    //println(s"${evaluator.getMetricName}: $metric")
 
     // Predict
 

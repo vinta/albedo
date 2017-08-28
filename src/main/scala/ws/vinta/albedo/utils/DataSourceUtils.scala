@@ -28,6 +28,7 @@ object DataSourceUtils {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = spark.read.jdbc(dbUrl, "app_userinfo", props)
+            .withColumnRenamed("id", "user_id")
           df.write.parquet(savePath)
           df
         } else {
@@ -69,6 +70,7 @@ object DataSourceUtils {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = spark.read.jdbc(dbUrl, "app_repoinfo", props)
+            .withColumnRenamed("id", "repo_id")
           df.write.parquet(savePath)
           df
         } else {
