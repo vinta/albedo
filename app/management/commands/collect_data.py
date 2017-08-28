@@ -61,8 +61,8 @@ class GitHubCrawler(object):
             # TODO: 改到 @retry() 裡面做
             # https://developer.github.com/v3/#rate-limiting
             if 'API rate limit exceeded' in res.json().get('message'):
-                logger.info('Wait 70 minutes before retrying')
-                time.sleep(60 * 70)
+                logger.info('Wait 30 minutes before retrying')
+                time.sleep(60 * 30)
                 res = self.session.request('GET', url, headers=headers, **kwargs)
 
         return res
@@ -198,18 +198,19 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Total number of fetched users: {0}'.format(user_count)))
 
         for username in sorted(usernames):
-            if username not in github_usernames:
+            if not UserInfo.objects.filter(login=username).exists():
                 crawler.fetch_user_info(username)
                 crawler.fetch_starred_repos(username)
 
         repositories = RepoStarring.objects \
             .values_list('repo_full_name', flat=True) \
-            .order_by('id') \
+            .order_by('-repo_full_name') \
             .distinct()
         repo_count = repositories.count()
         self.stdout.write(self.style.SUCCESS('Total number of fetched repositories: {0}'.format(repo_count)))
 
         for repo_full_name in repositories:
-            crawler.fetch_repo_info(repo_full_name)
+            if not RepoInfo.objects.filter(full_name=repo_full_name).exists():
+                crawler.fetch_repo_info(repo_full_name)
 
         self.stdout.write(self.style.SUCCESS('Done'))
