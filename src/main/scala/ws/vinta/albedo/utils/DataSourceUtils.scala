@@ -13,10 +13,10 @@ object DataSourceUtils {
   props.setProperty("password", "123")
 
   private val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
-  private val today = dateFormatter.format(new java.util.Date())
 
-  private val dataDir = "."
-  //private val dataDir = "/mnt/albedo_s3"
+  private[albedo] val today = dateFormatter.format(new java.util.Date())
+  private[albedo] val dataDir = "."
+  //private[albedo] val dataDir = "/mnt/albedo_s3"
 
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
