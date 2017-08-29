@@ -9,16 +9,14 @@ import ws.vinta.albedo.utils.DataSourceUtils.{loadRepoInfo, loadRepoStarring, lo
 
 import scala.collection.mutable
 
-object LogisticRegressionTrainer {
-  val appName = "LogisticRegressionTrainer"
-
+object PersonalizedRankerTrainer {
   def main(args: Array[String]): Unit = {
     val activeUser = args(1)
     println(activeUser)
 
     implicit val spark = SparkSession
       .builder()
-      .appName(appName)
+      .appName("LogisticRegressionTrainer")
       .getOrCreate()
 
     implicit val sc = spark.sparkContext
@@ -79,14 +77,14 @@ object LogisticRegressionTrainer {
     import org.apache.spark.ml.feature.StringIndexer
     import org.apache.spark.ml.feature.OneHotEncoder
 
-    val stringIndexer = new StringIndexer()
-      .setInputCol("repo_language")
-      .setOutputCol("repo_language_index")
-      .setHandleInvalid("keep")
-    val stringIndexerModel = stringIndexer.fit(df1)
-
-    val indexedDF = stringIndexerModel.transform(df2)
-    indexedDF.show()
+    //val stringIndexer = new StringIndexer()
+    //  .setInputCol("repo_language")
+    //  .setOutputCol("repo_language_index")
+    //  .setHandleInvalid("keep")
+    //val stringIndexerModel = stringIndexer.fit(df1)
+    //
+    //val indexedDF = stringIndexerModel.transform(df2)
+    //indexedDF.show()
 
     // Train a Model
 

@@ -86,3 +86,17 @@ train_als_dataproc:
 	--cluster albedo \
 	--py-files deps.zip \
 	train_als.py -- -u vinta
+
+.PHONY: train_lr
+train_lr:
+	time spark-submit \
+	--master local[*] \
+	--class ws.vinta.albedo.LogisticRegressionTrainer \
+	out/artifacts/albedo_jar/albedo.jar -u vinta
+
+.PHONY: train_github_corpus
+train_github_corpus:
+	time spark-submit \
+	--master local[*] \
+	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	out/artifacts/albedo_jar/albedo.jar

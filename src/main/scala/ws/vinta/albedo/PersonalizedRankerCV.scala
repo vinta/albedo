@@ -6,7 +6,7 @@ import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 
-object LogisticRegressionCV {
+object PersonalizedRankerCV {
   val appName = "LogisticRegressionCV"
 
   def main(args: Array[String]): Unit = {
