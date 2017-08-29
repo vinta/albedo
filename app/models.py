@@ -9,7 +9,7 @@ from django_mysql.models import ListTextField
 class UserInfo(models.Model):
     login = models.CharField(max_length=39, unique=True)
     account_type = models.CharField(max_length=16)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null=True, blank=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     blog = models.URLField(max_length=255, null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)

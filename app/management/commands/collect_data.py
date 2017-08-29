@@ -199,7 +199,6 @@ class Command(BaseCommand):
 
         for username in sorted(usernames):
             if not UserInfo.objects.filter(login=username).exists():
-                crawler.fetch_user_info(username)
                 crawler.fetch_starred_repos(username)
 
         repositories = RepoStarring.objects \
