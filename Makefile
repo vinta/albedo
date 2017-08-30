@@ -1,6 +1,6 @@
 .PHONY: clean
 clean:
-	find . -name \*.pyc -o -name \*.pyo -o -name __pycache__ -exec rm -rf {} +
+	find . \( -name \*.pyc -o -name \*.pyo -o -name __pycache__ \) -prune -exec rm -rf {} +
 
 .PHONY: up
 up:
@@ -23,14 +23,6 @@ install:
 .PHONY: run
 run:
 	docker exec -i -t albedo_django_1 python manage.py runserver 0.0.0.0:8000
-
-.PHONY: upload_db
-upload_db:
-	aws s3 cp albedo.sql s3://files.albedo.one/albedo.sql
-
-.PHONY: download_db
-download_db:
-	aws s3 cp s3://files.albedo.one/albedo.sql albedo.sql
 
 .PHONY: spark_start
 spark_start:
@@ -67,6 +59,14 @@ zeppelin_stop:
 
 .PHONY: train_als
 train_als:
+ifeq ($(platform),gcp)
+	find . -name __pycache__ | xargs rm -Rf
+	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
+	time gcloud dataproc jobs submit pyspark \
+	--cluster albedo \
+	--py-files deps.zip \
+	train_als.py -- -u vinta
+else
 	find . -name __pycache__ | xargs rm -Rf
 	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	time spark-submit \
@@ -77,27 +77,21 @@ train_als:
 	--master spark://localhost:7077 \
 	--py-files deps.zip \
 	train_als.py -- -u vinta
+endif
 
-.PHONY: train_als_dataproc
-train_als_dataproc:
-	find . -name __pycache__ | xargs rm -Rf
-	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
-	time gcloud dataproc jobs submit pyspark \
-	--cluster albedo \
-	--py-files deps.zip \
-	train_als.py -- -u vinta
-
-.PHONY: train_lr
-train_lr:
+.PHONY: train_corpus
+train_corpus:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	target/albedo-1.0.0-SNAPSHOT.jar
+else
 	time spark-submit \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-	--class ws.vinta.albedo.LogisticRegressionTrainer \
-	out/artifacts/albedo_jar/albedo.jar -u vinta
-
-.PHONY: train_corpus_dataproc
-train_corpus_dataproc:
-	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.databricks:spark-avro_2.11:3.2.0" \
+	--driver-memory 4g \
+	--executor-memory 12g \
+	--executor-cores 4 \
+	--master spark://localhost:7077 \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
-	out/artifacts/albedo_jar/albedo.jar
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
