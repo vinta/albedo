@@ -1,3 +1,5 @@
+package ws.vinta.albedo
+
 import org.apache.spark.sql.SparkSession
 
 object PopularRecommenderTrainer {
@@ -9,6 +11,8 @@ object PopularRecommenderTrainer {
 
     implicit val sc = spark.sparkContext
     sc.setLogLevel("WARN")
+
+    println("PopularRecommenderTrainer 123")
 
     spark.stop()
   }
