@@ -10,7 +10,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="albedo" target="{$java.version}" />
+      <module name="albedo" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>
