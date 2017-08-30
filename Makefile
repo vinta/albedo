@@ -37,7 +37,7 @@ spark_stop:
 .PHONY: pyspark_notebook
 pyspark_notebook:
 	find . -name __pycache__ | xargs rm -Rf
-	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
+	cd src/main/python/deps/ && zip -r ../deps.zip *
 	PYSPARK_DRIVER_PYTHON="jupyter" \
 	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
@@ -45,7 +45,7 @@ pyspark_notebook:
 	--driver-memory 4g \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
-	--py-files deps.zip
+	--py-files src/main/python/deps.zip
 
 .PHONY: zeppelin_start
 zeppelin_start:
@@ -59,24 +59,22 @@ zeppelin_stop:
 
 .PHONY: train_als
 train_als:
-ifeq ($(platform),gcp)
 	find . -name __pycache__ | xargs rm -Rf
-	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
+	cd src/main/python/deps/ && zip -r ../deps.zip *
+ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit pyspark \
 	--cluster albedo \
-	--py-files deps.zip \
-	train_als.py -- -u vinta
+	--py-files src/main/python/deps.zip \
+	src/main/python/train_als.py -- -u vinta
 else
-	find . -name __pycache__ | xargs rm -Rf
-	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	time spark-submit \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
 	--executor-memory 12g \
 	--executor-cores 4 \
 	--master spark://localhost:7077 \
-	--py-files deps.zip \
-	train_als.py -- -u vinta
+	--py-files src/main/python/deps.zip \
+	src/main/python/train_als.py -u vinta
 endif
 
 .PHONY: train_corpus
