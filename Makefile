@@ -42,8 +42,8 @@ spark_stop:
 	cd ${SPARK_HOME} && ./sbin/stop-master.sh
 	cd ${SPARK_HOME} && ./sbin/stop-slave.sh
 
-.PHONY: spark_notebook
-spark_notebook:
+.PHONY: pyspark_notebook
+pyspark_notebook:
 	find . -name __pycache__ | xargs rm -Rf
 	cd src/main/python/deps/ && zip -r ../deps.zip * && cd .. && \
 	PYSPARK_DRIVER_PYTHON="jupyter" \
@@ -90,13 +90,14 @@ train_als_dataproc:
 .PHONY: train_lr
 train_lr:
 	time spark-submit \
-	--master local[*] \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--class ws.vinta.albedo.LogisticRegressionTrainer \
 	out/artifacts/albedo_jar/albedo.jar -u vinta
 
-.PHONY: train_github_corpus
-train_github_corpus:
-	time spark-submit \
-	--master local[*] \
+.PHONY: train_corpus_dataproc
+train_corpus_dataproc:
+	time gcloud dataproc jobs submit spark \
+	--cluster albedo \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.databricks:spark-avro_2.11:3.2.0" \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
 	out/artifacts/albedo_jar/albedo.jar
