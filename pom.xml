@@ -3,10 +3,13 @@
     <groupId>ws.vinta</groupId>
     <artifactId>albedo</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+    <name>${project.artifactId}</name>
+    <description>A recommender system for discovering GitHub repos</description>
+    <inceptionYear>2017</inceptionYear>
     <properties>
         <java.version>1.8</java.version>
         <scala.version>2.11.8</scala.version>
-        <scala.binary.version>2.11</scala.binary.version>
+        <scala.compactVersion>2.11</scala.compactVersion>
         <spark.version>2.2.0</spark.version>
     </properties>
     <dependencies>
@@ -19,19 +22,19 @@
         <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.11 -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${scala.binary.version}</artifactId>
+            <artifactId>spark-core_${scala.compactVersion}</artifactId>
             <version>${spark.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-sql_2.11 -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <artifactId>spark-sql_${scala.compactVersion}</artifactId>
             <version>${spark.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-mllib_2.11 -->
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_${scala.binary.version}</artifactId>
+            <artifactId>spark-mllib_${scala.compactVersion}</artifactId>
             <version>${spark.version}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
