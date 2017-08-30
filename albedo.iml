@@ -10,11 +10,10 @@
       <excludeFolder url="file://$MODULE_DIR$/albedo" />
       <excludeFolder url="file://$MODULE_DIR$/app" />
       <excludeFolder url="file://$MODULE_DIR$/notebooks" />
-      <excludeFolder url="file://$MODULE_DIR$/spark-data" />
       <excludeFolder url="file://$MODULE_DIR$/spark-warehouse" />
-      <excludeFolder url="file://$MODULE_DIR$/src/main/python" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
+    <content url="file://$MODULE_DIR$/out" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="scala-sdk-2.11.8" level="application" />
