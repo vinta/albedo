@@ -35,7 +35,7 @@ object GitHubCorpusTrainer {
     val word2Vec = new Word2Vec()
       .setInputCol("filtered_words")
       .setOutputCol("word2vec")
-      .setVectorSize(1)
+      .setVectorSize(300)
       .setWindowSize(5)
       .setMinCount(5)
     val word2VecModel = word2Vec.fit(filteredDF)

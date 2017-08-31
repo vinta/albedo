@@ -63,6 +63,8 @@ train_als: clean
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit pyspark \
 	--cluster albedo \
+	--properties "^#^spark.jars.packages=com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--properties "spark.executor.memory=12288m" \
 	--py-files src/main/python/deps.zip \
 	src/main/python/train_als.py -- -u vinta
 else
