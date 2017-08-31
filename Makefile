@@ -58,8 +58,7 @@ zeppelin_stop:
 	zeppelin-daemon.sh stop
 
 .PHONY: train_als
-train_als:
-	find . -name __pycache__ | xargs rm -Rf
+train_als: clean
 	cd src/main/python/deps/ && zip -r ../deps.zip *
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit pyspark \
@@ -81,11 +80,13 @@ endif
 train_corpus:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
+	--cluster albedo \
+	--properties 'spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
-	target/albedo-1.0.0-SNAPSHOT.jar
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
 	--driver-memory 4g \
 	--executor-memory 12g \
 	--executor-cores 4 \
