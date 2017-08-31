@@ -12,16 +12,10 @@ object DataSourceUtils {
   props.setProperty("user", "root")
   props.setProperty("password", "123")
 
-  private val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
-
-  private[albedo] val today = dateFormatter.format(new java.util.Date())
-  private[albedo] val dataDir = "."
-  //private[albedo] val dataDir = "/mnt/albedo_s3"
-
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    val savePath = s"$dataDir/spark-data/$today/userInfoDF.parquet"
+    val savePath = s"${Settings.dataDir}/spark-data/${Settings.today}/userInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -42,7 +36,7 @@ object DataSourceUtils {
   def loadUserRelation()(implicit spark: SparkSession): Dataset[UserRelation] = {
     import spark.implicits._
 
-    val savePath = s"$dataDir/spark-data/$today/userRelationDF.parquet"
+    val savePath = s"${Settings.dataDir}}/spark-data/${Settings.today}/userRelationDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -63,7 +57,7 @@ object DataSourceUtils {
   def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    val savePath = s"$dataDir/spark-data/$today/repoInfoDF.parquet"
+    val savePath = s"${Settings.dataDir}}/spark-data/${Settings.today}/repoInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -84,7 +78,7 @@ object DataSourceUtils {
   def loadRepoStarring()(implicit spark: SparkSession): Dataset[RepoStarring] = {
     import spark.implicits._
 
-    val savePath = s"$dataDir/spark-data/$today/repoStarringDF.parquet"
+    val savePath = s"${Settings.dataDir}}/spark-data/${Settings.today}/repoStarringDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
