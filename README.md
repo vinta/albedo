@@ -29,6 +29,7 @@ $ (container) python manage.py migrate
 $ (container) python manage.py collect_data -t GITHUB_PERSONAL_TOKEN -u GITHUB_USERNAME
 # or
 $ (container) wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albedo.sql
+$ (container) mysql -h mysql -u root -p123 albedo < albedo.sql
 
 # username: albedo
 # password: hyperion
