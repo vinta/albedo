@@ -14,7 +14,7 @@ object GitHubCorpusTrainer {
 
     val sc = spark.sparkContext
 
-    val repoDescriptionDF = spark.read.avro(s"${Settings.dataDir}/ghtorrent/repo_info.avro")
+    val repoDescriptionDF = spark.read.avro(s"${Settings.dataDir}/ghtorrent/repo_info_reduced.avro")
     repoDescriptionDF.cache()
     println(repoDescriptionDF.count())
 
@@ -24,7 +24,7 @@ object GitHubCorpusTrainer {
       .setToLowercase(true)
       .setInputCol("description")
       .setOutputCol("words")
-      .setPattern("[\\w-]+").setGaps(false)
+      .setPattern("[\\w-_]+").setGaps(false)
     val tokenizedDF = regexTokenizer.transform(repoDescriptionDF)
 
     val stopWordsRemover = new StopWordsRemover()
@@ -35,7 +35,7 @@ object GitHubCorpusTrainer {
     val word2Vec = new Word2Vec()
       .setInputCol("filtered_words")
       .setOutputCol("word2vec")
-      .setVectorSize(300)
+      .setVectorSize(200)
       .setWindowSize(5)
       .setMinCount(5)
     val word2VecModel = word2Vec.fit(filteredDF)
