@@ -15,6 +15,8 @@ $ make up
 
 ## Usage
 
+### Collect Data
+
 You need to create your own `GITHUB_PERSONAL_TOKEN` on [your GitHub settings page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/).
 
 ```bash
@@ -32,12 +34,36 @@ $ (container) wget https://s3-ap-northeast-1.amazonaws.com/files.albedo.one/albe
 # password: hyperion
 $ make run
 $ open http://127.0.0.1:8000/admin/
+```
 
+### Start a Spark Cluster
+
+```bash
 # you could also create an Apache Spark cluster on Google Cloud Dataproc
 # https://cloud.google.com/dataproc/
 $ make spark_start
+```
 
-$ make train_als
+### Train Machine Learning Models
+
+```bash
+$ spark-submit \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --driver-memory 4g \
+    --executor-memory 12g \
+    --executor-cores 4 \
+    --master spark://localhost:7077 \
+    --py-files src/main/python/deps.zip \
+    src/main/python/train_als.py -u vinta
+
+$ spark-submit \
+    --packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
+    --driver-memory 4g \
+    --executor-memory 12g \
+    --executor-cores 4 \
+    --master spark://localhost:7077 \
+    --class ws.vinta.albedo.GitHubCorpusTrainer \
+    target/albedo-1.0.0-SNAPSHOT.jar
 ```
 
 ## Related Posts
