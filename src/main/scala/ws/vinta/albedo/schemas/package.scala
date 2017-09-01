@@ -64,35 +64,6 @@ package object schemas {
     starring: Double
   )
 
-  val fullStarringSchema = StructType(
-    Array(
-      StructField("id", IntegerType, nullable = false),
-      StructField("from_user_id", IntegerType, nullable = false),
-      StructField("from_username", StringType, nullable = false),
-      StructField("repo_owner_id", IntegerType, nullable = false),
-      StructField("repo_owner_username", StringType, nullable = false),
-      StructField("repo_owner_type", StringType, nullable = false),
-      StructField("repo_id", IntegerType, nullable = false),
-      StructField("repo_name", StringType, nullable = false),
-      StructField("repo_full_name", StringType, nullable = false),
-      StructField("repo_url", StringType, nullable = false),
-      StructField("repo_language", StringType, nullable = false),
-      StructField("repo_description", StringType, nullable = false),
-      StructField("repo_created_at", TimestampType, nullable = false),
-      StructField("repo_updated_at", TimestampType, nullable = false),
-      StructField("starred_at", TimestampType, nullable = false),
-      StructField("stargazers_count", IntegerType, nullable = false),
-      StructField("forks_count", IntegerType, nullable = false),
-      StructField("starring", DoubleType, nullable = false)
-    )
-  )
-
-  val simpleStarringSchema = StructType(
-    Array(
-      StructField("user_id", IntegerType, nullable = false),
-      StructField("repo_id", IntegerType, nullable = false),
-      StructField("starred_at", TimestampType, nullable = false),
-      StructField("starring", DoubleType, nullable = false)
-    )
-  )
+  case class Recommendation(repo_id: Int, rating: Float)
+  case class UserRecommendations(user_id: Int, recommendations: Seq[Recommendation])
 }
