@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="albedo:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/albedo_jar</output-path>
-    <root id="archive" name="albedo.jar">
-      <element id="module-output" name="albedo" />
-    </root>
-  </artifact>
-</component>
