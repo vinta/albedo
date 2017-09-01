@@ -63,8 +63,7 @@ train_als: clean
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit pyspark \
 	--cluster albedo \
-	--properties "^#^spark.jars.packages=com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-	--properties "spark.executor.memory=12288m" \
+	--properties 'spark.jars.packages=mysql:mysql-connector-java:5.1.41' \
 	--py-files src/main/python/deps.zip \
 	src/main/python/train_als.py -- -u vinta
 else
@@ -83,7 +82,7 @@ train_corpus:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties 'spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--properties 'spark.executor.memory=20480m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
