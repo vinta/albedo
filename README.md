@@ -49,20 +49,29 @@ $ make spark_start
 
 ```bash
 $ spark-submit \
-    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --driver-memory 4g \
-    --executor-memory 12g \
     --executor-cores 4 \
+    --executor-memory 12g \
     --master spark://localhost:7077 \
-    --py-files src/main/python/deps.zip \
-    src/main/python/train_als.py -u vinta
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --class ws.vinta.albedo.ALSRecommenderCV \
+    target/albedo-1.0.0-SNAPSHOT.jar
 
 $ spark-submit \
-    --packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
     --driver-memory 4g \
-    --executor-memory 12g \
     --executor-cores 4 \
+    --executor-memory 12g \
     --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --class ws.vinta.albedo.ALSRecommenderTrainer \
+    target/albedo-1.0.0-SNAPSHOT.jar
+
+$ spark-submit \
+    --driver-memory 4g \
+    --executor-cores 4 \
+    --executor-memory 12g \
+    --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
     --class ws.vinta.albedo.GitHubCorpusTrainer \
     target/albedo-1.0.0-SNAPSHOT.jar
 ```

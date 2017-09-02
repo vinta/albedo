@@ -67,11 +67,11 @@ ifeq ($(platform),gcp)
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
-	--executor-memory 12g \
 	--executor-cores 4 \
+	--executor-memory 12g \
 	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--class ws.vinta.albedo.ALSRecommenderCV \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
@@ -111,5 +111,24 @@ else
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
+
+.PHONY: train_ranker
+train_ranker:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster albedo \
+	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2" \
+	--class ws.vinta.albedo.PersonalizedRankerTrainer \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
