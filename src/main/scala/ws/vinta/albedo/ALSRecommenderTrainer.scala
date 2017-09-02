@@ -3,7 +3,8 @@ package ws.vinta.albedo
 import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.collect_list
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.{collect_list, row_number}
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.schemas.UserRecommendations
 import ws.vinta.albedo.utils.DataSourceUtils.loadRepoStarring
@@ -65,11 +66,13 @@ object ALSRecommenderTrainer {
 
     // Evaluate Model
 
+    val windowSpec = Window.partitionBy($"user_id").orderBy($"starred_at".desc)
     val userActualItemsDF = rawRepoStarringDS
-      .orderBy($"starred_at".desc)
+      .withColumn("row_number", row_number().over(windowSpec))
+      .where($"row_number" <= k)
       .groupBy($"user_id")
       .agg(collect_list($"repo_id").alias("items"))
-    
+
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")
       .setK(k)
