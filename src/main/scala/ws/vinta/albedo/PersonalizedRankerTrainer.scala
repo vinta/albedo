@@ -2,10 +2,11 @@ package ws.vinta.albedo
 
 import org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary, LogisticRegression}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.feature.{VectorAssembler, Word2VecModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.preprocessors.{NegativeGenerator, popularReposBuilder}
 import ws.vinta.albedo.utils.DataSourceUtils.{loadRepoInfo, loadRepoStarring, loadUserInfo, loadUserRelation}
+import ws.vinta.albedo.utils.Settings
 
 import scala.collection.mutable
 
@@ -85,6 +86,8 @@ object PersonalizedRankerTrainer {
     //
     //val indexedDF = stringIndexerModel.transform(df2)
     //indexedDF.show()
+
+    val word2VecModel = Word2VecModel.load(s"${Settings.dataDir}/20170831/word2VecModel.parquet")
 
     // Train a Model
 
