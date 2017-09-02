@@ -86,11 +86,11 @@ ifeq ($(platform),gcp)
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--driver-memory 4g \
-	--executor-memory 12g \
 	--executor-cores 4 \
+	--executor-memory 12g \
 	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--class ws.vinta.albedo.ALSRecommenderTrainer \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
@@ -105,11 +105,11 @@ ifeq ($(platform),gcp)
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
 	--driver-memory 4g \
-	--executor-memory 12g \
 	--executor-cores 4 \
+	--executor-memory 12g \
 	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
