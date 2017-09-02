@@ -52,9 +52,9 @@ object ALSRecommenderCV {
     // Cross-validate Model
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(als.rank, Array(50))
-      .addGrid(als.regParam, Array(0.01))
-      .addGrid(als.alpha, Array(0.01))
+      .addGrid(als.rank, Array(50, 100, 200))
+      .addGrid(als.regParam, Array(0.01, 0.1, 1.0))
+      .addGrid(als.alpha, Array(0.01, 0.1, 1, 40))
       .addGrid(als.maxIter, Array(25))
       .build()
 
