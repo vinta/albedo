@@ -11,6 +11,7 @@
       <excludeFolder url="file://$MODULE_DIR$/app" />
       <excludeFolder url="file://$MODULE_DIR$/notebooks" />
       <excludeFolder url="file://$MODULE_DIR$/spark-warehouse" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <content url="file://$MODULE_DIR$/out" />
     <orderEntry type="inheritedJdk" />
