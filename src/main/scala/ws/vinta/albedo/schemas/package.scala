@@ -66,4 +66,6 @@ package object schemas {
 
   case class Recommendation(repo_id: Int, rating: Float)
   case class UserRecommendations(user_id: Int, recommendations: Seq[Recommendation])
+
+  case class UserItems(user_id: Int, items: Seq[Int])
 }
