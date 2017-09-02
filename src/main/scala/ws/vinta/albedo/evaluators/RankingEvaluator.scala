@@ -43,7 +43,7 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFram
       .rdd
       .map((row: Row) => {
         // Row(userPredictedItems, userActualItems)
-        (row(0).asInstanceOf[Seq[Int]].toArray, row(1).asInstanceOf[Seq[Int]].toArray)
+        (row(0).asInstanceOf[Seq[Int]].slice(0, $(k)).toArray, row(1).asInstanceOf[Seq[Int]].slice(0, $(k)).toArray)
       })
 
     val rankingMetrics = new RankingMetrics(bothItemsRDD)
