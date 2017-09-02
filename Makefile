@@ -57,15 +57,14 @@ zeppelin_start:
 zeppelin_stop:
 	zeppelin-daemon.sh stop
 
-.PHONY: train_als
-train_als: clean
-	cd src/main/python/deps/ && zip -r ../deps.zip *
+.PHONY: cv_als
+cv_als:
 ifeq ($(platform),gcp)
-	time gcloud dataproc jobs submit pyspark \
+	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties 'spark.jars.packages=mysql:mysql-connector-java:5.1.41' \
-	--py-files src/main/python/deps.zip \
-	src/main/python/train_als.py -- -u vinta
+	--properties 'spark.executor.memory=13312m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.ALSRecommenderCV \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -73,8 +72,27 @@ else
 	--executor-memory 12g \
 	--executor-cores 4 \
 	--master spark://localhost:7077 \
-	--py-files src/main/python/deps.zip \
-	src/main/python/train_als.py -u vinta
+	--class ws.vinta.albedo.ALSRecommenderCV \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
+
+.PHONY: train_als
+train_als:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster albedo \
+	--properties 'spark.executor.memory=13312m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.ALSRecommenderTrainer \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--driver-memory 4g \
+	--executor-memory 12g \
+	--executor-cores 4 \
+	--master spark://localhost:7077 \
+	--class ws.vinta.albedo.ALSRecommenderTrainer \
+	target/albedo-1.0.0-SNAPSHOT.jar
 endif
 
 .PHONY: train_corpus
@@ -82,7 +100,7 @@ train_corpus:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties 'spark.executor.memory=20480m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
 	--class ws.vinta.albedo.GitHubCorpusTrainer \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
