@@ -62,7 +62,7 @@ cv_als:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--properties 'spark.executor.memory=11823m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
 	--class ws.vinta.albedo.ALSRecommenderCV \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
