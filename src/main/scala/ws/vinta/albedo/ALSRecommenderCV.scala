@@ -5,8 +5,6 @@ import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{collect_list, row_number}
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.preprocessors.PredictionFormatter
 import ws.vinta.albedo.utils.DataSourceUtils.loadRepoStarring
@@ -18,8 +16,6 @@ object ALSRecommenderCV {
       .builder()
       .appName("ALSRecommenderCV")
       .getOrCreate()
-
-    import spark.implicits._
 
     val sc = spark.sparkContext
     sc.setCheckpointDir(s"${Settings.dataDir}/checkpoint")
@@ -60,12 +56,7 @@ object ALSRecommenderCV {
 
     val k = 15
 
-    val windowSpec = Window.partitionBy($"user_id").orderBy($"starred_at".desc)
-    val userActualItemsDF = rawRepoStarringDS
-      .withColumn("row_number", row_number().over(windowSpec))
-      .where($"row_number" <= k)
-      .groupBy($"user_id")
-      .agg(collect_list($"repo_id").alias("items"))
+    val userActualItemsDF = RankingEvaluator.createUserActualItems(rawRepoStarringDS, k)
     userActualItemsDF.cache()
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)

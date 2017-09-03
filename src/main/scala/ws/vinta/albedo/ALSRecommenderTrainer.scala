@@ -3,8 +3,6 @@ package ws.vinta.albedo
 import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{collect_list, row_number}
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.schemas.UserRecommendations
 import ws.vinta.albedo.utils.DataSourceUtils.loadRepoStarring
@@ -14,7 +12,6 @@ object ALSRecommenderTrainer {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("ALSRecommenderTrainer")
       .getOrCreate()
 
     import spark.implicits._
@@ -64,15 +61,11 @@ object ALSRecommenderTrainer {
 
     // Evaluate Model
 
-    val windowSpec = Window.partitionBy($"user_id").orderBy($"starred_at".desc)
-    val userActualItemsDF = rawRepoStarringDS
-      .withColumn("row_number", row_number().over(windowSpec))
-      .where($"row_number" <= k)
-      .groupBy($"user_id")
-      .agg(collect_list($"repo_id").alias("items"))
+    val userActualItemsDF = RankingEvaluator.createUserActualItems(rawRepoStarringDS, k)
+    userActualItemsDF.printSchema()
 
-    val userPredictedItemsDF = userRecommendationsDS
-      .select($"user_id", $"recommendations.repo_id".alias("items"))
+    val userPredictedItemsDF = userRecommendationsDS.select($"user_id", $"recommendations.repo_id".alias("items"))
+    userPredictedItemsDF.printSchema()
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")

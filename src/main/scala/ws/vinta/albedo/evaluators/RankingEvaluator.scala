@@ -4,6 +4,8 @@ import org.apache.spark.ml.evaluation.Evaluator
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.mllib.evaluation.RankingMetrics
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.{collect_list, row_number}
 import org.apache.spark.sql.types.{ArrayType, IntegerType, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
@@ -81,5 +83,21 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFram
 
   override def copy(extra: ParamMap): RankingEvaluator = {
     defaultCopy(extra)
+  }
+}
+
+object RankingEvaluator {
+  // TODO: 避免寫死欄位名稱
+  def createUserActualItems(rawRepoStarringDS: Dataset[_], k: Int): DataFrame = {
+    import rawRepoStarringDS.sparkSession.implicits._
+
+    val windowSpec = Window.partitionBy($"user_id").orderBy($"starred_at".desc)
+    val userActualItemsDF = rawRepoStarringDS
+      .withColumn("row_number", row_number().over(windowSpec))
+      .where($"row_number" <= k)
+      .groupBy($"user_id")
+      .agg(collect_list($"repo_id").alias("items"))
+
+    userActualItemsDF
   }
 }
