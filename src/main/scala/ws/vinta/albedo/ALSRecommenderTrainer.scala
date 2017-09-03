@@ -5,6 +5,7 @@ import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
+import ws.vinta.albedo.schemas.{UserItems, UserRecommendations}
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.Settings
 
@@ -54,19 +55,26 @@ object ALSRecommenderTrainer {
 
     val k = 15
 
-    val userRecommendationsDF = alsModel.recommendForAllUsers(k)
+    val userRecommendationsDS = alsModel
+      .recommendForAllUsers(k)
+      .as[UserRecommendations]
 
     // Evaluate the Model
 
-    val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
-    val userPredictedItemsDF = userRecommendationsDF.transform(intoUserPredictedItems($"user_id", $"recommendations.repo_id"))
+    val userActualItemsDS = rawRepoStarringDS
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
+      .as[UserItems]
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
+    val userPredictedItemsDS = userRecommendationsDS
+      .transform(intoUserPredictedItems($"user_id", $"recommendations.repo_id"))
+      .as[UserItems]
+
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
       .setK(k)
       .setUserCol("user_id")
       .setItemsCol("items")
-    val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
+    val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getMetricName} = $metric")
 
     spark.stop()

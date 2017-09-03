@@ -63,6 +63,7 @@ package object schemas {
   )
 
   case class PopularRepo(repo_id: Int, stargazers_count: Int)
+  case class UserPopularRepo(user_id: Int, repo_id: Int, stargazers_count: Int)
 
   case class Recommendation(repo_id: Int, rating: Float)
   case class UserRecommendations(user_id: Int, recommendations: Seq[Recommendation])

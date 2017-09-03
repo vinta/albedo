@@ -8,6 +8,7 @@ import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
 import ws.vinta.albedo.preprocessors.PredictionFormatter
+import ws.vinta.albedo.schemas.UserItems
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.Settings
 
@@ -57,10 +58,12 @@ object ALSRecommenderCV {
 
     val k = 15
 
-    val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
-    userActualItemsDF.cache()
+    val userActualItemsDS = rawRepoStarringDS
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
+      .as[UserItems]
+    userActualItemsDS.cache()
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
       .setK(k)
       .setUserCol("user_id")
