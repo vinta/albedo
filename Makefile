@@ -57,6 +57,17 @@ zeppelin_start:
 zeppelin_stop:
 	zeppelin-daemon.sh stop
 
+.PHONY: baseline
+baseline:
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.PopularityRecommenderTrainer \
+	target/albedo-1.0.0-SNAPSHOT.jar
+
 .PHONY: cv_als
 cv_als:
 ifeq ($(platform),gcp)

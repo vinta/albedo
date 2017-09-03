@@ -13,9 +13,7 @@ $ cd albedo
 $ make up
 ```
 
-## Usage
-
-### Collect Data
+## Collect Data
 
 You need to create your own `GITHUB_PERSONAL_TOKEN` on [your GitHub settings page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/).
 
@@ -37,15 +35,33 @@ $ make run
 $ open http://127.0.0.1:8000/admin/
 ```
 
-### Start a Spark Cluster
+## Start a Spark Cluster
+
+You could also create a Spark cluster on [Google Cloud Dataproc](https://cloud.google.com/dataproc/).
 
 ```bash
-# you could also create an Apache Spark cluster on Google Cloud Dataproc
-# https://cloud.google.com/dataproc/
 $ make spark_start
 ```
 
-### Train Machine Learning Models
+## Use Popularity as the Recommendation Baseline
+
+See [PopularityRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/PopularityRecommenderTrainer.scala) for complete code.
+
+```bash
+$ spark-submit \
+    --driver-memory 4g \
+    --executor-cores 4 \
+    --executor-memory 12g \
+    --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --class ws.vinta.albedo.PopularityRecommenderTrainer \
+    target/albedo-1.0.0-SNAPSHOT.jar
+# NDCG@k = 0.0019795288777558653
+```
+
+## Train an ALS Model
+
+See [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) and [ALSRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderTrainer.scala) for complete code.
 
 ```bash
 $ spark-submit \
@@ -65,7 +81,13 @@ $ spark-submit \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ALSRecommenderTrainer \
     target/albedo-1.0.0-SNAPSHOT.jar
+```
 
+## Train a Word2Vec Model
+
+See [GitHubCorpusTrainer.scala](src/main/scala/ws/vinta/albedo/GitHubCorpusTrainer.scala) for complete code.
+
+```bash
 $ spark-submit \
     --driver-memory 4g \
     --executor-cores 4 \
@@ -79,5 +101,8 @@ $ spark-submit \
 ## Related Posts
 
 - [Setup Spark on macOS](https://vinta.ws/code/setup-spark-on-macos.html)
-- [Run interactive notebook with Spark and Scala](https://vinta.ws/code/run-interactive-notebook-with-spark-and-scala.html)
+- [Setup Spark, Scala and Maven with Intellij IDEA](https://vinta.ws/code/setup-spark-scala-and-maven-with-intellij-idea.html)
+- [Spark SQL cookbook (Scala)](https://vinta.ws/code/spark-sql-cookbook-scala.html)
+- [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
+- [Play with GitHub Archive dataset on BigQuery](https://vinta.ws/code/play-with-github-archive-dataset-on-bigquery.html)
 - [Build a recommender system with PySpark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
