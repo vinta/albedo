@@ -17,14 +17,14 @@ class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[
     this(Identifiable.randomUID("negativeGenerator"), bcPopularItems)
   }
 
-  val userCol = new Param[String](this, "userCol", "User id 所在的欄位名稱")
+  val userCol = new Param[String](this, "userCol", "User 所在的欄位名稱")
 
   def getUserCol: String = $(userCol)
 
   def setUserCol(value: String): this.type = set(userCol, value)
   setDefault(userCol -> "user")
 
-  val itemCol = new Param[String](this, "itemCol", "Item id 所在的欄位名稱")
+  val itemCol = new Param[String](this, "itemCol", "Item 所在的欄位名稱")
 
   def getItemCol: String = $(itemCol)
 
