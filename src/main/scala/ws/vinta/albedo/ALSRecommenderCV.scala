@@ -7,7 +7,7 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.preprocessors.PredictionFormatter
-import ws.vinta.albedo.utils.DataSourceUtils.loadRepoStarring
+import ws.vinta.albedo.utils.DatasetUtils.loadRepoStarring
 import ws.vinta.albedo.utils.Settings
 
 object ALSRecommenderCV {

@@ -5,7 +5,7 @@ import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.schemas.UserRecommendations
-import ws.vinta.albedo.utils.DataSourceUtils.loadRepoStarring
+import ws.vinta.albedo.utils.DatasetUtils.loadRepoStarring
 import ws.vinta.albedo.utils.Settings
 
 object ALSRecommenderTrainer {
