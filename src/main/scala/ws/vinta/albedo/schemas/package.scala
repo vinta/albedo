@@ -1,7 +1,5 @@
 package ws.vinta.albedo
 
-import java.sql.Timestamp
-
 import org.apache.spark.sql.types._
 
 package object schemas {
@@ -19,8 +17,8 @@ package object schemas {
     public_gists: Int,
     followers: Int,
     following: Int,
-    created_at: Timestamp,
-    updated_at: Timestamp
+    created_at: java.sql.Timestamp,
+    updated_at: java.sql.Timestamp
   )
 
   case class UserRelation(
@@ -40,9 +38,9 @@ package object schemas {
     full_name: String,
     description: String,
     language: String,
-    created_at: Timestamp,
-    updated_at: Timestamp,
-    pushed_at: Timestamp,
+    created_at: java.sql.Timestamp,
+    updated_at: java.sql.Timestamp,
+    pushed_at: java.sql.Timestamp,
     homepage: String,
     size: Int,
     stargazers_count: Int,
@@ -60,7 +58,7 @@ package object schemas {
   case class RepoStarring(
     user_id: Int,
     repo_id: Int,
-    starred_at: Timestamp,
+    starred_at: java.sql.Timestamp,
     starring: Double
   )
 
