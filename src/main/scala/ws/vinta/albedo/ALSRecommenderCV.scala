@@ -8,7 +8,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{collect_list, row_number}
 import ws.vinta.albedo.evaluators.RankingEvaluator
-import ws.vinta.albedo.preprocessors.RecommendationFormatter
+import ws.vinta.albedo.preprocessors.PredictionFormatter
 import ws.vinta.albedo.utils.DataSourceUtils.loadRepoStarring
 import ws.vinta.albedo.utils.Settings
 
@@ -30,7 +30,7 @@ object ALSRecommenderCV {
     rawRepoStarringDS.cache()
     rawRepoStarringDS.printSchema()
 
-    // Build Pipeline
+    // Build the Pipeline
 
     val als = new ALS()
       .setImplicitPrefs(true)
@@ -40,16 +40,16 @@ object ALSRecommenderCV {
       .setItemCol("repo_id")
       .setRatingCol("starring")
 
-    val recommendationFormatter = new RecommendationFormatter()
+    val predictionFormatter = new PredictionFormatter()
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setPredictionCol("prediction")
-      .setOutputCol("recommendations")
+      .setItemsCol("items")
 
     val pipeline = new Pipeline()
-      .setStages(Array(als, recommendationFormatter))
+      .setStages(Array(als, predictionFormatter))
 
-    // Cross-validate Model
+    // Cross-validate Models
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(als.rank, Array(50, 100, 200))
@@ -71,6 +71,8 @@ object ALSRecommenderCV {
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")
       .setK(k)
+      .setUserCol("user_id")
+      .setItemsCol("items")
 
     val cv = new CrossValidator()
       .setEstimator(pipeline)

@@ -19,8 +19,6 @@ object ALSRecommenderTrainer {
 
     import spark.implicits._
 
-    val sc = spark.sparkContext
-
     // Load Data
 
     val rawRepoStarringDS = loadRepoStarring()
@@ -73,10 +71,15 @@ object ALSRecommenderTrainer {
       .groupBy($"user_id")
       .agg(collect_list($"repo_id").alias("items"))
 
+    val userPredictedItemsDF = userRecommendationsDS
+      .select($"user_id", $"recommendations.repo_id".alias("items"))
+
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")
       .setK(k)
-    val metric = rankingEvaluator.evaluate(userRecommendationsDS)
+      .setUserCol("user_id")
+      .setItemsCol("items")
+    val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getMetricName} = $metric")
 
     spark.stop()
