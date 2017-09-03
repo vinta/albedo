@@ -4,7 +4,9 @@ import org.apache.spark.ml.evaluation.Evaluator
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.mllib.evaluation.RankingMetrics
+import org.apache.spark.sql.types.{ArrayType, IntegerType, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFrame)
   extends Evaluator with DefaultParamsWritable {
@@ -27,19 +29,39 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFram
   def setK(value: Int): this.type = set(k, value)
   setDefault(k -> 15)
 
+  val userCol = new Param[String](this, "userCol", "User 所在的欄位名稱")
+
+  def getUserCol: String = $(userCol)
+
+  def setUserCol(value: String): this.type = set(userCol, value)
+  setDefault(userCol -> "user")
+
+  val itemsCol = new Param[String](this, "itemsCol", "Items 所在的欄位名稱")
+
+  def getItemsCol: String = $(itemsCol)
+
+  def setItemsCol(value: String): this.type = set(itemsCol, value)
+  setDefault(itemsCol -> "items")
+
   override def isLargerBetter: Boolean = $(metricName) match {
     case "map" => true
     case "ndcg@k" => true
     case "precision@k" => true
   }
 
-  override def evaluate(dataset: Dataset[_]): Double = {
-    import dataset.sparkSession.implicits._
+  def evaluateSchema(schema: StructType): StructType = {
+    checkColumnType(schema, $(userCol), IntegerType)
+    checkColumnType(schema, $(itemsCol), ArrayType(IntegerType))
 
-    val userPredictedItemsDF = dataset.select($"user_id", $"recommendations.repo_id".alias("items"))
+    schema
+  }
 
-    val bothItemsRDD = userPredictedItemsDF.join(userActualItemsDF, Seq("user_id", "user_id"))
-      .select(userPredictedItemsDF.col("items"), userActualItemsDF.col("items"))
+  override def evaluate(userPredictedItemsDF: Dataset[_]): Double = {
+    evaluateSchema(userActualItemsDF.schema)
+    evaluateSchema(userPredictedItemsDF.schema)
+
+    val bothItemsRDD = userPredictedItemsDF.join(userActualItemsDF, Seq($(userCol), $(userCol)))
+      .select(userPredictedItemsDF.col($(itemsCol)), userActualItemsDF.col($(itemsCol)))
       .rdd
       .map((row: Row) => {
         val userPredictedItems = row(0).asInstanceOf[Seq[Int]].slice(0, $(k))
@@ -53,6 +75,7 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFram
       case "ndcg@k" => rankingMetrics.ndcgAt($(k))
       case "precision@k" => rankingMetrics.precisionAt($(k))
     }
+
     metric
   }
 
