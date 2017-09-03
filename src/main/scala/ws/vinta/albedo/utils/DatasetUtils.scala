@@ -14,6 +14,8 @@ object DatasetUtils {
   props.setProperty("password", "123")
 
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
+    import spark.implicits._
+
     val savePath = s"${Settings.dataDir}/${Settings.today}/userInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
@@ -54,6 +56,8 @@ object DatasetUtils {
   }
 
   def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
+    import spark.implicits._
+
     val savePath = s"${Settings.dataDir}/${Settings.today}/repoInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
@@ -96,6 +100,8 @@ object DatasetUtils {
   }
 
   def loadPopularRepos()(implicit spark: SparkSession): Dataset[PopularRepo] = {
+    import spark.implicits._
+
     val popularReposSQL = """
     SELECT repo_id, stargazers_count
     FROM __THIS__
