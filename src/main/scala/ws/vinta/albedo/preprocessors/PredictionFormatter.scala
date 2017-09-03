@@ -3,9 +3,10 @@ package ws.vinta.albedo.preprocessors
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.functions.{col, collect_list, struct}
+import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types.{FloatType, IntegerType, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset}
+import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 class PredictionFormatter(override val uid: String)
@@ -36,13 +37,6 @@ class PredictionFormatter(override val uid: String)
   def setPredictionCol(value: String): this.type = set(predictionCol, value)
   setDefault(predictionCol -> "prediction")
 
-  val itemsCol = new Param[String](this, "itemsCol", "Items 所在的欄位名稱")
-
-  def getItemsCol: String = $(itemsCol)
-
-  def setItemsCol(value: String): this.type = set(itemsCol, value)
-  setDefault(itemsCol -> "items")
-
   override def transformSchema(schema: StructType): StructType = {
     checkColumnType(schema, $(userCol), IntegerType)
     checkColumnType(schema, $(itemCol), IntegerType)
@@ -54,12 +48,7 @@ class PredictionFormatter(override val uid: String)
   override def transform(alsPredictionDF: Dataset[_]): DataFrame = {
     transformSchema(alsPredictionDF.schema)
 
-    val userPredictedItemsDF = alsPredictionDF
-      .orderBy(col($(predictionCol)).desc)
-      .groupBy($(userCol))
-      .agg(collect_list($(itemCol)).alias($(itemsCol)))
-
-    userPredictedItemsDF
+    alsPredictionDF.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), col($(predictionCol)).desc))
   }
 
   override def copy(extra: ParamMap): PredictionFormatter = {

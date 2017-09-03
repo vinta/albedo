@@ -1,9 +1,8 @@
 package ws.vinta.albedo
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.collect_list
 import ws.vinta.albedo.evaluators.RankingEvaluator
-import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
+import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.utils.DatasetUtils._
 
 object PopularityRecommenderTrainer {
@@ -32,19 +31,12 @@ object PopularityRecommenderTrainer {
 
     val k = 15
 
-    val userItemDF = rawUserInfoDS.select($"user_id").crossJoin(popularReposDS.limit(k))
-    userItemDF.printSchema()
+    val userPopularRepoDF = rawUserInfoDS.select($"user_id").crossJoin(popularReposDS.limit(k))
 
     // Evaluate the Model
 
     val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
-    userActualItemsDF.printSchema()
-
-    val userPredictedItemsDF = userItemDF
-      .orderBy($"stargazers_count".desc)
-      .groupBy($"user_id")
-      .agg(collect_list($"repo_id").alias("items"))
-    userPredictedItemsDF.printSchema()
+    val userPredictedItemsDF = userPopularRepoDF.transform(intoUserPredictedItems($"user_id", $"repo_id", $"stargazers_count".desc))
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")

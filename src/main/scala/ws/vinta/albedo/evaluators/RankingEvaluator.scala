@@ -10,10 +10,10 @@ import org.apache.spark.sql.types.{ArrayType, IntegerType, StructType}
 import org.apache.spark.sql.{Column, DataFrame, Dataset, Row}
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
-class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFrame)
+class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[_])
   extends Evaluator with DefaultParamsWritable {
 
-  def this(userActualItemsDF: DataFrame) = {
+  def this(userActualItemsDF: Dataset[_]) = {
     this(Identifiable.randomUID("rankingEvaluator"), userActualItemsDF)
   }
 
@@ -77,7 +77,6 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFram
       case "ndcg@k" => rankingMetrics.ndcgAt($(k))
       case "precision@k" => rankingMetrics.precisionAt($(k))
     }
-
     metric
   }
 
@@ -90,13 +89,22 @@ object RankingEvaluator {
   def intoUserActualItems(userCol: Column, itemCol: Column, orderByCol: Column, k: Int)(df: Dataset[_]): DataFrame = {
     import df.sparkSession.implicits._
 
-    val windowSpec = Window.partitionBy(userCol).orderBy(orderByCol.desc)
-    val userActualItemsDF = df
+    val windowSpec = Window.partitionBy(userCol).orderBy(orderByCol)
+    df
       .withColumn("row_number", row_number().over(windowSpec))
       .where($"row_number" <= k)
       .groupBy(userCol)
       .agg(collect_list(itemCol).alias("items"))
+  }
 
-    userActualItemsDF
+  def intoUserPredictedItems(userCol: Column, nestedItemCol: Column)(df: Dataset[_]): DataFrame = {
+    df.select(userCol, nestedItemCol.alias("items"))
+  }
+
+  def intoUserPredictedItems(userCol: Column, itemCol: Column, orderByCol: Column)(df: Dataset[_]): DataFrame = {
+    df
+      .orderBy(orderByCol)
+      .groupBy(userCol)
+      .agg(collect_list(itemCol).alias("items"))
   }
 }

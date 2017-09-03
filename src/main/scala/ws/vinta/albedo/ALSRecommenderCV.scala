@@ -27,7 +27,6 @@ object ALSRecommenderCV {
 
     val rawRepoStarringDS = loadRepoStarring()
     rawRepoStarringDS.cache()
-    rawRepoStarringDS.printSchema()
 
     // Build the Pipeline
 
@@ -43,7 +42,6 @@ object ALSRecommenderCV {
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setPredictionCol("prediction")
-      .setItemsCol("items")
 
     val pipeline = new Pipeline()
       .setStages(Array(als, predictionFormatter))
@@ -79,8 +77,8 @@ object ALSRecommenderCV {
     // Show Best Parameters
 
     cvModel.getEstimatorParamMaps
-      .zip(cvModel.avgMetrics)
-      .sortWith(_._2 > _._2) // (paramMaps, metric)
+      .zip(cvModel.avgMetrics) // (paramMaps, metric)
+      .sortWith(_._2 > _._2) // _._2 就是 metric
       .foreach((pair: (ParamMap, Double)) => {
         println(s"${pair._2}: ${pair._1}")
       })
