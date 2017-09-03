@@ -3,26 +3,26 @@ package ws.vinta.albedo.preprocessors
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.functions.{collect_list, struct}
+import org.apache.spark.sql.functions.{col, collect_list, struct}
 import org.apache.spark.sql.types.{FloatType, IntegerType, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset}
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
-class RecommendationFormatter(override val uid: String)
+class PredictionFormatter(override val uid: String)
   extends Transformer with DefaultParamsWritable {
 
   def this() = {
-    this(Identifiable.randomUID("negativeGenerator"))
+    this(Identifiable.randomUID("predictionFormatter"))
   }
 
-  val userCol = new Param[String](this, "userCol", "User id 所在的欄位名稱")
+  val userCol = new Param[String](this, "userCol", "User 所在的欄位名稱")
 
   def getUserCol: String = $(userCol)
 
   def setUserCol(value: String): this.type = set(userCol, value)
   setDefault(userCol -> "user")
 
-  val itemCol = new Param[String](this, "itemCol", "Item id 所在的欄位名稱")
+  val itemCol = new Param[String](this, "itemCol", "Item 所在的欄位名稱")
 
   def getItemCol: String = $(itemCol)
 
@@ -36,12 +36,12 @@ class RecommendationFormatter(override val uid: String)
   def setPredictionCol(value: String): this.type = set(predictionCol, value)
   setDefault(predictionCol -> "prediction")
 
-  val outputCol = new Param[String](this, "outputCol", "ALS prediction 所在的欄位")
+  val itemsCol = new Param[String](this, "itemsCol", "Items 所在的欄位名稱")
 
-  def getOutputCol: String = $(outputCol)
+  def getItemsCol: String = $(itemsCol)
 
-  def setOutputCol(value: String): this.type = set(outputCol, value)
-  setDefault(outputCol -> "recommendations")
+  def setItemsCol(value: String): this.type = set(itemsCol, value)
+  setDefault(itemsCol -> "items")
 
   override def transformSchema(schema: StructType): StructType = {
     checkColumnType(schema, $(userCol), IntegerType)
@@ -51,17 +51,18 @@ class RecommendationFormatter(override val uid: String)
     schema
   }
 
-  override def transform(dataset: Dataset[_]): DataFrame = {
-    transformSchema(dataset.schema)
+  override def transform(alsPredictionDF: Dataset[_]): DataFrame = {
+    transformSchema(alsPredictionDF.schema)
 
-    val userRecommendationsDF = dataset
+    val userPredictedItemsDF = alsPredictionDF
+      .orderBy(col($(predictionCol)).desc)
       .groupBy($(userCol))
-      .agg(collect_list(struct($(itemCol), $(predictionCol))).alias($(outputCol)))
+      .agg(collect_list($(itemCol)).alias($(itemsCol)))
 
-    userRecommendationsDF
+    userPredictedItemsDF
   }
 
-  override def copy(extra: ParamMap): RecommendationFormatter = {
+  override def copy(extra: ParamMap): PredictionFormatter = {
     defaultCopy(extra)
   }
 }
