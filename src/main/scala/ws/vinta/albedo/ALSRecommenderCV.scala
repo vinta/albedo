@@ -7,7 +7,7 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.preprocessors.PredictionFormatter
-import ws.vinta.albedo.utils.DatasetUtils.loadRepoStarring
+import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.Settings
 
 object ALSRecommenderCV {
@@ -48,9 +48,9 @@ object ALSRecommenderCV {
     // Cross-validate Models
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(als.rank, Array(50, 100, 200))
+      .addGrid(als.rank, Array(50, 100))
       .addGrid(als.regParam, Array(0.01, 0.1, 1.0))
-      .addGrid(als.alpha, Array(0.01, 0.1, 1, 40))
+      .addGrid(als.alpha, Array(0.01, 0.1, 40))
       .addGrid(als.maxIter, Array(25))
       .build()
 
