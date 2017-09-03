@@ -4,14 +4,16 @@ import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
+import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
 import ws.vinta.albedo.schemas.UserRecommendations
-import ws.vinta.albedo.utils.DatasetUtils.loadRepoStarring
+import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.Settings
 
 object ALSRecommenderTrainer {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
+      .appName("ALSRecommenderTrainer")
       .getOrCreate()
 
     import spark.implicits._
@@ -22,7 +24,7 @@ object ALSRecommenderTrainer {
     rawRepoStarringDS.cache()
     rawRepoStarringDS.printSchema()
 
-    // Train Model
+    // Train the Model
 
     val alsModelSavePath = s"${Settings.dataDir}/${Settings.today}/alsModel.parquet"
     val alsModel: ALSModel = try {
@@ -32,10 +34,10 @@ object ALSRecommenderTrainer {
         if (e.getMessage().contains("Input path does not exist")) {
           val als = new ALS()
             .setImplicitPrefs(true)
-            .setRank(100)
+            .setRank(50)
             .setRegParam(0.5)
             .setAlpha(40)
-            .setMaxIter(22)
+            .setMaxIter(20)
             .setSeed(42)
             .setColdStartStrategy("drop")
             .setUserCol("user_id")
@@ -59,9 +61,9 @@ object ALSRecommenderTrainer {
 
     val userRecommendationsDS = userRecommendationsDF.as[UserRecommendations]
 
-    // Evaluate Model
+    // Evaluate the Model
 
-    val userActualItemsDF = RankingEvaluator.createUserActualItems(rawRepoStarringDS, k)
+    val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
     userActualItemsDF.printSchema()
 
     val userPredictedItemsDF = userRecommendationsDS.select($"user_id", $"recommendations.repo_id".alias("items"))

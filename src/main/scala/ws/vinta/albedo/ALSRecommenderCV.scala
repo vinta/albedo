@@ -6,6 +6,7 @@ import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
+import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
 import ws.vinta.albedo.preprocessors.PredictionFormatter
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.Settings
@@ -16,6 +17,8 @@ object ALSRecommenderCV {
       .builder()
       .appName("ALSRecommenderCV")
       .getOrCreate()
+
+    import spark.implicits._
 
     val sc = spark.sparkContext
     sc.setCheckpointDir(s"${Settings.dataDir}/checkpoint")
@@ -56,7 +59,7 @@ object ALSRecommenderCV {
 
     val k = 15
 
-    val userActualItemsDF = RankingEvaluator.createUserActualItems(rawRepoStarringDS, k)
+    val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
     userActualItemsDF.cache()
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)

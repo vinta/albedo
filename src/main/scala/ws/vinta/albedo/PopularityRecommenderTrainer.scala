@@ -3,6 +3,7 @@ package ws.vinta.albedo
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.collect_list
 import ws.vinta.albedo.evaluators.RankingEvaluator
+import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
 import ws.vinta.albedo.utils.DatasetUtils._
 
 object PopularityRecommenderTrainer {
@@ -36,7 +37,7 @@ object PopularityRecommenderTrainer {
 
     // Evaluate the Model
 
-    val userActualItemsDF = RankingEvaluator.createUserActualItems(rawRepoStarringDS, k)
+    val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
     userActualItemsDF.printSchema()
 
     val userPredictedItemsDF = userItemDF

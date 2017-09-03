@@ -7,7 +7,7 @@ import org.apache.spark.mllib.evaluation.RankingMetrics
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{collect_list, row_number}
 import org.apache.spark.sql.types.{ArrayType, IntegerType, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{Column, DataFrame, Dataset, Row}
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFrame)
@@ -87,16 +87,15 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: DataFram
 }
 
 object RankingEvaluator {
-  // TODO: 避免寫死欄位名稱
-  def createUserActualItems(rawRepoStarringDS: Dataset[_], k: Int): DataFrame = {
-    import rawRepoStarringDS.sparkSession.implicits._
+  def intoUserActualItems(userCol: Column, itemCol: Column, orderByCol: Column, k: Int)(df: Dataset[_]): DataFrame = {
+    import df.sparkSession.implicits._
 
-    val windowSpec = Window.partitionBy($"user_id").orderBy($"starred_at".desc)
-    val userActualItemsDF = rawRepoStarringDS
+    val windowSpec = Window.partitionBy(userCol).orderBy(orderByCol.desc)
+    val userActualItemsDF = df
       .withColumn("row_number", row_number().over(windowSpec))
       .where($"row_number" <= k)
-      .groupBy($"user_id")
-      .agg(collect_list($"repo_id").alias("items"))
+      .groupBy(userCol)
+      .agg(collect_list(itemCol).alias("items"))
 
     userActualItemsDF
   }
