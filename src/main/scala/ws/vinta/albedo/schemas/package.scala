@@ -1,7 +1,5 @@
 package ws.vinta.albedo
 
-import org.apache.spark.sql.types._
-
 package object schemas {
   case class UserInfo(
     user_id: Int,

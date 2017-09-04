@@ -97,7 +97,7 @@ class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[
     dataset.select($(userCol), $(itemCol), $(labelCol)).union(negativeDF)
   }
 
-  override def copy(extra: ParamMap): NegativeGenerator = {
+  override def copy(extra: ParamMap): this.type = {
     defaultCopy(extra)
   }
 }

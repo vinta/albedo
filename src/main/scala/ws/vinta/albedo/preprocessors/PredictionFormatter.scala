@@ -51,7 +51,7 @@ class PredictionFormatter(override val uid: String)
     alsPredictionDF.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), col($(predictionCol)).desc))
   }
 
-  override def copy(extra: ParamMap): PredictionFormatter = {
+  override def copy(extra: ParamMap): this.type = {
     defaultCopy(extra)
   }
 }

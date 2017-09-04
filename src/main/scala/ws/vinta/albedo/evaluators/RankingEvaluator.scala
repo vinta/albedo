@@ -80,7 +80,7 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
     metric
   }
 
-  override def copy(extra: ParamMap): RankingEvaluator = {
+  override def copy(extra: ParamMap): this.type = {
     defaultCopy(extra)
   }
 }
