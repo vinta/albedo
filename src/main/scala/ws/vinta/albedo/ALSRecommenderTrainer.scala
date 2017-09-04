@@ -35,7 +35,7 @@ object ALSRecommenderTrainer {
             .setRank(50)
             .setRegParam(0.5)
             .setAlpha(40)
-            .setMaxIter(15)
+            .setMaxIter(25)
             .setSeed(42)
             .setColdStartStrategy("drop")
             .setUserCol("user_id")
