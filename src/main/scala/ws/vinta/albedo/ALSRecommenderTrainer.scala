@@ -7,7 +7,6 @@ import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas.{UserItems, UserRecommendations}
 import ws.vinta.albedo.utils.DatasetUtils._
-import ws.vinta.albedo.utils.Settings
 
 object ALSRecommenderTrainer {
   def main(args: Array[String]): Unit = {
@@ -25,7 +24,7 @@ object ALSRecommenderTrainer {
 
     // Train the Model
 
-    val alsModelSavePath = s"${Settings.dataDir}/${Settings.today}/alsModel.parquet"
+    val alsModelSavePath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
     val alsModel: ALSModel = try {
       ALSModel.load(alsModelSavePath)
     } catch {
@@ -36,7 +35,7 @@ object ALSRecommenderTrainer {
             .setRank(50)
             .setRegParam(0.5)
             .setAlpha(40)
-            .setMaxIter(20)
+            .setMaxIter(15)
             .setSeed(42)
             .setColdStartStrategy("drop")
             .setUserCol("user_id")

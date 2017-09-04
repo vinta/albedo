@@ -3,7 +3,6 @@ package ws.vinta.albedo
 import com.databricks.spark.avro._
 import org.apache.spark.ml.feature.{RegexTokenizer, StopWordsRemover, Word2Vec}
 import org.apache.spark.sql.SparkSession
-import ws.vinta.albedo.utils.Settings
 
 object GitHubCorpusTrainer {
   def main(args: Array[String]): Unit = {
@@ -14,7 +13,7 @@ object GitHubCorpusTrainer {
 
     val sc = spark.sparkContext
 
-    val repoDescriptionDF = spark.read.avro(s"${Settings.dataDir}/ghtorrent/repo_info_reduced.avro")
+    val repoDescriptionDF = spark.read.avro(s"${settings.dataDir}/ghtorrent/repo_info_reduced.avro")
     repoDescriptionDF.cache()
     println(repoDescriptionDF.count())
 
@@ -40,7 +39,7 @@ object GitHubCorpusTrainer {
       .setMinCount(5)
     val word2VecModel = word2Vec.fit(filteredDF)
 
-    word2VecModel.save(s"${Settings.dataDir}/${Settings.today}/word2VecModel.parquet")
+    word2VecModel.save(s"${settings.dataDir}/${settings.today}/word2VecModel.parquet")
 
     spark.stop()
   }

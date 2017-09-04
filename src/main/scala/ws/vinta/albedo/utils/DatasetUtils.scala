@@ -1,10 +1,12 @@
 package ws.vinta.albedo.utils
 
 import java.util.Properties
+
+import org.apache.spark.ml.feature.SQLTransformer
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset, SparkSession}
-import ws.vinta.albedo.schemas.{RepoInfo, RepoStarring, UserInfo, UserRelation, PopularRepo}
-import org.apache.spark.ml.feature.SQLTransformer
+import ws.vinta.albedo.schemas._
+import ws.vinta.albedo.settings
 
 object DatasetUtils {
   private val dbUrl = "jdbc:mysql://127.0.0.1:3306/albedo?verifyServerCertificate=false&useSSL=false&rewriteBatchedStatements=true"
@@ -16,7 +18,7 @@ object DatasetUtils {
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    val savePath = s"${Settings.dataDir}/${Settings.today}/userInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/userInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -37,7 +39,7 @@ object DatasetUtils {
   def loadUserRelation()(implicit spark: SparkSession): Dataset[UserRelation] = {
     import spark.implicits._
 
-    val savePath = s"${Settings.dataDir}/${Settings.today}/userRelationDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/userRelationDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -58,7 +60,7 @@ object DatasetUtils {
   def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    val savePath = s"${Settings.dataDir}/${Settings.today}/repoInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/repoInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -79,7 +81,7 @@ object DatasetUtils {
   def loadRepoStarring()(implicit spark: SparkSession): Dataset[RepoStarring] = {
     import spark.implicits._
 
-    val savePath = s"${Settings.dataDir}/${Settings.today}/repoStarringDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/repoStarringDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -111,7 +113,7 @@ object DatasetUtils {
     val popularReposBuilder = new SQLTransformer()
     popularReposBuilder.setStatement(popularReposSQL)
 
-    val savePath = s"${Settings.dataDir}/${Settings.today}/popularReposDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/popularReposDF.parquet"
     def df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {

@@ -1,8 +1,8 @@
-package ws.vinta.albedo.utils
+package ws.vinta.albedo
 
 import org.apache.spark.sql.SparkSession
 
-object Settings {
+package object settings {
   private val spark = SparkSession.builder().getOrCreate()
   private val sc = spark.sparkContext
 

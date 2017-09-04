@@ -10,7 +10,6 @@ import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
 import ws.vinta.albedo.preprocessors.PredictionFormatter
 import ws.vinta.albedo.schemas.UserItems
 import ws.vinta.albedo.utils.DatasetUtils._
-import ws.vinta.albedo.utils.Settings
 
 object ALSRecommenderCV {
   def main(args: Array[String]): Unit = {
@@ -22,7 +21,7 @@ object ALSRecommenderCV {
     import spark.implicits._
 
     val sc = spark.sparkContext
-    sc.setCheckpointDir(s"${Settings.dataDir}/checkpoint")
+    sc.setCheckpointDir(s"${settings.dataDir}/checkpoint")
 
     // Load Data
 
