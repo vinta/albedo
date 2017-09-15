@@ -7,9 +7,11 @@ import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.SparkSession
-import ws.vinta.albedo.preprocessors.{NegativeGenerator, UserInfoTransformer}
+import ws.vinta.albedo.preprocessors.{NegativeGenerator, RepoInfoCleaner, UserInfoCleaner}
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.StringUtils._
+import ws.vinta.albedo.schemas.{RepoInfo, UserInfo}
+import ws.vinta.albedo.settings
 
 import scala.collection.mutable
 
@@ -41,80 +43,77 @@ object PersonalizedRankerTrainer {
     //val rawUserRelationDS = loadUserRelation()
     //rawUserRelationDS.cache()
 
-    // Impute Missing Values
-
-    val imputedUserInfoDF = rawUserInfoDS.na.fill("", Array("bio", "blog", "company", "email", "location", "name"))
-
-    val imputedRepoInfoDF = rawRepoInfoDS.na.fill("", Array("description", "homepage"))
-
     // Clean Data
 
-    val cleanUserInfoDF = new UserInfoTransformer().transform(imputedUserInfoDF)
-    cleanUserInfoDF.show()
+    val cleanUserInfoDS = new UserInfoCleaner().transform(rawUserInfoDS).as[UserInfo]
+    cleanUserInfoDS.show()
 
-    //val cleanRepoInfoDF = imputedRepoInfoDF.where($"stargazers_count" >= 2)
+    val cleanRepoInfoDS = new RepoInfoCleaner().transform(rawRepoInfoDS).as[RepoInfo]
+    cleanRepoInfoDS.show()
 
-    //cleanRepoInfoDF.show()
+    // Feature Engineering
 
-    // Handle Imbalanced Samples
+    // User Info
 
-    // TODO: repoStarring join repoInfo join userInfo，過濾掉為 null 的 repoStarring
+    val userContinuousColumnNames = Array("public_repos", "public_gists", "followers", "following")
 
-    val popularReposDF = loadPopularRepos()
-    val popularRepos: mutable.LinkedHashSet[Int] = popularReposDF
-      .select("repo_id")
-      .map(row => row(0).asInstanceOf[Int])
-      .collect()
-      .to[mutable.LinkedHashSet]
-    val bcPopularRepos = sc.broadcast(popularRepos)
+    val userCategoricalColumnNames = Array("account_type", "clean_company", "clean_email", "clean_location")
 
-    val negativeGenerator = new NegativeGenerator(bcPopularRepos)
-    negativeGenerator
-      .setUserCol("user_id")
-      .setItemCol("repo_id")
-      .setLabelCol("starring")
-      .setNegativeValue(0.0)
-      .setNegativePositiveRatio(1.0)
-    val balancedRepoStarringDF = negativeGenerator.transform(rawRepoStarringDS)
+    val userTimeColumnNames = Array("created_at", "updated_at")
 
+    val userTextColumnNames = Array("bio")
+
+    val stringIndexer = new StringIndexer()
+      .setInputCol("account_type")
+      .setOutputCol("account_type_index")
+      .setHandleInvalid("keep")
+    val stringIndexerModel = stringIndexer.fit(df1)
+
+    val indexedDF = stringIndexerModel.transform(df2)
+    indexedDF.show()
+
+    val regexTokenizer = new RegexTokenizer()
+      .setToLowercase(true)
+      .setInputCol("bio")
+      .setOutputCol("bio_words")
+      .setPattern("\\W").setGaps(true)
+    val tokenizedDF = regexTokenizer.transform(tempDF)
+
+    val stopWordsRemover = new StopWordsRemover()
+      .setInputCol("bio_words")
+      .setOutputCol("bio_filtered_words")
+    val wordsFilteredDF = stopWordsRemover.transform(tokenizedDF)
+
+    val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170831/word2VecModel.parquet")
+
+    // Repo Info
+
+    //// Handle Imbalanced Samples
+    //
+    //// TODO: repoStarring join repoInfo join userInfo，過濾掉為 null 的 repoStarring
+    //
+    //val popularReposDF = loadPopularRepos()
+    //val popularRepos: mutable.LinkedHashSet[Int] = popularReposDF
+    //  .select("repo_id")
+    //  .map(row => row(0).asInstanceOf[Int])
+    //  .collect()
+    //  .to[mutable.LinkedHashSet]
+    //val bcPopularRepos = sc.broadcast(popularRepos)
+    //
+    //val negativeGenerator = new NegativeGenerator(bcPopularRepos)
+    //negativeGenerator
+    //  .setUserCol("user_id")
+    //  .setItemCol("repo_id")
+    //  .setLabelCol("starring")
+    //  .setNegativeValue(0.0)
+    //  .setNegativePositiveRatio(1.0)
+    //val balancedRepoStarringDF = negativeGenerator.transform(rawRepoStarringDS)
+    //
     //val fullDF = balanceStarringDF.join(repoInfoDF, Seq("repo_id"))
+
+    //// Build the Pipeline
     //
     //val Array(trainingDF, testDF) = fullDF.randomSplit(Array(0.8, 0.2))
-
-    //// Feature Engineering
-    //
-    //val countTokensUDF = udf((words: Seq[String]) => words.length)
-    //
-    //val tempDF = userInfoDF.where("bio != ''")
-    //
-    //val regexTokenizer = new RegexTokenizer()
-    //  .setToLowercase(true)
-    //  .setInputCol("bio")
-    //  .setOutputCol("bio_words")
-    //  .setPattern("\\W").setGaps(true)
-    //val tokenizedDF = regexTokenizer.transform(tempDF)
-    //
-    //// val df1 = tokenizedDF
-    ////   .select("bio", "bio_words")
-    ////   .withColumn("tokens", countTokensUDF($"bio_words"))
-    //
-    //val stopWordsRemover = new StopWordsRemover()
-    //  .setInputCol("bio_words")
-    //  .setOutputCol("bio_filtered_words")
-    //val wordsFilteredDF = stopWordsRemover.transform(tokenizedDF)
-    //
-    //val stringIndexer = new StringIndexer()
-    //  .setInputCol("repo_language")
-    //  .setOutputCol("repo_language_index")
-    //  .setHandleInvalid("keep")
-    //val stringIndexerModel = stringIndexer.fit(df1)
-    //
-    //val indexedDF = stringIndexerModel.transform(df2)
-    //indexedDF.show()
-    //
-    //val word2VecModel = Word2VecModel.load(s"${Settings.dataDir}/20170831/word2VecModel.parquet")
-    //
-    //// Build the Pipeline
     //
     //// Train the Model
     //
@@ -179,8 +178,8 @@ object PersonalizedRankerTrainer {
     //  .orderBy(to_array($"probability").getItem(1).desc)
     //  .select("user_id", "repo_id", "starring", "prediction", "probability")
     //  .show(false)
-    //
-    //// Rank
+
+    // Rank
 
     spark.stop()
   }
