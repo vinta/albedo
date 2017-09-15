@@ -8,7 +8,7 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset}
 import ws.vinta.albedo.utils.StringUtils._
 
-class UserInfoTransformer(override val uid: String)
+class UserInfoCleaner(override val uid: String)
   extends Transformer with DefaultParamsWritable {
 
   def this() {
@@ -38,18 +38,18 @@ class UserInfoTransformer(override val uid: String)
     })
 
     val cleanLocationUDF = udf((location: String) => {
-      val temp = try {
-        val pattern = """([\w ]+),([\w, ]+)""".r
-        val pattern(city, country) = location
+      val temp1 = try {
+        val pattern = s"([$wordPatternIncludeCJK]+),\\s*([$wordPatternIncludeCJK]+)".r
+        val pattern(city, _) = location
         city
       } catch {
         case _: MatchError => {
           location
         }
       }
-      val temp2 = temp
+      val temp2 = temp1
         .toLowerCase()
-        .replaceAll("""\W+""", " ")
+        .replaceAll("""[~!@#$^%&*\\(\\)_+={}\\[\\]|;:\"'<,>.?`/\\\\-]+""", " ")
         .replaceAll("""\s+""", " ")
         .replaceAll("""\b(city)\b""", "")
         .trim()
@@ -57,9 +57,10 @@ class UserInfoTransformer(override val uid: String)
     })
 
     dataset
-      .withColumn("company", cleanCompanyUDF($"company"))
-      .withColumn("email", cleanEmailUDF($"email"))
-      .withColumn("location", cleanLocationUDF($"location"))
+      .na.fill("", Array("bio", "blog", "company", "email", "location", "name"))
+      .withColumn("clean_company", cleanCompanyUDF($"company"))
+      .withColumn("clean_email", cleanEmailUDF($"email"))
+      .withColumn("clean_location", cleanLocationUDF($"location"))
   }
 
   override def copy(extra: ParamMap): this.type = {
