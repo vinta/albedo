@@ -4,12 +4,12 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary, LogisticRegression}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.udf
 import ws.vinta.albedo.preprocessors.{NegativeGenerator, RepoInfoCleaner, UserInfoCleaner}
+import ws.vinta.albedo.schemas.{RepoInfo, RepoStarring, UserInfo}
 import ws.vinta.albedo.utils.DatasetUtils._
-import ws.vinta.albedo.schemas.{RepoInfo, UserInfo}
-import ws.vinta.albedo.settings
 
 import scala.collection.mutable
 
@@ -102,30 +102,24 @@ object PersonalizedRankerTrainer {
 
     val popularReposDS = loadPopularRepos()
     val popularRepos = popularReposDS
-      .select("repo_id")
-      .map(row => row(0).asInstanceOf[Int])
+      .select($"repo_id".as[Int])
       .collect()
       .to[mutable.LinkedHashSet]
     val bcPopularRepos = sc.broadcast(popularRepos)
 
     val negativeGenerator = new NegativeGenerator(bcPopularRepos)
-    negativeGenerator
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setLabelCol("starring")
       .setNegativeValue(0.0)
       .setNegativePositiveRatio(1.0)
-    val balancedRepoStarringDF = negativeGenerator.transform(rawRepoStarringDS)
+    val balancedStarringDS = negativeGenerator.transform(rawRepoStarringDS).as[RepoStarring]
 
-    val fullDF = balanceStarringDF.join(repoInfoDF, Seq("repo_id"))
+    val fullDF = balancedStarringDS
+      .join(userInfoDS, Seq("user_id"))
+      .join(repoInfoDS, Seq("repo_id"))
 
     // Build the Pipeline
-
-    val Array(trainingDF, testDF) = fullDF.randomSplit(Array(0.8, 0.2))
-
-    // Train the Model
-
-    val fullDF = balanceStarringDF.join(repoInfoDF, balanceStarringDF.col("repo_id") === rawRepoInfoDS.col("id"))
 
     val Array(trainingDF, testDF) = fullDF.randomSplit(Array(0.8, 0.2))
 
@@ -146,8 +140,8 @@ object PersonalizedRankerTrainer {
     val lrModel = lr.fit(vectorTrainingDF)
 
     val pipeline = new Pipeline()
-      .setStages(stringIndexerModels ++ oneHotEncoders :+ vectorAssembler)
-    //  .setStages(stringIndexerModels ++ oneHotEncoders :+ vectorAssembler :+ lr)
+
+    // Train the Model
 
     val pipelineModel = pipeline.fit(trainingDF)
 
@@ -164,8 +158,6 @@ object PersonalizedRankerTrainer {
 
     // Evaluate the Model
 
-    val resultTestDF = lrModel.transform(vectorTestDF)
-
     val evaluator = new BinaryClassificationEvaluator()
       .setMetricName("areaUnderROC")
       .setRawPredictionCol("rawPrediction")
@@ -173,11 +165,9 @@ object PersonalizedRankerTrainer {
     val metric = evaluator.evaluate(resultTestDF)
     println(s"${evaluator.getMetricName}: $metric")
 
-    // Predict
+    // Predict the Ranking
 
     resultTestDF.where("user_id = 652070").select("user_id", "repo_id", "starring", "prediction", "probability").show(false)
-
-    import org.apache.spark.ml.linalg.{Vector, Vectors}
 
     val to_array = udf((v: Vector) => v.toDense.values)
 
@@ -186,8 +176,6 @@ object PersonalizedRankerTrainer {
       .orderBy(to_array($"probability").getItem(1).desc)
       .select("user_id", "repo_id", "starring", "prediction", "probability")
       .show(false)
-
-    // Rank
 
     spark.stop()
   }
