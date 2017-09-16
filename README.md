@@ -98,6 +98,13 @@ $ spark-submit \
     target/albedo-1.0.0-SNAPSHOT.jar
 ```
 
+## TODO
+
+- Build a recommender system with Spark: GDBT + Logistic Regression
+- Build a recommender system with Spark: XGBoost
+- Build a recommender system with Spark: Factorization Machine
+- Build a recommender system with Spark: Item2Vec
+
 ## Related Posts
 
 - [Setup Spark on macOS](https://vinta.ws/code/setup-spark-on-macos.html)
