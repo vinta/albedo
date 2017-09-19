@@ -18,14 +18,15 @@ object DatasetUtils {
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/userInfoDF.parquet"
+    //val savePath = s"${settings.dataDir}/${settings.today}/userInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/userInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = spark.read.jdbc(dbUrl, "app_userinfo", props).withColumnRenamed("id", "user_id")
-          df.write.parquet(savePath)
+          df.write.mode("overwrite").parquet(savePath)
           df
         } else {
           throw e
@@ -46,7 +47,7 @@ object DatasetUtils {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = spark.read.jdbc(dbUrl, "app_userrelation", props).select($"from_user_id", $"to_user_id", $"relation")
-          df.write.parquet(savePath)
+          df.write.mode("overwrite").parquet(savePath)
           df
         } else {
           throw e
@@ -60,14 +61,15 @@ object DatasetUtils {
   def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/repoInfoDF.parquet"
+    //val savePath = s"${settings.dataDir}/${settings.today}/repoInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/repoInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = spark.read.jdbc(dbUrl, "app_repoinfo", props).withColumnRenamed("id", "repo_id")
-          df.write.parquet(savePath)
+          df.write.mode("overwrite").parquet(savePath)
           df
         } else {
           throw e
@@ -90,7 +92,7 @@ object DatasetUtils {
           val df = spark.read.jdbc(dbUrl, "app_repostarring", props)
             .select($"user_id", $"repo_id", $"starred_at")
             .withColumn("starring", lit(1.0))
-          df.write.parquet(savePath)
+          df.write.mode("overwrite").parquet(savePath)
           df
         } else {
           throw e
@@ -121,7 +123,7 @@ object DatasetUtils {
         if (e.getMessage().contains("Path does not exist")) {
           val rawRepoInfoDS = loadRepoInfo()
           val df = popularReposBuilder.transform(rawRepoInfoDS)
-          df.write.parquet(savePath)
+          df.write.mode("overwrite").parquet(savePath)
           df
         } else {
           throw e
