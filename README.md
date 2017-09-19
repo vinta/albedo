@@ -85,7 +85,7 @@ $ spark-submit \
 
 ## Train a Word2Vec Model
 
-See [GitHubCorpusTrainer.scala](src/main/scala/ws/vinta/albedo/GitHubCorpusTrainer.scala) for complete code.
+See [GitHubCorpusTrainer.scala](src/main/scala/ws/vinta/albedo/CorpusTrainer.scala) for complete code.
 
 ```bash
 $ spark-submit \

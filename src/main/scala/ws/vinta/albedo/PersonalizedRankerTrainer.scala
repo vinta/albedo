@@ -7,7 +7,7 @@ import org.apache.spark.ml.feature._
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
-import ws.vinta.albedo.preprocessors.{NegativeGenerator, RepoInfoCleaner, UserInfoCleaner}
+import ws.vinta.albedo.transformers.{NegativeGenerator, RepoInfoCleaner, UserInfoCleaner}
 import ws.vinta.albedo.schemas.{RepoInfo, RepoStarring, UserInfo}
 import ws.vinta.albedo.utils.DatasetUtils._
 
@@ -55,19 +55,18 @@ object PersonalizedRankerTrainer {
 
     val userContinuousColumnNames = Array("public_repos", "public_gists", "followers", "following")
 
-    // Bucketizer
-    // QuantileDiscretizer
-
     val userCategoricalColumnNames = Array("account_type", "clean_company", "clean_email", "clean_location")
     val userCategoricalTransformers = userCategoricalColumnNames.flatMap((columnName: String) => {
       val stringIndexer = new StringIndexer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_index")
+        .setOutputCol(s"${columnName}_idx")
         .setHandleInvalid("keep")
+
       val oneHotEncoder = new OneHotEncoder()
-        .setInputCol(s"${columnName}_index")
+        .setInputCol(s"${columnName}_idx")
         .setOutputCol(s"${columnName}_ohe")
         .setDropLast(true)
+
       Array(stringIndexer, oneHotEncoder)
     })
 
@@ -75,18 +74,25 @@ object PersonalizedRankerTrainer {
 
     val userTextColumnNames = Array("bio")
     val userTextTransformers = userTextColumnNames.flatMap((columnName: String) => {
+      // TODO: 處理中文分詞
       val regexTokenizer = new RegexTokenizer()
         .setToLowercase(true)
-        .setInputCol("bio")
-        .setOutputCol("bio_words")
-        .setPattern("\\W").setGaps(true)
-      val stopWordsRemover = new StopWordsRemover()
-        .setInputCol("bio_words")
-        .setOutputCol("bio_filtered_words")
-      Array(regexTokenizer, stopWordsRemover)
-    })
+        .setInputCol(columnName)
+        .setOutputCol(s"${columnName}_words")
+        .setPattern("[\\w-_]+").setGaps(false)
 
-    val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170831/word2VecModel.parquet")
+      val stopWords = StopWordsRemover.loadDefaultStopWords("english")
+      val stopWordsRemover = new StopWordsRemover()
+        .setStopWords(stopWords)
+        .setInputCol(s"${columnName}_words")
+        .setOutputCol(s"${columnName}_filtered_words")
+
+      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170903/word2VecModel.parquet")
+        .setInputCol(s"${columnName}_filtered_words")
+        .setOutputCol(s"${columnName}_w2v")
+
+      Array(regexTokenizer, stopWordsRemover, word2VecModel)
+    })
 
     val userPipeline = new Pipeline().setStages(userCategoricalTransformers ++ userTextTransformers)
     val userPipelineModel = userPipeline.fit(cleanUserInfoDS)

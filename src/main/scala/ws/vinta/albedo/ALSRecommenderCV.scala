@@ -7,7 +7,7 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
-import ws.vinta.albedo.preprocessors.PredictionFormatter
+import ws.vinta.albedo.transformers.PredictionFormatter
 import ws.vinta.albedo.schemas.UserItems
 import ws.vinta.albedo.utils.DatasetUtils._
 
