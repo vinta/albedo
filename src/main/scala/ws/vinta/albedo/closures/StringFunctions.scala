@@ -1,8 +1,8 @@
-package ws.vinta.albedo.utils
+package ws.vinta.albedo.closures
 
 import scala.util.matching.Regex
 
-object StringUtils extends Serializable {
+object StringFunctions extends Serializable {
   val wordPatternEngOnly = """\w\.\-_"""
   val wordPatternIncludeCJK = """\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}"""
 
@@ -10,18 +10,15 @@ object StringUtils extends Serializable {
   val reExtractWordsIncludeCJK: Regex = s"([$wordPatternIncludeCJK]+)".r
   val reExtractEmailDomain: Regex = s"@([$wordPatternEngOnly]+)".r
 
-  def extractWords(text: String): List[String] = {
+  val extractWords: (String) => List[String] = (text: String) => {
     reExtractWords.findAllIn(text).toList
   }
 
-  def extractWordsIncludeCJK(text: String): List[String] = {
-    val wordPatternIncludeCJK = """\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}"""
-    val reExtractWordsIncludeCJK: Regex = s"([$wordPatternIncludeCJK]+)".r
-
+  val extractWordsIncludeCJK: (String) => List[String] = (text: String) => {
     reExtractWordsIncludeCJK.findAllIn(text).toList
   }
 
-  def extractEmailDomain(email: String): String = {
+  val extractEmailDomain: (String) => String = (email: String) => {
     try {
       reExtractEmailDomain.findAllIn(email).matchData.toList(0).group(1)
     } catch {
