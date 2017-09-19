@@ -2,7 +2,7 @@ package ws.vinta.albedo.utils
 
 import scala.util.matching.Regex
 
-object StringUtils {
+object StringUtils extends Serializable {
   val wordPatternEngOnly = """\w\.\-_"""
   val wordPatternIncludeCJK = """\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}"""
 
@@ -15,6 +15,9 @@ object StringUtils {
   }
 
   def extractWordsIncludeCJK(text: String): List[String] = {
+    val wordPatternIncludeCJK = """\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}"""
+    val reExtractWordsIncludeCJK: Regex = s"([$wordPatternIncludeCJK]+)".r
+
     reExtractWordsIncludeCJK.findAllIn(text).toList
   }
 
