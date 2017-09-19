@@ -7,7 +7,8 @@ import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset}
 import ws.vinta.albedo.settings
-import ws.vinta.albedo.utils.StringUtils._
+import ws.vinta.albedo.closures.StringFunctions._
+import ws.vinta.albedo.closures.UserInfoFunctions._
 
 class UserInfoCleaner(override val uid: String)
   extends Transformer with DefaultParamsWritable {
@@ -24,26 +25,26 @@ class UserInfoCleaner(override val uid: String)
     val spark = dataset.sparkSession
     import spark.implicits._
 
-    val cleanCompanyUDF = udf((company: String) => {
-      val temp1 = company
-        .toLowerCase()
-        .replaceAll("""\b(.com|.net|.org|.io)\b""", "")
-        .replaceAll("""\W+""", " ")
-        .replaceAll("""\s+""", " ")
-        .replaceAll("""\b(http|https|www|inc|ltd|co ltd)\b""", "")
-        .trim()
-      val temp2 = extractWordsIncludeCJK(temp1).mkString(" ")
-      if (temp2.isEmpty)
-        settings.emptyStringPlaceholder
-      else
-        temp2
-    })
+    //val cleanCompanyUDF = udf((company: String) => {
+    //  val temp1 = company
+    //    .toLowerCase()
+    //    .replaceAll("""\b(.com|.net|.org|.io)\b""", "")
+    //    .replaceAll("""\W+""", " ")
+    //    .replaceAll("""\s+""", " ")
+    //    .replaceAll("""\b(http|https|www|inc|ltd|co ltd)\b""", "")
+    //    .trim()
+    //  val temp2 = extractWordsIncludeCJK(temp1).mkString(" ")
+    //  if (temp2.isEmpty)
+    //    "__empty"
+    //  else
+    //    temp2
+    //})
 
     val cleanEmailUDF = udf((email: String) => {
       val temp1 = email.toLowerCase().trim()
       val temp2 = extractEmailDomain(temp1)
       if (temp2.isEmpty)
-        settings.emptyStringPlaceholder
+        "__empty"
       else
         temp2
     })
@@ -66,12 +67,12 @@ class UserInfoCleaner(override val uid: String)
         .trim()
       val temp3 = extractWordsIncludeCJK(temp2).mkString(" ")
       if (temp3.isEmpty)
-        settings.emptyStringPlaceholder
+        "__empty"
       else
         temp3
     })
 
-    val df = dataset
+    val cleanDF = dataset
       .na.fill("", Array("bio", "blog", "company", "email", "location", "name"))
       .withColumn("clean_company", cleanCompanyUDF($"company"))
       .withColumn("clean_email", cleanEmailUDF($"email"))
@@ -83,8 +84,8 @@ class UserInfoCleaner(override val uid: String)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          df.write.mode("overwrite").parquet(savePath)
-          df
+          cleanDF.write.mode("overwrite").parquet(savePath)
+          cleanDF
         } else {
           throw e
         }
