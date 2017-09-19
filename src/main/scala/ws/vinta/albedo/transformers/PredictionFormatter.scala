@@ -1,4 +1,4 @@
-package ws.vinta.albedo.preprocessors
+package ws.vinta.albedo.transformers
 
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
