@@ -4,7 +4,7 @@ import com.databricks.spark.avro._
 import org.apache.spark.ml.feature.{RegexTokenizer, StopWordsRemover, Word2Vec}
 import org.apache.spark.sql.SparkSession
 
-object GitHubCorpusTrainer {
+object CorpusTrainer {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
@@ -18,7 +18,6 @@ object GitHubCorpusTrainer {
     println(repoDescriptionDF.count())
 
     // TODO: 處理中文分詞
-
     val regexTokenizer = new RegexTokenizer()
       .setToLowercase(true)
       .setInputCol("description")
