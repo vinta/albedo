@@ -2,10 +2,9 @@ package ws.vinta.albedo
 
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
-import org.apache.spark.sql.{AnalysisException, DataFrame, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import ws.vinta.albedo.closures.UDFs._
-import ws.vinta.albedo.schemas.UserInfo
 import ws.vinta.albedo.utils.DatasetUtils._
 
 import scala.collection.mutable
@@ -34,15 +33,14 @@ object UserProfileBuilder {
 
     val nullableColumnNames = Array("bio", "blog", "company", "email", "location", "name")
 
-    val cleanUserInfoDS = rawUserInfoDS
+    val cleanUserInfoDF = rawUserInfoDS
       .withColumn("has_null", when(nullableColumnNames.map(rawUserInfoDS(_).isNull).reduce(_||_), 1.0).otherwise(0.0))
       .na.fill("", nullableColumnNames)
       .withColumn("clean_bio", lower($"bio"))
       .withColumn("clean_company", cleanCompanyUDF($"company"))
       .withColumn("clean_email", cleanEmailUDF($"email"))
       .withColumn("clean_location", cleanLocationUDF($"location"))
-      .as[UserInfo]
-    cleanUserInfoDS.cache()
+    cleanUserInfoDF.cache()
 
     // Feature Engineering
 
@@ -72,7 +70,7 @@ object UserProfileBuilder {
       .groupBy($"user_id")
       .agg(count("*").alias("starred_repos_count"))
 
-    val constructedUserInfoDF = cleanUserInfoDS
+    val constructedUserInfoDF = cleanUserInfoDF
       .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
       .withColumn("updated_at_days_since_today", datediff(current_date(), $"updated_at"))
       .withColumn("knows_web", containsAnyOfUDF(webThings)($"clean_bio"))
@@ -96,15 +94,15 @@ object UserProfileBuilder {
 
     // Transform Features
 
-    val companiesDF = cleanUserInfoDS
+    val companiesDF = cleanUserInfoDF
       .groupBy($"clean_company")
       .agg(count("*").alias("count_per_company"))
 
-    val emailsDF = cleanUserInfoDS
+    val emailsDF = cleanUserInfoDF
       .groupBy($"clean_email")
       .agg(count("*").alias("count_per_email"))
 
-    val locationsDF = cleanUserInfoDS
+    val locationsDF = cleanUserInfoDF
       .groupBy($"clean_location")
       .agg(count("*").alias("count_per_location"))
 
@@ -158,7 +156,7 @@ object UserProfileBuilder {
       Array(regexTokenizer, stopWordsRemover, word2VecModel)
     })
 
-    // Assemble Features
+    // Assemble Featuresr
 
     continuousColumnNames = continuousColumnNames
 
@@ -177,18 +175,14 @@ object UserProfileBuilder {
 
     val userPipelineModel = userPipeline.fit(transformedUserInfoDF)
 
-    val userInfoDF = userPipelineModel.transform(transformedUserInfoDF)
+    val userProfileDF = userPipelineModel.transform(transformedUserInfoDF)
 
     // Save Results
 
-    //val userInfoDFsavePath = s"${settings.dataDir}/${settings.today}/userInfoDF.parquet"
-    //userInfoDF.write.mode("overwrite").parquet(userInfoDFsavePath)
+    val pipedUserInfoDFsavePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
+    userProfileDF.write.mode("overwrite").parquet(pipedUserInfoDFsavePath)
 
-    val slimUserInfoDFsavePath = s"${settings.dataDir}/${settings.today}/slimUserInfoDF.parquet"
-    val slimUserInfoDF = userInfoDF.select("features")
-    slimUserInfoDF.write.mode("overwrite").parquet(slimUserInfoDFsavePath)
-
-    slimUserInfoDF.show(false)
+    userProfileDF.select("user_id", "features").show()
 
     spark.stop()
   }
