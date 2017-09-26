@@ -18,8 +18,8 @@ object DatasetUtils {
   def loadUserInfo()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    //val savePath = s"${settings.dataDir}/${settings.today}/userInfoDF.parquet"
-    val savePath = s"${settings.dataDir}/20170903/userInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/rawUserInfoDF.parquet"
+    //val savePath = s"${settings.dataDir}/20170903/rawUserInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -40,7 +40,7 @@ object DatasetUtils {
   def loadUserRelation()(implicit spark: SparkSession): Dataset[UserRelation] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/userRelationDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/rawUserRelationDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -61,8 +61,8 @@ object DatasetUtils {
   def loadRepoInfo()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    //val savePath = s"${settings.dataDir}/${settings.today}/repoInfoDF.parquet"
-    val savePath = s"${settings.dataDir}/20170903/repoInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/rawRepoInfoDF.parquet"
+    //val savePath = s"${settings.dataDir}/20170903/rawRepoInfoDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
@@ -83,7 +83,8 @@ object DatasetUtils {
   def loadRepoStarring()(implicit spark: SparkSession): Dataset[RepoStarring] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/repoStarringDF.parquet"
+    val savePath = s"${settings.dataDir}/${settings.today}/rawRepoStarringDF.parquet"
+    //val savePath = s"${settings.dataDir}/20170903/rawRepoStarringDF.parquet"
     val df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
