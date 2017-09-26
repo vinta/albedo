@@ -156,7 +156,7 @@ object UserProfileBuilder {
       Array(regexTokenizer, stopWordsRemover, word2VecModel)
     })
 
-    // Assemble Featuresr
+    // Assemble Features
 
     continuousColumnNames = continuousColumnNames
 
@@ -179,10 +179,10 @@ object UserProfileBuilder {
 
     // Save Results
 
-    val pipedUserInfoDFsavePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
-    userProfileDF.write.mode("overwrite").parquet(pipedUserInfoDFsavePath)
+    val savePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
+    userProfileDF.write.mode("overwrite").parquet(savePath)
 
-    userProfileDF.select("user_id", "features").show()
+    userProfileDF.select("user_id", "features").show(false)
 
     spark.stop()
   }
