@@ -10,15 +10,15 @@ object StringFunctions extends Serializable {
   val reExtractWordsIncludeCJK: Regex = s"([$wordPatternIncludeCJK]+)".r
   val reExtractEmailDomain: Regex = s"@([$wordPatternEngOnly]+)".r
 
-  val extractWords: (String) => List[String] = (text: String) => {
+  def extractWords(text: String): List[String] = {
     reExtractWords.findAllIn(text).toList
   }
 
-  val extractWordsIncludeCJK: (String) => List[String] = (text: String) => {
+  def extractWordsIncludeCJK(text: String): List[String] = {
     reExtractWordsIncludeCJK.findAllIn(text).toList
   }
 
-  val extractEmailDomain: (String) => String = (email: String) => {
+  def extractEmailDomain(email: String): String = {
     try {
       reExtractEmailDomain.findAllIn(email).matchData.toList(0).group(1)
     } catch {
