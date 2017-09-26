@@ -8,7 +8,7 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{AnalysisException, DataFrame, Dataset}
 import ws.vinta.albedo.settings
 import ws.vinta.albedo.closures.StringFunctions._
-import ws.vinta.albedo.closures.UserInfoFunctions._
+import ws.vinta.albedo.closures.UDFs._
 
 class UserInfoCleaner(override val uid: String)
   extends Transformer with DefaultParamsWritable {
