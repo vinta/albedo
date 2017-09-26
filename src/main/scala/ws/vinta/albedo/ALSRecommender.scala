@@ -8,7 +8,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas.{UserItems, UserRecommendations}
 import ws.vinta.albedo.utils.DatasetUtils._
 
-object ALSRecommenderTrainer {
+object ALSRecommender {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()

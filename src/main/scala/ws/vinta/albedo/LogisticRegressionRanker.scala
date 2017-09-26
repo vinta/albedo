@@ -13,14 +13,14 @@ import ws.vinta.albedo.utils.DatasetUtils._
 
 import scala.collection.mutable
 
-object PersonalizedRankerTrainer {
+object LogisticRegressionRanker {
   def main(args: Array[String]): Unit = {
     val activeUser = args(1)
     println(activeUser)
 
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("PersonalizedRankerTrainer")
+      .appName("LogisticRegressionRanker")
       .getOrCreate()
 
     import spark.implicits._
@@ -124,6 +124,9 @@ object PersonalizedRankerTrainer {
     val fullDF = balancedStarringDS
       .join(userInfoDS, Seq("user_id"))
       .join(repoInfoDS, Seq("repo_id"))
+
+    // 修改 label
+    // https://mp.weixin.qq.com/s/3AjhUfnKysxH81MxQ_N1VA
 
     // Build the Pipeline
 

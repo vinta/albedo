@@ -6,7 +6,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas.{UserItems, UserPopularRepo}
 import ws.vinta.albedo.utils.DatasetUtils._
 
-object PopularityRecommenderTrainer {
+object PopularityRecommender {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
