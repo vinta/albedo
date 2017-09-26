@@ -45,7 +45,7 @@ $ make spark_start
 
 ## Use Popularity as the Recommendation Baseline
 
-See [PopularityRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/PopularityRecommenderTrainer.scala) for complete code.
+See [PopularityRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/PopularityRecommender.scala) for complete code.
 
 ```bash
 $ spark-submit \
@@ -61,7 +61,7 @@ $ spark-submit \
 
 ## Train an ALS Model
 
-See [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) and [ALSRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderTrainer.scala) for complete code.
+See [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) and [ALSRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/ALSRecommender.scala) for complete code.
 
 ```bash
 $ spark-submit \
