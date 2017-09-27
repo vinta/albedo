@@ -1,5 +1,6 @@
 package ws.vinta.albedo
 
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.functions._
@@ -10,9 +11,15 @@ import scala.collection.mutable
 
 object RepoProfileBuilder {
   def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.set("spark.driver.memory", "4g")
+    conf.set("spark.executor.memory", "12g")
+    conf.set("spark.executor.cores", "4")
+
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("RepoProfileBuilder")
+      .config(conf)
       .getOrCreate()
 
     import spark.implicits._
@@ -25,11 +32,11 @@ object RepoProfileBuilder {
     val rawRepoInfoDS = loadRepoInfo()
     rawRepoInfoDS.cache()
 
-    val rawRepoStarringDS = loadRepoStarring()
-    rawRepoStarringDS.cache()
-
     val rawUserInfoDS = loadUserInfo()
     rawUserInfoDS.cache()
+
+    val rawRepoStarringDS = loadRepoStarring()
+    rawRepoStarringDS.cache()
 
     // Clean Data
 
@@ -40,7 +47,8 @@ object RepoProfileBuilder {
     val booleanColumnNames = Array("fork", "has_issues", "has_projects", "has_downloads", "has_wiki", "has_pages")
 
     val filledRepoInfoDF = rawRepoInfoDS
-      .where($"stargazers_count".between(2, 100000) and $"forks_count" <= 90000)
+      .where($"stargazers_count".between(2, 100000))
+      .where($"forks_count" <= 90000)
       .na.fill("", nullableColumnNames)
 
     val cleanRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](filledRepoInfoDF)((accDF, columnName) => {
@@ -66,15 +74,24 @@ object RepoProfileBuilder {
     val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%")
     val assignmentWords = Array("%assignment%")
 
+    val vintaStarredRepos = rawRepoStarringDS
+      .where($"user_id" === 652070)
+      .select($"repo_id".as[Int])
+      .collect()
+      .to[List]
+
     val constructedRepoInfoDF = cleanRepoInfoDF
-      .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
-      .withColumn("updated_at_days_since_today", datediff(current_date(), $"updated_at"))
-      .withColumn("pushed_at_days_since_today", datediff(current_date(), $"pushed_at"))
       .withColumn("is_unmaintained", when(unmaintainedWords.map($"clean_description".like(_)).reduce(_ or _), 1).otherwise(0))
       .withColumn("is_assignment", when(assignmentWords.map($"clean_description".like(_)).reduce(_ or _), 1).otherwise(0))
       .where($"is_unmaintained" === 0 and $"is_assignment" === 0)
       .drop($"is_unmaintained")
       .drop($"is_assignment")
+      .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
+      .withColumn("updated_at_days_since_today", datediff(current_date(), $"updated_at"))
+      .withColumn("pushed_at_days_since_today", datediff(current_date(), $"pushed_at"))
+      .withColumn("watch_star_count_ratio", round($"subscribers_count" / ($"stargazers_count" + lit(1)), 3))
+      .withColumn("fork_star_count_ratio", round($"forks_count" / ($"stargazers_count" + lit(1)), 3))
+      .withColumn("is_vinta_starred", when($"repo_id".isin(vintaStarredRepos: _*), 1).otherwise(0))
 
     continuousColumnNames = continuousColumnNames ++ mutable.ArrayBuffer("created_at_years_since_today", "updated_at_days_since_today", "pushed_at_days_since_today")
 

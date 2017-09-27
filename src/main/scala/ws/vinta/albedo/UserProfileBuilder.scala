@@ -4,6 +4,7 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.expressions.Window
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.utils.DatasetUtils._
 
@@ -50,6 +51,8 @@ object UserProfileBuilder {
 
     var textColumnNames = mutable.ArrayBuffer("clean_bio")
 
+    var listColumnNames = mutable.ArrayBuffer.empty[String]
+
     // Construct Features
 
     val webThings = Array("web", "fullstack", "full stack")
@@ -70,6 +73,22 @@ object UserProfileBuilder {
       .groupBy($"user_id")
       .agg(count("*").alias("starred_repos_count"))
 
+    val repoInfoStarringDF = rawRepoStarringDS.join(rawRepoInfoDS, Seq("repo_id"))
+    repoInfoStarringDF.cache()
+
+    val userLanguagesDF = repoInfoStarringDF
+      .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
+      .where($"rank" <= 50)
+      .groupBy($"user_id")
+      .agg(collect_list($"language").alias("languages_preferences"))
+
+    val userTopicsDF = repoInfoStarringDF
+      .where($"topics" =!= "")
+      .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
+      .where($"rank" <= 50)
+      .groupBy($"user_id")
+      .agg(concat_ws(",", collect_list($"topics")).alias("topics_preferences"))
+
     val constructedUserInfoDF = cleanUserInfoDF
       .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
       .withColumn("updated_at_days_since_today", datediff(current_date(), $"updated_at"))
@@ -86,11 +105,15 @@ object UserProfileBuilder {
       .withColumn("is_junior", containsAnyOfUDF(juniorTitles)($"clean_bio"))
       .withColumn("is_pm", containsAnyOfUDF(pmTitles)($"clean_bio"))
       .join(userStarredReposCountDF, Seq("user_id"))
+      .join(userLanguagesDF, Seq("user_id"))
+      .join(userTopicsDF, Seq("user_id"))
     constructedUserInfoDF.cache()
 
     continuousColumnNames = continuousColumnNames ++ mutable.ArrayBuffer("created_at_years_since_today", "updated_at_days_since_today", "starred_repos_count")
 
     categoricalColumnNames = categoricalColumnNames ++ mutable.ArrayBuffer("has_null", "knows_web", "knows_backend", "knows_frontend", "knows_mobile", "knows_devops", "knows_data", "knows_recsys", "is_lead", "is_schoolar", "is_freelancer", "is_junior", "is_pm")
+
+    listColumnNames = listColumnNames ++ mutable.ArrayBuffer("languages_preferences", "topics_preferences")
 
     // Transform Features
 
@@ -155,6 +178,10 @@ object UserProfileBuilder {
 
       Array(regexTokenizer, stopWordsRemover, word2VecModel)
     })
+
+    // List Features
+
+    // TODO
 
     // Assemble Features
 
