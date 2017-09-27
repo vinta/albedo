@@ -185,14 +185,16 @@ object UserProfileBuilder {
 
     // Assemble Features
 
-    continuousColumnNames = continuousColumnNames
+    val finalContinuousColumnNames = continuousColumnNames
 
-    categoricalColumnNames = categoricalColumnNames.map((columnName: String) => s"${columnName}_ohe")
+    val finalCategoricalColumnNames = categoricalColumnNames.map((columnName: String) => s"${columnName}_ohe")
 
-    textColumnNames = textColumnNames.map((columnName: String) => s"${columnName}_w2v")
+    val finalTextColumnNames = textColumnNames.map((columnName: String) => s"${columnName}_w2v")
+
+    val finalListColumnNames = listColumnNames
 
     val vectorAssembler = new VectorAssembler()
-      .setInputCols((continuousColumnNames ++ categoricalColumnNames ++ textColumnNames).toArray)
+      .setInputCols((finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalTextColumnNames ++ finalListColumnNames).toArray)
       .setOutputCol("features")
 
     // Build the Pipeline
