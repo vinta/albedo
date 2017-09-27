@@ -143,3 +143,41 @@ else
 	--class ws.vinta.albedo.PersonalizedRankerTrainer \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
+
+.PHONY: build_user_profile
+build_user_profile:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster albedo \
+	--properties 'spark.executor.memory=13312m,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.UserProfileBuilder \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.UserProfileBuilder \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
+
+.PHONY: build_repo_profile
+build_repo_profile:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster albedo \
+	--properties 'spark.executor.memory=13312m,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.RepoProfileBuilder \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.RepoProfileBuilder \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
