@@ -34,7 +34,7 @@ object UserProfileBuilder {
     val nullableColumnNames = Array("bio", "blog", "company", "email", "location", "name")
 
     val cleanUserInfoDF = rawUserInfoDS
-      .withColumn("has_null", when(nullableColumnNames.map(rawUserInfoDS(_).isNull).reduce(_||_), 1.0).otherwise(0.0))
+      .withColumn("has_null", when(nullableColumnNames.map(rawUserInfoDS(_).isNull).reduce(_||_), 1).otherwise(0))
       .na.fill("", nullableColumnNames)
       .withColumn("clean_bio", lower($"bio"))
       .withColumn("clean_company", cleanCompanyUDF($"company"))
@@ -46,7 +46,7 @@ object UserProfileBuilder {
 
     var continuousColumnNames = mutable.ArrayBuffer("public_repos", "public_gists", "followers", "following")
 
-    var categoricalColumnNames = mutable.ArrayBuffer("user_id", "account_type", "clean_company", "clean_email", "clean_location")
+    var categoricalColumnNames = mutable.ArrayBuffer("account_type")
 
     var textColumnNames = mutable.ArrayBuffer("clean_bio")
 
@@ -110,13 +110,13 @@ object UserProfileBuilder {
       .join(companiesDF, Seq("clean_company"))
       .join(emailsDF, Seq("clean_email"))
       .join(locationsDF, Seq("clean_location"))
-      .withColumn("has_website", when($"blog" === "", 0.0).otherwise(1.0))
+      .withColumn("has_blog", when($"blog" === "", 0).otherwise(1))
       .withColumn("binned_company", when($"count_per_company" <= 5, "__other").otherwise($"clean_company"))
       .withColumn("binned_email", when($"count_per_email" <= 2, "__other").otherwise($"clean_email"))
       .withColumn("binned_location", when($"count_per_location" <= 50, "__other").otherwise($"clean_location"))
     transformedUserInfoDF.cache()
 
-    categoricalColumnNames = categoricalColumnNames ++ mutable.ArrayBuffer("has_website", "binned_company", "binned_email", "binned_location")
+    categoricalColumnNames = categoricalColumnNames ++ mutable.ArrayBuffer("has_blog", "binned_company", "binned_email", "binned_location")
 
     // Categorical Features
 
@@ -182,7 +182,7 @@ object UserProfileBuilder {
     val savePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
     userProfileDF.write.mode("overwrite").parquet(savePath)
 
-    userProfileDF.select("user_id", "features").show(false)
+    userProfileDF.select("user_id", "login", "features").show(false)
 
     spark.stop()
   }
