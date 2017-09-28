@@ -3,9 +3,10 @@ package ws.vinta.albedo
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions._
 import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions._
 import ws.vinta.albedo.closures.UDFs._
+import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
 
 import scala.collection.mutable
@@ -21,13 +22,13 @@ object UserProfileBuilder {
 
     // Load Data
 
-    val rawUserInfoDS = loadUserInfo()
+    val rawUserInfoDS = loadUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoInfoDS = loadRepoInfo()
+    val rawRepoInfoDS = loadRepoInfoDS()
     rawRepoInfoDS.cache()
 
-    val rawRepoStarringDS = loadRepoStarring()
+    val rawRepoStarringDS = loadRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Clean Data
@@ -92,18 +93,18 @@ object UserProfileBuilder {
     val constructedUserInfoDF = cleanUserInfoDF
       .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
       .withColumn("updated_at_days_since_today", datediff(current_date(), $"updated_at"))
-      .withColumn("knows_web", containsAnyOfUDF(webThings)($"clean_bio"))
-      .withColumn("knows_backend", containsAnyOfUDF(backendThings)($"clean_bio"))
-      .withColumn("knows_frontend", containsAnyOfUDF(frontendThings)($"clean_bio"))
-      .withColumn("knows_mobile", containsAnyOfUDF(mobileThings)($"clean_bio"))
-      .withColumn("knows_devops", containsAnyOfUDF(devopsThings)($"clean_bio"))
-      .withColumn("knows_data", containsAnyOfUDF(dataThings)($"clean_bio"))
-      .withColumn("knows_recsys", containsAnyOfUDF(recsysThings)($"clean_bio"))
-      .withColumn("is_lead", containsAnyOfUDF(leadTitles)($"clean_bio"))
-      .withColumn("is_schoolar", containsAnyOfUDF(scholarTitles)($"clean_bio"))
-      .withColumn("is_freelancer", containsAnyOfUDF(freelancerTitles)($"clean_bio"))
-      .withColumn("is_junior", containsAnyOfUDF(juniorTitles)($"clean_bio"))
-      .withColumn("is_pm", containsAnyOfUDF(pmTitles)($"clean_bio"))
+      .withColumn("knows_web", when(webThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_backend", when(backendThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_frontend", when(frontendThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_mobile", when(mobileThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_devops", when(devopsThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_data", when(dataThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_recsys", when(recsysThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("is_lead", when(leadTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("is_schoolar", when(scholarTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("is_freelancer", when(freelancerTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("is_junior", when(juniorTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("is_pm", when(pmTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
       .join(userStarredReposCountDF, Seq("user_id"))
       .join(userLanguagesDF, Seq("user_id"))
       .join(userTopicsDF, Seq("user_id"))
@@ -117,22 +118,22 @@ object UserProfileBuilder {
 
     // Transform Features
 
-    val companiesDF = cleanUserInfoDF
+    val companyCountDF = cleanUserInfoDF
       .groupBy($"clean_company")
       .agg(count("*").alias("count_per_company"))
 
-    val emailsDF = cleanUserInfoDF
+    val emailCountDF = cleanUserInfoDF
       .groupBy($"clean_email")
       .agg(count("*").alias("count_per_email"))
 
-    val locationsDF = cleanUserInfoDF
+    val locationCountDF = cleanUserInfoDF
       .groupBy($"clean_location")
       .agg(count("*").alias("count_per_location"))
 
     val transformedUserInfoDF = constructedUserInfoDF
-      .join(companiesDF, Seq("clean_company"))
-      .join(emailsDF, Seq("clean_email"))
-      .join(locationsDF, Seq("clean_location"))
+      .join(companyCountDF, Seq("clean_company"))
+      .join(emailCountDF, Seq("clean_email"))
+      .join(locationCountDF, Seq("clean_location"))
       .withColumn("has_blog", when($"blog" === "", 0).otherwise(1))
       .withColumn("binned_company", when($"count_per_company" <= 5, "__other").otherwise($"clean_company"))
       .withColumn("binned_email", when($"count_per_email" <= 2, "__other").otherwise($"clean_email"))
@@ -160,23 +161,15 @@ object UserProfileBuilder {
     // Text Features
 
     val textTransformers = textColumnNames.flatMap((columnName: String) => {
-      val regexTokenizer = new RegexTokenizer()
-        .setToLowercase(true)
+      val hanLPTokenizer = new HanLPTokenizer()
         .setInputCol(columnName)
         .setOutputCol(s"${columnName}_words")
-        .setPattern("""[\w\-_]+""").setGaps(false)
 
-      val stopWords = StopWordsRemover.loadDefaultStopWords("english")
-      val stopWordsRemover = new StopWordsRemover()
-        .setStopWords(stopWords)
+      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170903/word2VecModelCorpus.parquet")
         .setInputCol(s"${columnName}_words")
-        .setOutputCol(s"${columnName}_filtered_words")
-
-      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170903/word2VecModel.parquet")
-        .setInputCol(s"${columnName}_filtered_words")
         .setOutputCol(s"${columnName}_w2v")
 
-      Array(regexTokenizer, stopWordsRemover, word2VecModel)
+      Array(hanLPTokenizer, word2VecModel)
     })
 
     // List Features
@@ -194,7 +187,7 @@ object UserProfileBuilder {
     val finalListColumnNames = listColumnNames
 
     val vectorAssembler = new VectorAssembler()
-      .setInputCols((finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalTextColumnNames ++ finalListColumnNames).toArray)
+      .setInputCols((finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalTextColumnNames).toArray)
       .setOutputCol("features")
 
     // Build the Pipeline

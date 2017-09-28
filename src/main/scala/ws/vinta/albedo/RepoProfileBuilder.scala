@@ -5,6 +5,7 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
 
 import scala.collection.mutable
@@ -22,20 +23,20 @@ object RepoProfileBuilder {
       .config(conf)
       .getOrCreate()
 
-    import spark.implicits._
-
     val sc = spark.sparkContext
     sc.setCheckpointDir("./spark-data/checkpoint")
 
+    import spark.implicits._
+
     // Load Data
 
-    val rawRepoInfoDS = loadRepoInfo()
+    val rawRepoInfoDS = loadRepoInfoDS()
     rawRepoInfoDS.cache()
 
-    val rawUserInfoDS = loadUserInfo()
+    val rawUserInfoDS = loadUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoStarringDS = loadRepoStarring()
+    val rawRepoStarringDS = loadRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Clean Data
@@ -130,23 +131,15 @@ object RepoProfileBuilder {
     // Text Features
 
     val textTransformers = textColumnNames.flatMap((columnName: String) => {
-      val regexTokenizer = new RegexTokenizer()
-        .setToLowercase(true)
+      val hanLPTokenizer = new HanLPTokenizer()
         .setInputCol(columnName)
         .setOutputCol(s"${columnName}_words")
-        .setPattern("""[\w\-_]+""").setGaps(false)
 
-      val stopWords = StopWordsRemover.loadDefaultStopWords("english")
-      val stopWordsRemover = new StopWordsRemover()
-        .setStopWords(stopWords)
+      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170903/word2VecModelCorpus.parquet")
         .setInputCol(s"${columnName}_words")
-        .setOutputCol(s"${columnName}_filtered_words")
-
-      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170903/word2VecModel.parquet")
-        .setInputCol(s"${columnName}_filtered_words")
         .setOutputCol(s"${columnName}_w2v")
 
-      Array(regexTokenizer, stopWordsRemover, word2VecModel)
+      Array(hanLPTokenizer, word2VecModel)
     })
 
     // Assemble Features
