@@ -12,37 +12,41 @@ object ALSRecommender {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("ALSRecommenderTrainer")
+      .appName("ALSRecommender")
       .getOrCreate()
+
+    val sc = spark.sparkContext
+    sc.setCheckpointDir("./spark-data/checkpoint")
 
     import spark.implicits._
 
     // Load Data
 
-    val rawRepoStarringDS = loadRepoStarring()
+    val rawRepoStarringDS = loadRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Train the Model
 
     val alsModelSavePath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
-    val alsModel: ALSModel = try {
+    val alsModel = try {
       ALSModel.load(alsModelSavePath)
     } catch {
       case e: InvalidInputException => {
-        if (e.getMessage().contains("Input path does not exist")) {
+        if (e.getMessage.contains("Input path does not exist")) {
           val als = new ALS()
             .setImplicitPrefs(true)
             .setRank(50)
             .setRegParam(0.5)
             .setAlpha(40)
-            .setMaxIter(25)
+            .setMaxIter(20)
             .setSeed(42)
             .setColdStartStrategy("drop")
             .setUserCol("user_id")
             .setItemCol("repo_id")
             .setRatingCol("starring")
           val alsModel = als.fit(rawRepoStarringDS)
-          alsModel.save(alsModelSavePath)
+
+          alsModel.write.overwrite().save(alsModelSavePath)
           alsModel
         } else {
           throw e
@@ -75,6 +79,7 @@ object ALSRecommender {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getMetricName} = $metric")
+    // NDCG@k = 0.02199680140034373
 
     spark.stop()
   }

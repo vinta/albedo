@@ -25,7 +25,7 @@ object ALSRecommenderCV {
 
     // Load Data
 
-    val rawRepoStarringDS = loadRepoStarring()
+    val rawRepoStarringDS = loadRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Build the Pipeline
