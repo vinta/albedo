@@ -56,7 +56,7 @@ $ spark-submit \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.PopularityRecommenderTrainer \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.0019795288777558653
+# NDCG@k = 0.0005983585464709745
 ```
 
 ## Train an ALS Model
@@ -79,13 +79,14 @@ $ spark-submit \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-    --class ws.vinta.albedo.ALSRecommenderTrainer \
+    --class ws.vinta.albedo.ALSRecommender \
     target/albedo-1.0.0-SNAPSHOT.jar
+# NDCG@k = 0.02199680140034373
 ```
 
 ## Train a Word2Vec Model
 
-See [GitHubCorpusTrainer.scala](src/main/scala/ws/vinta/albedo/CorpusTrainer.scala) for complete code.
+See [GitHubCorpusTrainer.scala](src/main/scala/ws/vinta/albedo/Word2VecCorpusTrainer.scala) for complete code.
 
 ```bash
 $ spark-submit \

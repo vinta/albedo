@@ -57,6 +57,10 @@ zeppelin_start:
 zeppelin_stop:
 	zeppelin-daemon.sh stop
 
+.PHONY: build_jar
+build_jar:
+	mvn clean package -DskipTests
+
 .PHONY: baseline
 baseline:
 	time spark-submit \
@@ -93,7 +97,7 @@ ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
 	--properties 'spark.executor.memory=13312m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.ALSRecommenderTrainer \
+	--class ws.vinta.albedo.ALSRecommender \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
@@ -102,7 +106,7 @@ else
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-	--class ws.vinta.albedo.ALSRecommenderTrainer \
+	--class ws.vinta.albedo.ALSRecommender \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
 
