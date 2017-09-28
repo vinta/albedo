@@ -61,9 +61,8 @@ object Word2VecCorpusTrainer {
       }
     }
 
-    word2VecModel.findSynonyms("vinta", 5).show(false)
-    word2VecModel.findSynonyms("google", 5).show(false)
     word2VecModel.findSynonyms("spark", 5).show(false)
+    word2VecModel.findSynonyms("django", 5).show(false)
     word2VecModel.findSynonyms("中文", 5).show(false)
 
     spark.stop()
