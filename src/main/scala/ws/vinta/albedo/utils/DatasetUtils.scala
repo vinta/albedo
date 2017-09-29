@@ -14,11 +14,12 @@ object DatasetUtils {
   props.setProperty("user", "root")
   props.setProperty("password", "123")
 
-  def loadUserInfoDS()(implicit spark: SparkSession): Dataset[UserInfo] = {
+  def loadRawUserInfoDS()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/rawUserInfoDF.parquet"
-    val df: DataFrame = try {
+    //val savePath = s"${settings.dataDir}/${settings.today}/rawUserInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/rawUserInfoDF.parquet"
+    val df = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
@@ -35,11 +36,12 @@ object DatasetUtils {
     df.as[UserInfo]
   }
 
-  def loadUserRelationDS()(implicit spark: SparkSession): Dataset[UserRelation] = {
+  def loadRawUserRelationDS()(implicit spark: SparkSession): Dataset[UserRelation] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/rawUserRelationDF.parquet"
-    val df: DataFrame = try {
+    //val savePath = s"${settings.dataDir}/${settings.today}/rawUserRelationDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/rawUserRelationDF.parquet"
+    val df = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
@@ -56,11 +58,12 @@ object DatasetUtils {
     df.as[UserRelation]
   }
 
-  def loadRepoInfoDS()(implicit spark: SparkSession): Dataset[RepoInfo] = {
+  def loadRawRepoInfoDS()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/rawRepoInfoDF.parquet"
-    val df: DataFrame = try {
+    //val savePath = s"${settings.dataDir}/${settings.today}/rawRepoInfoDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/rawRepoInfoDF.parquet"
+    val df = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
@@ -77,11 +80,12 @@ object DatasetUtils {
     df.as[RepoInfo]
   }
 
-  def loadRepoStarringDS()(implicit spark: SparkSession): Dataset[RepoStarring] = {
+  def loadRawRepoStarringDS()(implicit spark: SparkSession): Dataset[RepoStarring] = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/rawRepoStarringDF.parquet"
-    val df: DataFrame = try {
+    //val savePath = s"${settings.dataDir}/${settings.today}/rawRepoStarringDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/rawRepoStarringDF.parquet"
+    val df = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
@@ -100,16 +104,29 @@ object DatasetUtils {
     df.as[RepoStarring]
   }
 
+  def loadUserProfileDF()(implicit spark: SparkSession): DataFrame = {
+    //val savePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/userProfileDF.parquet"
+    spark.read.parquet(savePath)
+  }
+
+  def loadRepoProfileDF()(implicit spark: SparkSession): DataFrame = {
+    //val savePath = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/repoProfileDF.parquet"
+    spark.read.parquet(savePath)
+  }
+
   def loadPopularRepoDF()(implicit spark: SparkSession): DataFrame = {
     import spark.implicits._
 
-    val savePath = s"${settings.dataDir}/${settings.today}/popularRepoDF.parquet"
+    //val savePath = s"${settings.dataDir}/${settings.today}/popularRepoDF.parquet"
+    val savePath = s"${settings.dataDir}/20170903/popularRepoDF.parquet"
     def df: DataFrame = try {
       spark.read.parquet(savePath)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
-          val rawRepoInfoDS = loadRepoInfoDS()
+          val rawRepoInfoDS = loadRawRepoInfoDS()
           val df = rawRepoInfoDS
             .select($"repo_id", $"stargazers_count")
             .where($"stargazers_count" >= 1000)

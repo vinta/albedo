@@ -18,10 +18,10 @@ object Word2VecCorpusTrainer {
 
     // Load Data
 
-    val rawUserInfoDS = loadUserInfoDS()
+    val rawUserInfoDS = loadRawUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoInfoDS = loadRepoInfoDS()
+    val rawRepoInfoDS = loadRawRepoInfoDS()
     rawRepoInfoDS.cache()
 
     // Prepare Data
@@ -50,7 +50,7 @@ object Word2VecCorpusTrainer {
             .setMaxIter(10)
             .setVectorSize(200)
             .setWindowSize(5)
-            .setMinCount(5)
+            .setMinCount(10)
           val word2VecModel = word2Vec.fit(wordsDF)
 
           word2VecModel.write.overwrite().save(word2VecModelSavePath)

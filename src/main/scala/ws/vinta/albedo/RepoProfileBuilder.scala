@@ -4,7 +4,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{AnalysisException, DataFrame, SparkSession}
 import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
 
@@ -30,13 +30,13 @@ object RepoProfileBuilder {
 
     // Load Data
 
-    val rawRepoInfoDS = loadRepoInfoDS()
+    val rawRepoInfoDS = loadRawRepoInfoDS()
     rawRepoInfoDS.cache()
 
-    val rawUserInfoDS = loadUserInfoDS()
+    val rawUserInfoDS = loadRawUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoStarringDS = loadRepoStarringDS()
+    val rawRepoStarringDS = loadRawRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Clean Data
@@ -110,8 +110,6 @@ object RepoProfileBuilder {
 
     categoricalColumnNames = categoricalColumnNames ++ mutable.ArrayBuffer("has_homepage", "binned_language")
 
-    // Continuous Features
-
     // Categorical Features
 
     val categoricalTransformers = categoricalColumnNames.flatMap((columnName: String) => {
@@ -161,13 +159,24 @@ object RepoProfileBuilder {
 
     val repoPipelineModel = repoPipeline.fit(transformedRepoInfoDF)
 
-    val repoProfileDF = repoPipelineModel.transform(transformedRepoInfoDF)
-
     // Save Results
 
     val savePath = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
-    repoProfileDF.write.mode("overwrite").parquet(savePath)
+    val repoProfileDF = try {
+      spark.read.parquet(savePath)
+    } catch {
+      case e: AnalysisException => {
+        if (e.getMessage().contains("Path does not exist")) {
+          val df = repoPipelineModel.transform(transformedRepoInfoDF)
+          df.write.mode("overwrite").parquet(savePath)
+          df
+        } else {
+          throw e
+        }
+      }
+    }
 
+    // features length: 528
     repoProfileDF.select("repo_id", "full_name", "features").show(false)
 
     spark.stop()

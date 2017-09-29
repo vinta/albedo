@@ -22,7 +22,7 @@ object ALSRecommender {
 
     // Load Data
 
-    val rawRepoStarringDS = loadRepoStarringDS()
+    val rawRepoStarringDS = loadRawRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Train the Model

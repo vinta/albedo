@@ -1,10 +1,11 @@
 package ws.vinta.albedo
 
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{AnalysisException, SparkSession}
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
@@ -13,22 +14,31 @@ import scala.collection.mutable
 
 object UserProfileBuilder {
   def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.set("spark.driver.memory", "4g")
+    conf.set("spark.executor.memory", "12g")
+    conf.set("spark.executor.cores", "4")
+
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("UserProfileBuilder")
+      .config(conf)
       .getOrCreate()
+
+    val sc = spark.sparkContext
+    sc.setCheckpointDir("./spark-data/checkpoint")
 
     import spark.implicits._
 
     // Load Data
 
-    val rawUserInfoDS = loadUserInfoDS()
+    val rawUserInfoDS = loadRawUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoInfoDS = loadRepoInfoDS()
+    val rawRepoInfoDS = loadRawRepoInfoDS()
     rawRepoInfoDS.cache()
 
-    val rawRepoStarringDS = loadRepoStarringDS()
+    val rawRepoStarringDS = loadRawRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Clean Data
@@ -50,9 +60,9 @@ object UserProfileBuilder {
 
     var categoricalColumnNames = mutable.ArrayBuffer("account_type")
 
-    var textColumnNames = mutable.ArrayBuffer("clean_bio")
-
     var listColumnNames = mutable.ArrayBuffer.empty[String]
+
+    val textColumnNames = mutable.ArrayBuffer("clean_bio")
 
     // Construct Features
 
@@ -88,7 +98,8 @@ object UserProfileBuilder {
       .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
       .where($"rank" <= 50)
       .groupBy($"user_id")
-      .agg(concat_ws(",", collect_list($"topics")).alias("topics_preferences"))
+      .agg(concat_ws(",", collect_list($"topics")).alias("topics_concat"))
+      .select($"user_id", split($"topics_concat", ",").alias("topics_preferences"))
 
     val constructedUserInfoDF = cleanUserInfoDF
       .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
@@ -158,6 +169,20 @@ object UserProfileBuilder {
       Array(stringIndexer, oneHotEncoder)
     })
 
+    // List Features
+
+    val listTransformers = listColumnNames.flatMap((columnName: String) => {
+      val word2VecModel = new Word2Vec()
+        .setInputCol(columnName)
+        .setOutputCol(s"${columnName}_w2v")
+        .setMaxIter(10)
+        .setVectorSize(100)
+        .setWindowSize(5)
+        .setMinCount(1)
+
+      Array(word2VecModel)
+    })
+
     // Text Features
 
     val textTransformers = textColumnNames.flatMap((columnName: String) => {
@@ -172,38 +197,45 @@ object UserProfileBuilder {
       Array(hanLPTokenizer, word2VecModel)
     })
 
-    // List Features
-
-    // TODO
-
     // Assemble Features
 
     val finalContinuousColumnNames = continuousColumnNames
 
     val finalCategoricalColumnNames = categoricalColumnNames.map((columnName: String) => s"${columnName}_ohe")
 
+    val finalListColumnNames = listColumnNames.map((columnName: String) => s"${columnName}_w2v")
+
     val finalTextColumnNames = textColumnNames.map((columnName: String) => s"${columnName}_w2v")
 
-    val finalListColumnNames = listColumnNames
-
     val vectorAssembler = new VectorAssembler()
-      .setInputCols((finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalTextColumnNames).toArray)
+      .setInputCols((finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames).toArray)
       .setOutputCol("features")
 
     // Build the Pipeline
 
     val userPipeline = new Pipeline()
-      .setStages((categoricalTransformers ++ textTransformers :+ vectorAssembler).toArray)
+      .setStages((categoricalTransformers ++ listTransformers ++ textTransformers :+ vectorAssembler).toArray)
 
     val userPipelineModel = userPipeline.fit(transformedUserInfoDF)
-
-    val userProfileDF = userPipelineModel.transform(transformedUserInfoDF)
 
     // Save Results
 
     val savePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
-    userProfileDF.write.mode("overwrite").parquet(savePath)
+    val userProfileDF = try {
+      spark.read.parquet(savePath)
+    } catch {
+      case e: AnalysisException => {
+        if (e.getMessage().contains("Path does not exist")) {
+          val df = userPipelineModel.transform(transformedUserInfoDF)
+          df.write.mode("overwrite").parquet(savePath)
+          df
+        } else {
+          throw e
+        }
+      }
+    }
 
+    // features length: 4853
     userProfileDF.select("user_id", "login", "features").show(false)
 
     spark.stop()

@@ -17,13 +17,13 @@ object RandomRecommender {
 
     // Load Data
 
-    val rawUserInfoDS = loadUserInfoDS()
+    val rawUserInfoDS = loadRawUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoInfoDS = loadRepoInfoDS()
+    val rawRepoInfoDS = loadRawRepoInfoDS()
     rawRepoInfoDS.cache()
 
-    val rawRepoStarringDS = loadRepoStarringDS()
+    val rawRepoStarringDS = loadRawRepoStarringDS()
     rawRepoStarringDS.cache()
 
     // Make Recommendations
