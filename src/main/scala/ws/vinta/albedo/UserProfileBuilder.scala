@@ -43,14 +43,13 @@ object UserProfileBuilder {
 
     // Clean Data
 
-    val nullableColumnNames = Array("bio", "blog", "company", "email", "location", "name")
+    val nullableColumnNames = Array("bio", "blog", "company", "location", "name")
 
     val cleanUserInfoDF = rawUserInfoDS
       .withColumn("has_null", when(nullableColumnNames.map(rawUserInfoDS(_).isNull).reduce(_||_), 1).otherwise(0))
       .na.fill("", nullableColumnNames)
       .withColumn("clean_bio", lower($"bio"))
       .withColumn("clean_company", cleanCompanyUDF($"company"))
-      .withColumn("clean_email", cleanEmailUDF($"email"))
       .withColumn("clean_location", cleanLocationUDF($"location"))
     cleanUserInfoDF.cache()
 
@@ -133,25 +132,19 @@ object UserProfileBuilder {
       .groupBy($"clean_company")
       .agg(count("*").alias("count_per_company"))
 
-    val emailCountDF = cleanUserInfoDF
-      .groupBy($"clean_email")
-      .agg(count("*").alias("count_per_email"))
-
     val locationCountDF = cleanUserInfoDF
       .groupBy($"clean_location")
       .agg(count("*").alias("count_per_location"))
 
     val transformedUserInfoDF = constructedUserInfoDF
       .join(companyCountDF, Seq("clean_company"))
-      .join(emailCountDF, Seq("clean_email"))
       .join(locationCountDF, Seq("clean_location"))
       .withColumn("has_blog", when($"blog" === "", 0).otherwise(1))
       .withColumn("binned_company", when($"count_per_company" <= 5, "__other").otherwise($"clean_company"))
-      .withColumn("binned_email", when($"count_per_email" <= 2, "__other").otherwise($"clean_email"))
       .withColumn("binned_location", when($"count_per_location" <= 50, "__other").otherwise($"clean_location"))
     transformedUserInfoDF.cache()
 
-    categoricalColumnNames = categoricalColumnNames ++ mutable.ArrayBuffer("has_blog", "binned_company", "binned_email", "binned_location")
+    categoricalColumnNames = categoricalColumnNames ++ mutable.ArrayBuffer("has_blog", "binned_company", "binned_location")
 
     // Categorical Features
 
@@ -235,7 +228,7 @@ object UserProfileBuilder {
       }
     }
 
-    // features length: 4853
+    // features length: 923
     userProfileDF.select("user_id", "login", "features").show(false)
 
     spark.stop()
