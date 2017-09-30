@@ -59,9 +59,39 @@ $ spark-submit \
 # NDCG@k = 0.0013035714524256231
 ```
 
+## Build the User Profile for Feature Engineering
+
+See [UserProfileBuilder.scala](src/main/scala/ws/vinta/albedo/UserProfileBuilder.scala) for complete code.
+
+```bash
+$ spark-submit \
+    --driver-memory 4g \
+    --executor-cores 4 \
+    --executor-memory 12g \
+    --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --class ws.vinta.albedo.UserProfileBuilder \
+    target/albedo-1.0.0-SNAPSHOT.jar
+```
+
+## Build the Item Profile for Feature Engineering
+
+See [RepoProfileBuilder.scala](src/main/scala/ws/vinta/albedo/RepoProfileBuilder.scala) for complete code.
+
+```bash
+$ spark-submit \
+    --driver-memory 4g \
+    --executor-cores 4 \
+    --executor-memory 12g \
+    --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --class ws.vinta.albedo.RepoProfileBuilder \
+    target/albedo-1.0.0-SNAPSHOT.jar
+```
+
 ## Train an ALS Model for Candidate Generation
 
-See [ALSRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/ALSRecommender.scala) and [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) for complete code.
+See [ALSRecommender.scala](src/main/scala/ws/vinta/albedo/ALSRecommender.scala) and [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) for complete code.
 
 ```bash
 $ spark-submit \
