@@ -139,7 +139,7 @@ $ spark-submit \
 
 ## Related Posts
 
-- [Build a recommender system with PySpark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
+- [Build a recommender system with Spark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
 - [Spark SQL cookbook (Scala)](https://vinta.ws/code/spark-sql-cookbook-scala.html)
 - [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
 - [Feature Engineering 特徵工程中常見的方法](https://vinta.ws/code/feature-engineering.html)
