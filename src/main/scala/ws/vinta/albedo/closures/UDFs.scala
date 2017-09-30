@@ -1,5 +1,6 @@
 package ws.vinta.albedo.closures
 
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 import ws.vinta.albedo.closures.StringFunctions._
@@ -67,4 +68,6 @@ object UDFs extends Serializable {
     }
     result
   })
+
+  def toArrayUDF: UserDefinedFunction = udf((v: Vector) => v.toDense.values)
 }
