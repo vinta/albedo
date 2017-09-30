@@ -3,7 +3,7 @@ package ws.vinta.albedo
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
-import ws.vinta.albedo.schemas.{UserItems, UserPopularRepo}
+import ws.vinta.albedo.schemas._
 import ws.vinta.albedo.utils.DatasetUtils._
 
 object PopularityRecommender {
@@ -17,14 +17,19 @@ object PopularityRecommender {
 
     // Load Data
 
+    val rawStarringDS = loadRawStarringDS()
+    rawStarringDS.cache()
+
     val rawUserInfoDS = loadRawUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoInfoDS = loadRawRepoInfoDS()
-    rawRepoInfoDS.cache()
+    // Split Data
 
-    val rawRepoStarringDS = loadRawRepoStarringDS()
-    rawRepoStarringDS.cache()
+    // 統一使用 20% 的 test set 來評估每個演算法
+    val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
+    testDF.cache()
+
+    val testUserDF = testDF.select($"user_id").distinct()
 
     // Make Recommendations
 
@@ -33,17 +38,18 @@ object PopularityRecommender {
     val popularRepoDF = loadPopularRepoDF().limit(topK)
     popularRepoDF.cache()
 
-    val userPopularRepoDS = rawUserInfoDS.select($"user_id")
+    val userPopularRepoDF = rawUserInfoDS
+      .select($"user_id")
       .crossJoin(popularRepoDF)
-      .as[UserPopularRepo]
 
     // Evaluate the Model
 
-    val userActualItemsDS = rawRepoStarringDS
+    val userActualItemsDS = testDF
       .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
       .as[UserItems]
 
-    val userPredictedItemsDS = userPopularRepoDS
+    val userPredictedItemsDS = userPopularRepoDF
+      .join(testUserDF, Seq("user_id"))
       .transform(intoUserPredictedItems($"user_id", $"repo_id", $"stargazers_count".desc))
       .as[UserItems]
 
@@ -54,7 +60,7 @@ object PopularityRecommender {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getMetricName} = $metric")
-    // NDCG@k = 0.0005983585464709745
+    // NDCG@k = 0.0013035714524256231
 
     spark.stop()
   }
