@@ -38,15 +38,15 @@ object UserProfileBuilder {
     val rawRepoInfoDS = loadRawRepoInfoDS()
     rawRepoInfoDS.cache()
 
-    val rawRepoStarringDS = loadRawRepoStarringDS()
-    rawRepoStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS()
+    rawStarringDS.cache()
 
     // Clean Data
 
     val nullableColumnNames = Array("bio", "blog", "company", "location", "name")
 
     val cleanUserInfoDF = rawUserInfoDS
-      .withColumn("has_null", when(nullableColumnNames.map(rawUserInfoDS(_).isNull).reduce(_||_), 1).otherwise(0))
+      .withColumn("has_null", when(nullableColumnNames.map(rawUserInfoDS(_).isNull).reduce(_||_), 1.0).otherwise(0.0))
       .na.fill("", nullableColumnNames)
       .withColumn("clean_bio", lower($"bio"))
       .withColumn("clean_company", cleanCompanyUDF($"company"))
@@ -79,20 +79,20 @@ object UserProfileBuilder {
     val juniorTitles = Array("junior", "beginner", "newbie")
     val pmTitles = Array("product manager")
 
-    val userStarredReposCountDF = rawRepoStarringDS
+    val userStarredReposCountDF = rawStarringDS
       .groupBy($"user_id")
       .agg(count("*").alias("starred_repos_count"))
 
-    val repoInfoStarringDF = rawRepoStarringDS.join(rawRepoInfoDS, Seq("repo_id"))
-    repoInfoStarringDF.cache()
+    val starringRepoInfoDF = rawStarringDS.join(rawRepoInfoDS, Seq("repo_id"))
+    starringRepoInfoDF.cache()
 
-    val userLanguagesDF = repoInfoStarringDF
+    val userLanguagesDF = starringRepoInfoDF
       .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
       .where($"rank" <= 50)
       .groupBy($"user_id")
       .agg(collect_list($"language").alias("languages_preferences"))
 
-    val userTopicsDF = repoInfoStarringDF
+    val userTopicsDF = starringRepoInfoDF
       .where($"topics" =!= "")
       .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
       .where($"rank" <= 50)
@@ -103,18 +103,18 @@ object UserProfileBuilder {
     val constructedUserInfoDF = cleanUserInfoDF
       .withColumn("created_at_years_since_today", round(datediff(current_date(), $"created_at") / 365))
       .withColumn("updated_at_days_since_today", datediff(current_date(), $"updated_at"))
-      .withColumn("knows_web", when(webThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("knows_backend", when(backendThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("knows_frontend", when(frontendThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("knows_mobile", when(mobileThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("knows_devops", when(devopsThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("knows_data", when(dataThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("knows_recsys", when(recsysThings.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("is_lead", when(leadTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("is_schoolar", when(scholarTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("is_freelancer", when(freelancerTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("is_junior", when(juniorTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("is_pm", when(pmTitles.map($"clean_bio".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("knows_web", when(webThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("knows_backend", when(backendThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("knows_frontend", when(frontendThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("knows_mobile", when(mobileThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("knows_devops", when(devopsThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("knows_data", when(dataThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("knows_recsys", when(recsysThings.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_lead", when(leadTitles.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_schoolar", when(scholarTitles.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_freelancer", when(freelancerTitles.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_junior", when(juniorTitles.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_pm", when(pmTitles.map($"clean_bio".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
       .join(userStarredReposCountDF, Seq("user_id"))
       .join(userLanguagesDF, Seq("user_id"))
       .join(userTopicsDF, Seq("user_id"))
@@ -213,14 +213,14 @@ object UserProfileBuilder {
 
     // Save Results
 
-    val savePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
     val userProfileDF = try {
-      spark.read.parquet(savePath)
+      spark.read.parquet(path)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = userPipelineModel.transform(transformedUserInfoDF)
-          df.write.mode("overwrite").parquet(savePath)
+          df.write.mode("overwrite").parquet(path)
           df
         } else {
           throw e

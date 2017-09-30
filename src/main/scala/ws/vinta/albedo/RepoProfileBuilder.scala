@@ -36,8 +36,8 @@ object RepoProfileBuilder {
     val rawUserInfoDS = loadRawUserInfoDS()
     rawUserInfoDS.cache()
 
-    val rawRepoStarringDS = loadRawRepoStarringDS()
-    rawRepoStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS()
+    rawStarringDS.cache()
 
     // Clean Data
 
@@ -75,15 +75,15 @@ object RepoProfileBuilder {
     val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%")
     val assignmentWords = Array("%assignment%")
 
-    val vintaStarredRepos = rawRepoStarringDS
+    val vintaStarredRepos = rawStarringDS
       .where($"user_id" === 652070)
       .select($"repo_id".as[Int])
       .collect()
       .to[List]
 
     val constructedRepoInfoDF = cleanRepoInfoDF
-      .withColumn("is_unmaintained", when(unmaintainedWords.map($"clean_description".like(_)).reduce(_ or _), 1).otherwise(0))
-      .withColumn("is_assignment", when(assignmentWords.map($"clean_description".like(_)).reduce(_ or _), 1).otherwise(0))
+      .withColumn("is_unmaintained", when(unmaintainedWords.map($"clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_assignment", when(assignmentWords.map($"clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
       .where($"is_unmaintained" === 0 and $"is_assignment" === 0)
       .drop($"is_unmaintained")
       .drop($"is_assignment")
@@ -92,7 +92,7 @@ object RepoProfileBuilder {
       .withColumn("pushed_at_days_since_today", datediff(current_date(), $"pushed_at"))
       .withColumn("watch_star_count_ratio", round($"subscribers_count" / ($"stargazers_count" + lit(1)), 3))
       .withColumn("fork_star_count_ratio", round($"forks_count" / ($"stargazers_count" + lit(1)), 3))
-      .withColumn("is_vinta_starred", when($"repo_id".isin(vintaStarredRepos: _*), 1).otherwise(0))
+      .withColumn("is_vinta_starred", when($"repo_id".isin(vintaStarredRepos: _*), 1.0).otherwise(0.0))
 
     continuousColumnNames = continuousColumnNames ++ mutable.ArrayBuffer("created_at_years_since_today", "updated_at_days_since_today", "pushed_at_days_since_today")
 
@@ -161,14 +161,14 @@ object RepoProfileBuilder {
 
     // Save Results
 
-    val savePath = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
     val repoProfileDF = try {
-      spark.read.parquet(savePath)
+      spark.read.parquet(path)
     } catch {
       case e: AnalysisException => {
         if (e.getMessage().contains("Path does not exist")) {
           val df = repoPipelineModel.transform(transformedRepoInfoDF)
-          df.write.mode("overwrite").parquet(savePath)
+          df.write.mode("overwrite").parquet(path)
           df
         } else {
           throw e
