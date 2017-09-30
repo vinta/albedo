@@ -33,7 +33,7 @@ object Word2VecCorpusTrainer {
 
     // Train the Model
 
-    val word2VecModelSavePath = s"${settings.dataDir}/${settings.today}/word2VecModelCorpus.parquet"
+    val word2VecModelSavePath = s"${settings.dataDir}/${settings.today}/corpusWord2VecModel.parquet"
     val word2VecModel = try {
       Word2VecModel.load(word2VecModelSavePath)
     } catch {
