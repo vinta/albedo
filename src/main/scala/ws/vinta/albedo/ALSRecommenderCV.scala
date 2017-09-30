@@ -25,8 +25,8 @@ object ALSRecommenderCV {
 
     // Load Data
 
-    val rawRepoStarringDS = loadRawRepoStarringDS()
-    rawRepoStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS()
+    rawStarringDS.cache()
 
     // Build the Pipeline
 
@@ -55,9 +55,9 @@ object ALSRecommenderCV {
       .addGrid(als.maxIter, Array(25))
       .build()
 
-    val topK = 15
+    val topK = 30
 
-    val userActualItemsDS = rawRepoStarringDS
+    val userActualItemsDS = rawStarringDS
       .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
       .as[UserItems]
     userActualItemsDS.cache()
@@ -74,7 +74,7 @@ object ALSRecommenderCV {
       .setEvaluator(rankingEvaluator)
       .setNumFolds(2)
 
-    val cvModel = cv.fit(rawRepoStarringDS)
+    val cvModel = cv.fit(rawStarringDS)
 
     // Show Best Parameters
 
