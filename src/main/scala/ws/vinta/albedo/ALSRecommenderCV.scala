@@ -55,16 +55,16 @@ object ALSRecommenderCV {
       .addGrid(als.maxIter, Array(25))
       .build()
 
-    val k = 15
+    val topK = 15
 
     val userActualItemsDS = rawRepoStarringDS
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
       .as[UserItems]
     userActualItemsDS.cache()
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
-      .setK(k)
+      .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
 

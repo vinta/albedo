@@ -2,7 +2,7 @@ package ws.vinta.albedo.closures
 
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.functions._
 import ws.vinta.albedo.closures.StringFunctions._
 
 import scala.util.control.Breaks.{break, breakable}

@@ -3,8 +3,8 @@ package ws.vinta.albedo.transformers
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.types.{FloatType, IntegerType, StructType}
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset}
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType

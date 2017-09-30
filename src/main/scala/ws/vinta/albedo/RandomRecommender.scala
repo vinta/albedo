@@ -28,13 +28,13 @@ object RandomRecommender {
 
     // Make Recommendations
 
-    val k = 15
+    val topK = 30
 
     val randomRepoDF = loadPopularRepoDF()
       .where($"stargazers_count".between(100, 5000))
       .orderBy($"stargazers_count".desc)
       .sample(withReplacement = false, 0.001, 42)
-      .limit(k)
+      .limit(topK)
     randomRepoDF.cache()
 
     val userRandomRepoDF = rawUserInfoDS.select($"user_id")
@@ -44,7 +44,7 @@ object RandomRecommender {
     // Evaluate the Model
 
     val userActualItemsDS = rawRepoStarringDS
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
       .as[UserItems]
 
     val userPredictedItemsDS = userRandomRepoDF
@@ -53,7 +53,7 @@ object RandomRecommender {
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
-      .setK(k)
+      .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)

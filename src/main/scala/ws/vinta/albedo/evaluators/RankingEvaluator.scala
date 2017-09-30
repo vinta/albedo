@@ -4,10 +4,12 @@ import org.apache.spark.ml.evaluation.Evaluator
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.mllib.evaluation.RankingMetrics
+import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{collect_list, row_number}
-import org.apache.spark.sql.types.{ArrayType, IntegerType, StructType}
-import org.apache.spark.sql.{Column, DataFrame, Dataset, Row}
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
+import ws.vinta.albedo.settings
+import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[_])
@@ -89,10 +91,9 @@ object RankingEvaluator {
   def intoUserActualItems(userCol: Column, itemCol: Column, orderByCol: Column, k: Int)(df: Dataset[_]): DataFrame = {
     import df.sparkSession.implicits._
 
-    val windowSpec = Window.partitionBy(userCol).orderBy(orderByCol)
     df
-      .withColumn("row_number", row_number().over(windowSpec))
-      .where($"row_number" <= k)
+      .withColumn("rank", rank().over(Window.partitionBy(userCol).orderBy(orderByCol)))
+      .where($"rank" <= k)
       .groupBy(userCol)
       .agg(collect_list(itemCol).alias("items"))
   }
@@ -106,5 +107,16 @@ object RankingEvaluator {
       .orderBy(orderByCol)
       .groupBy(userCol)
       .agg(collect_list(itemCol).alias("items"))
+  }
+
+  def loadUserActualItemsDF(k: Int)(implicit spark: SparkSession): DataFrame = {
+    import spark.implicits._
+
+    val path = s"${settings.dataDir}/${settings.today}/userActualItemsDF-$k.parquet"
+    loadOrCreateDataFrame(path, () => {
+      val rawRepoStarringDS = loadRawRepoStarringDS()
+      val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
+      userActualItemsDF
+    })
   }
 }

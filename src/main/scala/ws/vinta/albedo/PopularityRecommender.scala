@@ -28,9 +28,9 @@ object PopularityRecommender {
 
     // Make Recommendations
 
-    val k = 15
+    val topK = 30
 
-    val popularRepoDF = loadPopularRepoDF().limit(k)
+    val popularRepoDF = loadPopularRepoDF().limit(topK)
     popularRepoDF.cache()
 
     val userPopularRepoDS = rawUserInfoDS.select($"user_id")
@@ -40,7 +40,7 @@ object PopularityRecommender {
     // Evaluate the Model
 
     val userActualItemsDS = rawRepoStarringDS
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", k))
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
       .as[UserItems]
 
     val userPredictedItemsDS = userPopularRepoDS
@@ -49,7 +49,7 @@ object PopularityRecommender {
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
-      .setK(k)
+      .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)

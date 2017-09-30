@@ -6,7 +6,7 @@ import com.hankcs.hanlp.seg.common.Term
 import org.apache.spark.ml.UnaryTransformer
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.types.{ArrayType, DataType, StringType}
+import org.apache.spark.sql.types._
 
 class HanLPTokenizer(override val uid: String)
   extends UnaryTransformer[String, Seq[String], HanLPTokenizer] with DefaultParamsWritable {

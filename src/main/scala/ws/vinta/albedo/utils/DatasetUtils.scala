@@ -14,6 +14,10 @@ object DatasetUtils {
   props.setProperty("user", "root")
   props.setProperty("password", "123")
 
+  def randomSplitByUser() = {
+
+  }
+
   def loadOrCreateDataFrame(path: String, createDataFrameFunc: () => DataFrame)(implicit spark: SparkSession): DataFrame = {
     try {
       spark.read.parquet(path)

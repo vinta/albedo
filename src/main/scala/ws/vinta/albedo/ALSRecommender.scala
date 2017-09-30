@@ -56,16 +56,16 @@ object ALSRecommender {
 
     // Make Recommendations
 
-    val k = 15
+    val topK = 30
 
     val userRecommendationsDS = alsModel
-      .recommendForAllUsers(k)
+      .recommendForAllUsers(topK)
       .as[UserRecommendations]
 
     // Evaluate the Model
 
     val userActualItemsDS = rawRepoStarringDS
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
       .as[UserItems]
 
     val userPredictedItemsDS = userRecommendationsDS
@@ -74,7 +74,7 @@ object ALSRecommender {
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
-      .setK(k)
+      .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)

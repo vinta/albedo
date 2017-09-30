@@ -1,6 +1,6 @@
 package ws.vinta.albedo.utils
 
-import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.types._
 
 object SchemaUtils {
   def checkColumnType(schema: StructType, colName: String, dataType: DataType): Unit = {
