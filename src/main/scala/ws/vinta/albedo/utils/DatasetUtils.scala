@@ -14,10 +14,6 @@ object DatasetUtils {
   props.setProperty("user", "root")
   props.setProperty("password", "123")
 
-  def randomSplitByUser() = {
-
-  }
-
   def loadOrCreateDataFrame(path: String, createDataFrameFunc: () => DataFrame)(implicit spark: SparkSession): DataFrame = {
     try {
       spark.read.parquet(path)
@@ -45,17 +41,6 @@ object DatasetUtils {
     df.as[UserInfo]
   }
 
-  def loadRawUserRelationDS()(implicit spark: SparkSession): Dataset[UserRelation] = {
-    import spark.implicits._
-
-    //val path = s"${settings.dataDir}/${settings.today}/rawUserRelationDF.parquet"
-    val path = s"${settings.dataDir}/20170903/rawUserRelationDF.parquet"
-    val df = loadOrCreateDataFrame(path, () => {
-      spark.read.jdbc(dbUrl, "app_userrelation", props).select($"from_user_id", $"to_user_id", $"relation")
-    })
-    df.as[UserRelation]
-  }
-
   def loadRawRepoInfoDS()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
@@ -67,29 +52,40 @@ object DatasetUtils {
     df.as[RepoInfo]
   }
 
-  def loadRawRepoStarringDS()(implicit spark: SparkSession): Dataset[RepoStarring] = {
+  def loadRawStarringDS()(implicit spark: SparkSession): Dataset[Starring] = {
     import spark.implicits._
 
-    //val path = s"${settings.dataDir}/${settings.today}/rawRepoStarringDF.parquet"
-    val path = s"${settings.dataDir}/20170903/rawRepoStarringDF.parquet"
+    //val path = s"${settings.dataDir}/${settings.today}/rawStarringDF.parquet"
+    val path = s"${settings.dataDir}/20170903/rawStarringDF.parquet"
     val df = loadOrCreateDataFrame(path, () => {
       spark.read.jdbc(dbUrl, "app_repostarring", props)
         .select($"user_id", $"repo_id", $"starred_at")
         .withColumn("starring", lit(1.0))
     })
-    df.as[RepoStarring]
+    df.as[Starring]
+  }
+
+  def loadRawRelationDS()(implicit spark: SparkSession): Dataset[Relation] = {
+    import spark.implicits._
+
+    //val path = s"${settings.dataDir}/${settings.today}/rawRelationDF.parquet"
+    val path = s"${settings.dataDir}/20170903/rawRelationDF.parquet"
+    val df = loadOrCreateDataFrame(path, () => {
+      spark.read.jdbc(dbUrl, "app_userrelation", props).select($"from_user_id", $"to_user_id", $"relation")
+    })
+    df.as[Relation]
   }
 
   def loadUserProfileDF()(implicit spark: SparkSession): DataFrame = {
-    //val savePath = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
-    val savePath = s"${settings.dataDir}/20170903/userProfileDF.parquet"
-    spark.read.parquet(savePath)
+    //val path = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
+    val path = s"${settings.dataDir}/20170903/userProfileDF.parquet"
+    spark.read.parquet(path)
   }
 
   def loadRepoProfileDF()(implicit spark: SparkSession): DataFrame = {
-    //val savePath = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
-    val savePath = s"${settings.dataDir}/20170903/repoProfileDF.parquet"
-    spark.read.parquet(savePath)
+    //val path = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
+    val path = s"${settings.dataDir}/20170903/repoProfileDF.parquet"
+    spark.read.parquet(path)
   }
 
   def loadPopularRepoDF()(implicit spark: SparkSession): DataFrame = {

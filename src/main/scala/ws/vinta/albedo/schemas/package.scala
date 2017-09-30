@@ -19,14 +19,6 @@ package object schemas {
     updated_at: java.sql.Timestamp
   )
 
-  case class UserRelation(
-    from_user_id: Int,
-    from_username: String,
-    to_user_id: Int,
-    to_username: String,
-    relation: String
-  )
-
   case class RepoInfo(
     repo_id: Int,
     owner_id: Int,
@@ -53,11 +45,19 @@ package object schemas {
     topics: String
   )
 
-  case class RepoStarring(
+  case class Starring(
     user_id: Int,
     repo_id: Int,
     starred_at: java.sql.Timestamp,
     starring: Double
+  )
+
+  case class Relation(
+    from_user_id: Int,
+    from_username: String,
+    to_user_id: Int,
+    to_username: String,
+    relation: String
   )
 
   case class PopularRepo(repo_id: Int, stargazers_count: Int)
