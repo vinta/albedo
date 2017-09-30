@@ -10,11 +10,11 @@ import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 import scala.collection.mutable
 
-class NegativeGenerator(override val uid: String, val bcPopularItems: Broadcast[mutable.LinkedHashSet[Int]])
+class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[mutable.LinkedHashSet[Int]])
   extends Transformer with DefaultParamsWritable {
 
   def this(bcPopularItems: Broadcast[mutable.LinkedHashSet[Int]]) = {
-    this(Identifiable.randomUID("negativeGenerator"), bcPopularItems)
+    this(Identifiable.randomUID("negativeBalancer"), bcPopularItems)
   }
 
   val userCol = new Param[String](this, "userCol", "User 所在的欄位名稱")
