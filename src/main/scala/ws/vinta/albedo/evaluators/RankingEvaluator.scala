@@ -114,8 +114,8 @@ object RankingEvaluator {
 
     val path = s"${settings.dataDir}/${settings.today}/userActualItemsDF-$k.parquet"
     loadOrCreateDataFrame(path, () => {
-      val rawRepoStarringDS = loadRawRepoStarringDS()
-      val userActualItemsDF = rawRepoStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
+      val rawStarringDS = loadRawStarringDS()
+      val userActualItemsDF = rawStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
       userActualItemsDF
     })
   }
