@@ -56,12 +56,12 @@ $ spark-submit \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.PopularityRecommenderTrainer \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.0005983585464709745
+# NDCG@k = 0.0013035714524256231
 ```
 
-## Train an ALS Model
+## Train an ALS Model for Candidate Generation
 
-See [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) and [ALSRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/ALSRecommender.scala) for complete code.
+See [ALSRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/ALSRecommender.scala) and [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) for complete code.
 
 ```bash
 $ spark-submit \
@@ -81,12 +81,12 @@ $ spark-submit \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ALSRecommender \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.02199680140034373
+# NDCG@k = 0.05026158143766048
 ```
 
-## Train a Word2Vec Model
+## Train a Logistic Regression Model for Ranking
 
-See [GitHubCorpusTrainer.scala](src/main/scala/ws/vinta/albedo/Word2VecCorpusTrainer.scala) for complete code.
+See [LogisticRegressionRanker.scala](src/main/scala/ws/vinta/albedo/LogisticRegressionRanker.scala) for complete code.
 
 ```bash
 $ spark-submit \
@@ -94,23 +94,22 @@ $ spark-submit \
     --executor-cores 4 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
-    --packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
-    --class ws.vinta.albedo.GitHubCorpusTrainer \
+    --packages "com.github.fommil.netlib:all:1.1.2" \
+    --class ws.vinta.albedo.LogisticRegressionRanker \
     target/albedo-1.0.0-SNAPSHOT.jar
 ```
 
 ## TODO
 
-- Build a recommender system with Spark: GDBT + Logistic Regression
-- Build a recommender system with Spark: XGBoost
+- Build a recommender system with Spark: Content-based
+- Build a recommender system with Spark: GDBT for Feature Learning
 - Build a recommender system with Spark: Factorization Machine
 - Build a recommender system with Spark: Item2Vec
+- Build a recommender system with Spark: XGBoost
 
 ## Related Posts
 
-- [Setup Spark on macOS](https://vinta.ws/code/setup-spark-on-macos.html)
-- [Setup Spark, Scala and Maven with Intellij IDEA](https://vinta.ws/code/setup-spark-scala-and-maven-with-intellij-idea.html)
+- [Build a recommender system with PySpark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
 - [Spark SQL cookbook (Scala)](https://vinta.ws/code/spark-sql-cookbook-scala.html)
 - [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
-- [Play with GitHub Archive dataset on BigQuery](https://vinta.ws/code/play-with-github-archive-dataset-on-bigquery.html)
-- [Build a recommender system with PySpark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
+- [Feature Engineering 特徵工程中常見的方法](https://vinta.ws/code/feature-engineering.html)
