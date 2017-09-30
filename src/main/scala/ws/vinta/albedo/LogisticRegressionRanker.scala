@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
-import ws.vinta.albedo.transformers.NegativeGenerator
+import ws.vinta.albedo.transformers.NegativeBalancer
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
@@ -33,13 +33,13 @@ object LogisticRegressionRanker {
     val repoProfileDF = loadRepoProfileDF().select($"repo_id", $"features".alias("repo_features"))
     repoProfileDF.cache()
 
-    val rawRepoStarringDS = loadRawRepoStarringDS()
-    rawRepoStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS()
+    rawStarringDS.cache()
 
     // Handle Imbalanced Samples
 
-    val fullDFsavePath = s"${settings.dataDir}/${settings.today}/fullDF.parquet"
-    val fullDF = loadOrCreateDataFrame(fullDFsavePath, () => {
+    val fullDFpath = s"${settings.dataDir}/${settings.today}/fullDF.parquet"
+    val fullDF = loadOrCreateDataFrame(fullDFpath, () => {
       val popularReposDS = loadPopularRepoDF()
       val popularRepos = popularReposDS
         .select($"repo_id".as[Int])
@@ -47,13 +47,13 @@ object LogisticRegressionRanker {
         .to[mutable.LinkedHashSet]
       val bcPopularRepos = sc.broadcast(popularRepos)
 
-      val negativeGenerator = new NegativeGenerator(bcPopularRepos)
+      val negativeBalancer = new NegativeBalancer(bcPopularRepos)
         .setUserCol("user_id")
         .setItemCol("repo_id")
         .setLabelCol("starring")
         .setNegativeValue(0.0)
         .setNegativePositiveRatio(1.0)
-      val balancedStarringDF = negativeGenerator.transform(rawRepoStarringDS)
+      val balancedStarringDF = negativeBalancer.transform(rawStarringDS)
 
       val fullDF = balancedStarringDF
         .join(userProfileDF, Seq("user_id"))
@@ -92,6 +92,7 @@ object LogisticRegressionRanker {
       .setMaxIter(10)
       .setRegParam(0.0)
       .setElasticNetParam(0.0)
+      .setStandardization(true)
       .setFeaturesCol("features")
       .setLabelCol("starring")
 
@@ -105,13 +106,39 @@ object LogisticRegressionRanker {
       pipeline.fit(trainingDF)
     })
 
+    // Make Recommendations
+
+    // TODO:
+    // columns: user_id, repo_id, popular_score, als_score, word2vec_score
+    // item candidates from Popular
+    // item candidates from ALS
+    // item candidates from Word2Vec
+
+    val condidateDF = spark.createDataFrame(Seq(
+      (1, 1, 0.1),
+      (1, 2, 1.0),
+      (1, 3, 0.8)
+    ))
+
+    // Predict the Ranking
+
+    val resultTestDF = pipelineModel.transform(testDF)
+
+    resultTestDF
+      .select("user_id", "repo_id", "starring", "prediction", "probability")
+      .where("user_id = 652070")
+      .orderBy(toArrayUDF($"probability").getItem(1).desc)
+      .show(false)
+
     // Evaluate the Model
 
     val topK = 30
 
-    val userActualItemsDF = loadUserActualItemsDF(topK)
+    val userActualItemsDF = resultTestDF
+      .where($"starring" === 1.0)
+      .join(rawStarringDS, Seq("user_id", "repo_id", "starring"), "left_outer") // 為了找回 starred_at 欄位
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
 
-    val resultTestDF = pipelineModel.transform(testDF)
     val userPredictedItemsDF = resultTestDF.transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc))
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
@@ -121,14 +148,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getMetricName} = $metric")
-
-    // Predict the Ranking
-
-    resultTestDF
-      .select("user_id", "repo_id", "starring", "prediction", "probability")
-      .where("user_id = 652070")
-      .orderBy(toArrayUDF($"probability").getItem(1).desc)
-      .show(false)
+    // NDCG@k = ???
 
     spark.stop()
   }
