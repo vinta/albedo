@@ -4,8 +4,8 @@ import com.hankcs.hanlp.HanLP
 import com.hankcs.hanlp.dictionary.stopword.CoreStopWordDictionary
 import com.hankcs.hanlp.seg.common.Term
 import org.apache.spark.ml.UnaryTransformer
-import org.apache.spark.ml.param.{Param, ParamMap}
-import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
+import org.apache.spark.ml.param.{BooleanParam, ParamMap}
+import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.types._
 
 class HanLPTokenizer(override val uid: String)
@@ -15,7 +15,7 @@ class HanLPTokenizer(override val uid: String)
     this(Identifiable.randomUID("hanLPTokenizer"))
   }
 
-  val shouldRemoveStopWords = new Param[Boolean](this, "shouldRemoveStopWords", "是否移除 Stop Words")
+  val shouldRemoveStopWords = new BooleanParam(this, "shouldRemoveStopWords", "是否移除 Stop Words")
 
   def getShouldRemoveStopWords: Boolean = $(shouldRemoveStopWords)
 
@@ -47,3 +47,5 @@ class HanLPTokenizer(override val uid: String)
     defaultCopy(extra)
   }
 }
+
+object HanLPTokenizer extends DefaultParamsReadable[HanLPTokenizer]

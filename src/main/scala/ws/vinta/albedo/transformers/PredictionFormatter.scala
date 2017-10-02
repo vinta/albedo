@@ -1,7 +1,7 @@
 package ws.vinta.albedo.transformers
 
 import org.apache.spark.ml.Transformer
-import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.param.{IntParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
@@ -37,6 +37,13 @@ class PredictionFormatter(override val uid: String)
   def setPredictionCol(value: String): this.type = set(predictionCol, value)
   setDefault(predictionCol -> "prediction")
 
+  val k = new IntParam(this, "k", "只保留前 k 個 items")
+
+  def getK: Int = $(k)
+
+  def setK(value: Int): this.type = set(k, value)
+  setDefault(k -> 15)
+
   override def transformSchema(schema: StructType): StructType = {
     checkColumnType(schema, $(userCol), IntegerType)
     checkColumnType(schema, $(itemCol), IntegerType)
@@ -48,7 +55,7 @@ class PredictionFormatter(override val uid: String)
   override def transform(alsPredictionDF: Dataset[_]): DataFrame = {
     transformSchema(alsPredictionDF.schema)
 
-    alsPredictionDF.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), col($(predictionCol)).desc))
+    alsPredictionDF.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), col($(predictionCol)).desc, $(k)))
   }
 
   override def copy(extra: ParamMap): this.type = {

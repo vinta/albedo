@@ -2,7 +2,7 @@ package ws.vinta.albedo.transformers
 
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.Transformer
-import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.param.{DoubleParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
@@ -38,14 +38,14 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
   def setLabelCol(value: String): this.type = set(labelCol, value)
   setDefault(labelCol -> "label")
 
-  val negativeValue = new Param[Double](this, "negativeValue", "負樣本的值")
+  val negativeValue = new DoubleParam(this, "negativeValue", "負樣本的值")
 
   def getNegativeValue: Double = $(negativeValue)
 
   def setNegativeValue(value: Double): this.type = set(negativeValue, value)
   setDefault(negativeValue -> 0.0)
 
-  val negativePositiveRatio = new Param[Double](this, "negativePositiveRatio", "負樣本與正樣本的比例")
+  val negativePositiveRatio = new DoubleParam(this, "negativePositiveRatio", "負樣本與正樣本的比例")
 
   def getNegativePositiveRatio: Double = $(negativePositiveRatio)
 

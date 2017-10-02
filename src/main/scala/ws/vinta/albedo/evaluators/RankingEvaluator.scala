@@ -1,7 +1,7 @@
 package ws.vinta.albedo.evaluators
 
 import org.apache.spark.ml.evaluation.Evaluator
-import org.apache.spark.ml.param.{Param, ParamMap}
+import org.apache.spark.ml.param.{IntParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.mllib.evaluation.RankingMetrics
 import org.apache.spark.sql._
@@ -26,7 +26,7 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
   def setMetricName(value: String): this.type = set(metricName, value)
   setDefault(metricName -> "ndcg@k")
 
-  val k = new Param[Int](this, "k", "只評估前 k 個 items 的排序結果")
+  val k = new IntParam(this, "k", "只評估前 k 個 items 的排序結果")
 
   def getK: Int = $(k)
 
