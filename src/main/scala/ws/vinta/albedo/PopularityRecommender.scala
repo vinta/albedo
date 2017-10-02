@@ -45,12 +45,12 @@ object PopularityRecommender {
     // Evaluate the Model
 
     val userActualItemsDS = testDF
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
       .as[UserItems]
 
     val userPredictedItemsDS = userPopularRepoDF
       .join(testUserDF, Seq("user_id"))
-      .transform(intoUserPredictedItems($"user_id", $"repo_id", $"stargazers_count".desc))
+      .transform(intoUserPredictedItems($"user_id", $"repo_id", $"stargazers_count".desc, topK))
       .as[UserItems]
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)

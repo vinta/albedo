@@ -97,12 +97,12 @@ object LogisticRegressionRanker {
       .setLabelCol("starring")
 
     val pipeline: Pipeline = new Pipeline()
-        .setStages((categoricalTransformers :+ vectorAssembler :+ lr).toArray)
+      .setStages((categoricalTransformers :+ vectorAssembler :+ lr).toArray)
 
     // Train the Model
 
-    val pipelineModelSavePath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel.parquet"
-    val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelSavePath, () => {
+    val pipelineModelPath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel.parquet"
+    val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
       pipeline.fit(trainingDF)
     })
 
@@ -139,7 +139,7 @@ object LogisticRegressionRanker {
       .join(rawStarringDS, Seq("user_id", "repo_id", "starring"), "left_outer") // 為了找回 starred_at 欄位
       .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
 
-    val userPredictedItemsDF = resultTestDF.transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc))
+    val userPredictedItemsDF = resultTestDF.transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")

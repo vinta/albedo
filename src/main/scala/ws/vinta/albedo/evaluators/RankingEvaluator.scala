@@ -98,15 +98,18 @@ object RankingEvaluator {
       .agg(collect_list(itemCol).alias("items"))
   }
 
-  def intoUserPredictedItems(userCol: Column, nestedItemCol: Column)(df: Dataset[_]): DataFrame = {
-    df.select(userCol, nestedItemCol.alias("items"))
-  }
+  def intoUserPredictedItems(userCol: Column, itemCol: Column, orderByCol: Column, k: Int)(df: Dataset[_]): DataFrame = {
+    import df.sparkSession.implicits._
 
-  def intoUserPredictedItems(userCol: Column, itemCol: Column, orderByCol: Column)(df: Dataset[_]): DataFrame = {
     df
-      .orderBy(orderByCol)
+      .withColumn("rank", rank().over(Window.partitionBy(userCol).orderBy(orderByCol)))
+      .where($"rank" <= k)
       .groupBy(userCol)
       .agg(collect_list(itemCol).alias("items"))
+  }
+
+  def intoUserPredictedItems(userCol: Column, nestedItemCol: Column)(df: Dataset[_]): DataFrame = {
+    df.select(userCol, nestedItemCol.alias("items"))
   }
 
   def loadUserActualItemsDF(k: Int)(implicit spark: SparkSession): DataFrame = {
