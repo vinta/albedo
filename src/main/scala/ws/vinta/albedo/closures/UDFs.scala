@@ -8,6 +8,27 @@ import ws.vinta.albedo.closures.StringFunctions._
 import scala.util.control.Breaks.{break, breakable}
 
 object UDFs extends Serializable {
+  def containsAnyOfUDF(substrings: Array[String], shouldLower: Boolean = false): UserDefinedFunction = udf[Double, String]((text: String) => {
+    var result = 0.0
+    breakable {
+      for (substring <- substrings) {
+        if (text.contains(substring)) {
+          result = 1.0
+          break
+        }
+      }
+    }
+    result
+  })
+
+  def toArrayUDF: UserDefinedFunction = udf[Array[Double], Vector]((vector: Vector) => {
+    vector.toArray
+  })
+
+  def numNonzerosOfVectorUDF: UserDefinedFunction = udf[Int, Vector]((vector: Vector) => {
+    vector.numNonzeros
+  })
+
   def cleanCompanyUDF: UserDefinedFunction = udf[String, String]((company: String) => {
     val temp1 = company
       .toLowerCase()
@@ -55,19 +76,4 @@ object UDFs extends Serializable {
     else
       temp3
   })
-
-  def containsAnyOfUDF(substrings: Array[String], shouldLower: Boolean = false): UserDefinedFunction = udf[Double, String]((text: String) => {
-    var result = 0.0
-    breakable {
-      for (substring <- substrings) {
-        if (text.contains(substring)) {
-          result = 1.0
-          break
-        }
-      }
-    }
-    result
-  })
-
-  def toArrayUDF: UserDefinedFunction = udf((v: Vector) => v.toDense.values)
 }

@@ -50,6 +50,7 @@ object RepoProfileBuilder {
     val filledRepoInfoDF = rawRepoInfoDS
       .where($"stargazers_count".between(2, 100000))
       .where($"forks_count" <= 90000)
+      .where($"fork" === false)
       .na.fill("", nullableColumnNames)
 
     val cleanRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](filledRepoInfoDF)((accDF, columnName) => {
@@ -72,7 +73,7 @@ object RepoProfileBuilder {
 
     // Construct Features
 
-    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%")
+    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
     val assignmentWords = Array("%assignment%")
 
     val vintaStarredRepos = rawStarringDS
