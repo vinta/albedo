@@ -7,7 +7,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas._
 import ws.vinta.albedo.utils.DatasetUtils._
 
-object CurationRecommender {
+object CurationRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()

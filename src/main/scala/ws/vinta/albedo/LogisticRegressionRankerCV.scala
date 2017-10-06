@@ -7,12 +7,10 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 
 object LogisticRegressionRankerCV {
-  val appName = "LogisticRegressionCV"
-
   def main(args: Array[String]): Unit = {
     implicit val spark = SparkSession
       .builder()
-      .appName(appName)
+      .appName("LRRankerCV")
       .getOrCreate()
 
     implicit val sc = spark.sparkContext

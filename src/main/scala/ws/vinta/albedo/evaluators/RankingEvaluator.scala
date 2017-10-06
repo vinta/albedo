@@ -88,6 +88,17 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
 }
 
 object RankingEvaluator {
+  def loadUserActualItemsDF(k: Int)(implicit spark: SparkSession): DataFrame = {
+    import spark.implicits._
+
+    val path = s"${settings.dataDir}/${settings.today}/userActualItemsDF-$k.parquet"
+    loadOrCreateDataFrame(path, () => {
+      val rawStarringDS = loadRawStarringDS()
+      val userActualItemsDF = rawStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
+      userActualItemsDF
+    })
+  }
+
   def intoUserActualItems(userCol: Column, itemCol: Column, orderByCol: Column, k: Int)(df: Dataset[_]): DataFrame = {
     import df.sparkSession.implicits._
 
@@ -110,16 +121,5 @@ object RankingEvaluator {
 
   def intoUserPredictedItems(userCol: Column, nestedItemCol: Column)(df: Dataset[_]): DataFrame = {
     df.select(userCol, nestedItemCol.alias("items"))
-  }
-
-  def loadUserActualItemsDF(k: Int)(implicit spark: SparkSession): DataFrame = {
-    import spark.implicits._
-
-    val path = s"${settings.dataDir}/${settings.today}/userActualItemsDF-$k.parquet"
-    loadOrCreateDataFrame(path, () => {
-      val rawStarringDS = loadRawStarringDS()
-      val userActualItemsDF = rawStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
-      userActualItemsDF
-    })
   }
 }

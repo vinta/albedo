@@ -2,9 +2,10 @@ package ws.vinta.albedo
 
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.feature._
+import org.apache.spark.ml.linalg.DenseVector
 import org.apache.spark.ml.{Pipeline, PipelineModel}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.apache.spark.sql.expressions.Window
+import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
+import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.functions._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
@@ -12,10 +13,6 @@ import ws.vinta.albedo.schemas._
 import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
-import ws.vinta.albedo.closures.UDFs._
-import org.apache.spark.sql.Row
-import org.apache.spark.ml.linalg.DenseVector
-import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, MatrixEntry}
 
 object Word2VecRecommender {
   def main(args: Array[String]): Unit = {
@@ -37,9 +34,10 @@ object Word2VecRecommender {
 
     // Load Data
 
-    val userProfileDF = loadUserProfileDF()
+    //val userProfileDF = loadUserProfileDF()
+    //val repoProfileDF = loadRepoProfileDF()
 
-    val repoProfileDF = loadRepoProfileDF()
+    val rawRepoInfoDS = loadRawRepoInfoDS()
 
     val rawStarringDS = loadRawStarringDS()
 
@@ -47,35 +45,32 @@ object Word2VecRecommender {
 
     // Prepare Data
 
-    val userTextDF = userProfileDF
-      .where($"bio" =!= "")
-      .withColumn("text", concat_ws(" ", $"login", $"bio", $"company", $"location"))
+    val nullableColumnNames = Array("description", "homepage")
 
-    val repoTextDF = repoProfileDF
-      .where($"description" =!= "")
-      .withColumn("text", concat_ws(" ", $"owner_username", $"name", $"language", $"description", $"topics"))
-      // TODO: remove
+    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
+    val assignmentWords = Array("%assignment%")
+
+    val repoTextDF = rawRepoInfoDS
+      .na.fill("", nullableColumnNames)
       .where($"fork" === false)
-      .where(!$"description".like("%moved to%"))
+      .where($"stargazers_count".between(1000, 3000))
+      .where($"description" =!= "")
+      .withColumn("clean_description", lower($"description"))
+      .withColumn("is_unmaintained", when(unmaintainedWords.map($"clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("is_assignment", when(assignmentWords.map($"clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .where($"is_unmaintained" === 0 and $"is_assignment" === 0)
+      .drop($"is_unmaintained")
+      .drop($"is_assignment")
+      .withColumn("text", concat_ws(" ", $"owner_username", $"name", $"language", $"description", $"topics"))
       .select($"repo_id", $"text", $"stargazers_count")
-
-    val corpusDF = userTextDF.select($"text").union(repoTextDF.select($"text"))
-    corpusDF.cache()
-
-    //val userTopicsDF = starringRepoInfoDF
-    //  .where($"topics" =!= "")
-    //  .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
-    //  .where($"rank" <= 50)
-    //  .groupBy($"user_id")
-    //  .agg(concat_ws(",", collect_list($"topics")).alias("topics_concat"))
-    //  .select($"user_id", $"topics_concat".alias("text"))
+    repoTextDF.persist()
 
     // Split Data
 
     // 雖然不是每個演算法都需要劃分 training set 和 test set
     // 不過為了方便比較，我們還是統一使用 20% 的 test set 來評估每個模型
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
-    testDF.cache()
+    testDF.persist()
 
     val testUserDF = testDF.select($"user_id").distinct()
 
@@ -100,16 +95,15 @@ object Word2VecRecommender {
 
     val pipelineModelPath = s"${settings.dataDir}/${settings.today}/word2VecPipelineModel.parquet"
     val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
-      pipeline.fit(corpusDF)
+      pipeline.fit(repoTextDF)
     })
 
     // Make Recommendations
 
-    val repoVectorDF = pipelineModel.transform(repoTextDF.where($"stargazers_count".between(100, 1500)))
+    val repoVectorDF = pipelineModel.transform(repoTextDF)
 
     val repoWordRDD = repoVectorDF
       .select($"repo_id", $"text_w2v")
-      .limit(100)
       .rdd
       .flatMap((row: Row) => {
         val repoId = row.getInt(0)
@@ -125,56 +119,30 @@ object Word2VecRecommender {
 
     val repoSimilarityRDD = wordRepoMatrix
       .toRowMatrix
-      .columnSimilarities(0.1)
-      .entries.map({
-        case MatrixEntry(row: Long, col: Long, sim: Double) => (row, col, sim)
+      .columnSimilarities(0.0001)
+      .entries
+      .flatMap({
+        case MatrixEntry(row: Long, col: Long, sim: Double) => {
+          if (sim >= 0.5) {
+            Array((row, col, sim))
+          }
+          else {
+            None
+          }
+        }
       })
 
-    val repoSimilarityDF = spark.createDataFrame(repoSimilarityRDD)
-      .toDF("item_1", "item_2", "similarity")
-      .where($"similarity" > 0)
-      .orderBy($"similarity".desc)
+    val repoSimilarityDFpath = s"${settings.dataDir}/${settings.today}/repoSimilarityDF.parquet"
+    val repoSimilarityDF = loadOrCreateDataFrame(repoSimilarityDFpath, () => {
+      spark.createDataFrame(repoSimilarityRDD).toDF("item_1", "item_2", "similarity")
+    })
 
     repoSimilarityDF.show(false)
 
-    //val topK = 30
-    //
-    ////val lsh = new BucketedRandomProjectionLSH()
-    ////  .setBucketLength(4.0)
-    ////  .setNumHashTables(5)
-    ////  .setInputCol("text_w2v")
-    ////  .setOutputCol("text_hashes")
-    //
-    //val lsh = new MinHashLSH()
-    //  .setNumHashTables(5)
-    //  .setInputCol("text_w2v")
-    //  .setOutputCol("text_hashes")
-    //
-    //val lshModel = lsh.fit(repoTextVectorDF)
-    //
-    //val userHashedDF = lshModel.transform(userTextVectorDF)
-    //userHashedDF.cache()
-    //
-    //val repoHashedDF = lshModel.transform(repoTextVectorDF)
-    //repoHashedDF.cache()
-    //
-    //val userSimilarRepoDF = lshModel
-    //  .approxSimilarityJoin(userHashedDF, repoHashedDF, 0.005, "distance")
-    //  .select($"datasetA.user_id", $"datasetB.repo_id", $"distance")
-    //  //.orderBy($"datasetA.user_id".asc, $"distance".asc)
-    //
-    //println("count: ")
-    //userSimilarRepoDF.show(false)
-    //
-    ////println(s"count: ${userSimilarRepoDF.rdd.countApprox(1000 * 60 * 10, 0.6)}")
-    //
-    //// TODO
-    //import scala.collection.mutable
-    //val dfs = mutable.ArrayBuffer.empty[DataFrame]
-    //val similarDF = dfs.reduce(_ union _)
-    //
-    //// Evaluate the Model
-    //
+    // Evaluate the Model
+
+    val topK = 30
+
     //val userActualItemsDS = testDF
     //  .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
     //  .as[UserItems]

@@ -67,6 +67,8 @@ object ALSRecommenderBuilder {
       .setTopK(topK)
 
     val userRecommendedItemDF = alsRecommender.recommendForUsers(testUserDF)
+    userRecommendedItemDF.cache()
+    userRecommendedItemDF.show()
 
     // Evaluate the Model
 

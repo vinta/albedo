@@ -2,7 +2,7 @@ package ws.vinta.albedo
 
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature._
-import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
@@ -10,6 +10,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.transformers.NegativeBalancer
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
+import ws.vinta.albedo.recommenders._
 
 import scala.collection.mutable
 
@@ -108,23 +109,38 @@ object LogisticRegressionRanker {
 
     // Make Recommendations
 
-    // TODO:
-    // columns: user_id, repo_id, popular_score, als_score, word2vec_score
-    // item candidates from Popular
-    // item candidates from ALS
-    // item candidates from Word2Vec
+    val testUserDF = testDF.select($"user_id").distinct()
 
-    val condidateDF = spark.createDataFrame(Seq(
-      (1, 1, 0.1),
-      (1, 2, 1.0),
-      (1, 3, 0.8)
-    ))
+    val topK = 30
+
+    val alsRecommender = new ALSRecommender()
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setTopK(topK)
+
+    val recommenders = Array(alsRecommender)
+    val userRecommendedItemDF = recommenders
+      .map((recommender: Transformer) => recommender.transform(testUserDF))
+      .reduce(_ union _)
+
+    // TODO
+    // distinct() user id, repo_id
+
+    val candidateDF = userRecommendedItemDF
+      .join(userProfileDF, Seq("user_id"))
+      .join(repoProfileDF, Seq("repo_id"))
+
+    //val candidateDF = spark.createDataFrame(Seq(
+    //  (1, 1, 0.1),
+    //  (1, 2, 1.0),
+    //  (1, 3, 0.8)
+    //))
 
     // Predict the Ranking
 
-    val resultTestDF = pipelineModel.transform(testDF)
+    val resultDF = pipelineModel.transform(candidateDF)
 
-    resultTestDF
+    resultDF
       .select("user_id", "repo_id", "starring", "prediction", "probability")
       .where("user_id = 652070")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
@@ -132,14 +148,12 @@ object LogisticRegressionRanker {
 
     // Evaluate the Model
 
-    val topK = 30
-
-    val userActualItemsDF = resultTestDF
+    val userActualItemsDF = resultDF
       .where($"starring" === 1.0)
       .join(rawStarringDS, Seq("user_id", "repo_id", "starring"), "left_outer") // 為了找回 starred_at 欄位
       .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
 
-    val userPredictedItemsDF = resultTestDF.transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
+    val userPredictedItemsDF = resultDF.transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("ndcg@k")

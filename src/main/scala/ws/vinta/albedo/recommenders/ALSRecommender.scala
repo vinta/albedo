@@ -13,7 +13,7 @@ class ALSRecommender(override val uid: String) extends Recommender {
     this(Identifiable.randomUID("alsRecommender"))
   }
 
-  private val alsModel: ALSModel = {
+  private def alsModel: ALSModel = {
     val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
     ALSModel.load(alsModelPath)
   }
