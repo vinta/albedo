@@ -1,12 +1,12 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="ALSRecommender" type="Application" factoryName="Application">
+  <configuration default="false" name="ALSRecommenderBuilder" type="Application" factoryName="Application">
     <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
       <pattern>
         <option name="PATTERN" value="ws.vinta.albedo.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
-    <option name="MAIN_CLASS_NAME" value="ws.vinta.albedo.ALSRecommender" />
+    <option name="MAIN_CLASS_NAME" value="ws.vinta.albedo.ALSRecommenderBuilder" />
     <option name="VM_PARAMETERS" value="-Dspark.master=local[*]" />
     <option name="PROGRAM_PARAMETERS" value="" />
     <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$" />
