@@ -33,8 +33,7 @@ object DatasetUtils {
   def loadRawUserInfoDS()(implicit spark: SparkSession): Dataset[UserInfo] = {
     import spark.implicits._
 
-    //val path = s"${settings.dataDir}/${settings.today}/rawUserInfoDF.parquet"
-    val path = s"${settings.dataDir}/20170903/rawUserInfoDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/rawUserInfoDF.parquet"
     val df = loadOrCreateDataFrame(path, () => {
       spark.read.jdbc(dbUrl, "app_userinfo", props).withColumnRenamed("id", "user_id")
     })
@@ -44,8 +43,7 @@ object DatasetUtils {
   def loadRawRepoInfoDS()(implicit spark: SparkSession): Dataset[RepoInfo] = {
     import spark.implicits._
 
-    //val path = s"${settings.dataDir}/${settings.today}/rawRepoInfoDF.parquet"
-    val path = s"${settings.dataDir}/20170903/rawRepoInfoDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/rawRepoInfoDF.parquet"
     val df = loadOrCreateDataFrame(path, () => {
       spark.read.jdbc(dbUrl, "app_repoinfo", props).withColumnRenamed("id", "repo_id")
     })
@@ -55,8 +53,7 @@ object DatasetUtils {
   def loadRawStarringDS()(implicit spark: SparkSession): Dataset[Starring] = {
     import spark.implicits._
 
-    //val path = s"${settings.dataDir}/${settings.today}/rawStarringDF.parquet"
-    val path = s"${settings.dataDir}/20170903/rawStarringDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/rawStarringDF.parquet"
     val df = loadOrCreateDataFrame(path, () => {
       spark.read.jdbc(dbUrl, "app_repostarring", props)
         .select($"user_id", $"repo_id", $"starred_at")
@@ -68,8 +65,7 @@ object DatasetUtils {
   def loadRawRelationDS()(implicit spark: SparkSession): Dataset[Relation] = {
     import spark.implicits._
 
-    //val path = s"${settings.dataDir}/${settings.today}/rawRelationDF.parquet"
-    val path = s"${settings.dataDir}/20170903/rawRelationDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/rawRelationDF.parquet"
     val df = loadOrCreateDataFrame(path, () => {
       spark.read.jdbc(dbUrl, "app_userrelation", props).select($"from_user_id", $"to_user_id", $"relation")
     })
@@ -77,30 +73,25 @@ object DatasetUtils {
   }
 
   def loadUserProfileDF()(implicit spark: SparkSession): DataFrame = {
-    //val path = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
-    val path = s"${settings.dataDir}/20170903/userProfileDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
     spark.read.parquet(path)
   }
 
   def loadRepoProfileDF()(implicit spark: SparkSession): DataFrame = {
-    //val path = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
-    val path = s"${settings.dataDir}/20170903/repoProfileDF.parquet"
+    val path = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
     spark.read.parquet(path)
   }
 
   def loadPopularRepoDF()(implicit spark: SparkSession): DataFrame = {
     import spark.implicits._
 
-    //val path = s"${settings.dataDir}/${settings.today}/popularRepoDF.parquet"
-    val path = s"${settings.dataDir}/20170903/popularRepoDF.parquet"
-    val df = loadOrCreateDataFrame(path, () => {
+    val path = s"${settings.dataDir}/${settings.today}/popularRepoDF.parquet"
+    loadOrCreateDataFrame(path, () => {
       val rawRepoInfoDS = loadRawRepoInfoDS()
-      val df = rawRepoInfoDS
-        .select($"repo_id", $"stargazers_count")
-        .where($"stargazers_count" >= 1000)
+      rawRepoInfoDS
+        .select($"repo_id", $"stargazers_count", $"created_at")
+        .where($"stargazers_count".between(1000, 290000))
         .orderBy($"stargazers_count".desc)
-      df
     })
-    df
   }
 }
