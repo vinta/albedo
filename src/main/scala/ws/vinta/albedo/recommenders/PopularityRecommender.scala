@@ -29,6 +29,7 @@ class PopularityRecommender(override val uid: String) extends Recommender {
     })
 
     userDF
+      .select($(userCol))
       .crossJoin(popularRepoDF)
       .select(col($(userCol)), $"repo_id".alias($(itemCol)), calculateScoreUDF($"stargazers_count", $"created_at").alias($(scoreCol)))
       .withColumn($(sourceCol), lit(source))

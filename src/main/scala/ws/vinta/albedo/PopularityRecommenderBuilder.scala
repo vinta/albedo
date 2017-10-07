@@ -11,7 +11,7 @@ object PopularityRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("PopularityRecommender")
+      .appName("PopularityRecommenderBuilder")
       .getOrCreate()
 
     import spark.implicits._

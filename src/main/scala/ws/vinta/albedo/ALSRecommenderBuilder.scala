@@ -13,7 +13,7 @@ object ALSRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("ALSRecommender")
+      .appName("ALSRecommenderBuilder")
       .getOrCreate()
 
     val sc = spark.sparkContext
@@ -55,7 +55,11 @@ object ALSRecommenderBuilder {
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
     testDF.cache()
 
-    val testUserDF = testDF.select($"user_id").distinct()
+    val meDF = spark.createDataFrame(Seq(
+      (652070, "vinta")
+    )).toDF("user_id", "username")
+
+    val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
 
     // Make Recommendations
 
@@ -68,7 +72,8 @@ object ALSRecommenderBuilder {
 
     val userRecommendedItemDF = alsRecommender.recommendForUsers(testUserDF)
     userRecommendedItemDF.cache()
-    userRecommendedItemDF.show()
+
+    userRecommendedItemDF.where($"user_id" === 652070).show(false)
 
     // Evaluate the Model
 

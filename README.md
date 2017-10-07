@@ -45,7 +45,7 @@ $ make spark_start
 
 ## Use Popularity as the Recommendation Baseline
 
-See [PopularityRecommenderTrainer.scala](src/main/scala/ws/vinta/albedo/PopularityRecommender.scala) for complete code.
+See [PopularityRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/PopularityRecommenderBuilder.scala) for complete code.
 
 ```bash
 $ spark-submit \
@@ -54,9 +54,9 @@ $ spark-submit \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-    --class ws.vinta.albedo.PopularityRecommenderTrainer \
+    --class ws.vinta.albedo.PopularityRecommenderBuilder \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.0013035714524256231
+# NDCG@k = 0.0010226370987782996
 ```
 
 ## Build the User Profile for Feature Engineering
@@ -91,7 +91,7 @@ $ spark-submit \
 
 ## Train an ALS Model for Candidate Generation
 
-See [ALSRecommender.scala](src/main/scala/ws/vinta/albedo/ALSRecommender.scala) and [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) for complete code.
+See [ALSRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderBuilder.scala) and [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) for complete code.
 
 ```bash
 $ spark-submit \
@@ -109,7 +109,7 @@ $ spark-submit \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-    --class ws.vinta.albedo.ALSRecommender \
+    --class ws.vinta.albedo.ALSRecommenderBuilder \
     target/albedo-1.0.0-SNAPSHOT.jar
 # NDCG@k = 0.05026158143766048
 ```

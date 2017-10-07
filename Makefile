@@ -110,13 +110,13 @@ else
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
 
-.PHONY: train_corpus
-train_corpus:
+.PHONY: train_word2vec
+train_word2vec:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.Word2VecRecommender \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
@@ -124,8 +124,8 @@ else
 	--executor-cores 4 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2,com.databricks:spark-avro_2.11:3.2.0" \
-	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	--packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4" \
+	--class ws.vinta.albedo.Word2VecRecommender \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
 
@@ -135,7 +135,7 @@ ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
 	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.GitHubCorpusTrainer \
+	--class ws.vinta.albedo.PersonalizedRankerTrainer \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
