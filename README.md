@@ -114,6 +114,14 @@ $ spark-submit \
 # NDCG@k = 0.05026158143766048
 ```
 
+## Build a Content-based Recommender for Candidate Generation
+
+Elasticsearch's [More Like This](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html) API will do the tricks.
+
+```bash
+$ (container) python manage.py sync_data_to_es
+```
+
 ## Train a Logistic Regression Model for Ranking
 
 See [LogisticRegressionRanker.scala](src/main/scala/ws/vinta/albedo/LogisticRegressionRanker.scala) for complete code.
