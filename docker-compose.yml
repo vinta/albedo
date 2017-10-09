@@ -2,13 +2,13 @@ version: "3"
 
 services:
   django:
-    hostname: django
     build: .
+    hostname: django
     working_dir: /app
     env_file: .docker-assets/django.env
     command: .docker-assets/django_start.sh
     ports:
-      - "8000:8000"
+      - 8000:8000
     volumes:
       - ".:/app"
       - "../albedo-vendors/bin:/usr/local/bin"
@@ -16,9 +16,18 @@ services:
     links:
       - mysql
   mysql:
-    hostname: mysql
     image: vinta/mysql:5.7
+    hostname: mysql
     env_file: .docker-assets/mysql.env
     command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci
     ports:
-      - "3306:3306"
+      - 3306:3306
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.2
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - "./.docker-assets/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml"
+    environment:
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"

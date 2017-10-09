@@ -1,0 +1,6 @@
+bootstrap.memory_lock: true
+cluster.name: albedo
+discovery.type: single-node
+http.host: 0.0.0.0
+node.name: ${HOSTNAME}
+xpack.security.enabled: false
