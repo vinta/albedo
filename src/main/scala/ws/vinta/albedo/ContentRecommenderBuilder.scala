@@ -14,7 +14,7 @@ import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
-object Word2VecRecommender {
+object ContentRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     conf.set("spark.driver.memory", "4g")
@@ -23,7 +23,7 @@ object Word2VecRecommender {
 
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("Word2VecRecommender")
+      .appName("ContentRecommenderBuilder")
       .config(conf)
       .getOrCreate()
 
@@ -34,12 +34,12 @@ object Word2VecRecommender {
 
     // Load Data
 
-    //val userProfileDF = loadUserProfileDF()
-    //val repoProfileDF = loadRepoProfileDF()
-
     val rawRepoInfoDS = loadRawRepoInfoDS()
 
     val rawStarringDS = loadRawStarringDS()
+
+    //val userProfileDF = loadUserProfileDF()
+    //val repoProfileDF = loadRepoProfileDF()
 
     //val starringRepoInfoDF = rawStarringDS.join(rawRepoInfoDS, Seq("repo_id"))
 
@@ -70,9 +70,13 @@ object Word2VecRecommender {
     // 雖然不是每個演算法都需要劃分 training set 和 test set
     // 不過為了方便比較，我們還是統一使用 20% 的 test set 來評估每個模型
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
-    testDF.persist()
+    testDF.cache()
 
-    val testUserDF = testDF.select($"user_id").distinct()
+    val meDF = spark.createDataFrame(Seq(
+      (652070, "vinta")
+    )).toDF("user_id", "username")
+
+    val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
 
     // Build the Model Pipeline
 
