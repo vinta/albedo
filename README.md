@@ -153,8 +153,9 @@ $ spark-submit \
 
 ## TODO
 
-- Build a recommender system with Spark: GDBT for Feature Learning
 - Build a recommender system with Spark: Factorization Machine
+- Build a recommender system with Spark: GDBT for Feature Learning
+- Build a recommender system with Spark: GraphX
 - Build a recommender system with Spark: Item2Vec
 - Build a recommender system with Spark: XGBoost
 

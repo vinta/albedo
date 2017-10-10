@@ -12,6 +12,5 @@ package object settings {
   def today: String = {
     val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
     dateFormatter.format(new java.util.Date())
-    "20171007"
   }
 }

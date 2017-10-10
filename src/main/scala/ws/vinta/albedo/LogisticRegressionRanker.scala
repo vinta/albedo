@@ -7,10 +7,10 @@ import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
+import ws.vinta.albedo.recommenders._
 import ws.vinta.albedo.transformers.NegativeBalancer
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
-import ws.vinta.albedo.recommenders._
 
 import scala.collection.mutable
 
@@ -61,8 +61,23 @@ object LogisticRegressionRanker {
         .join(repoProfileDF, Seq("repo_id"))
       fullDF
     })
+    fullDF.persist()
 
     // Split Data
+
+    // TODO
+    //val Array(trainingDF, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
+    //trainingDF.cache()
+    //testDF.cache()
+    //
+    //val meDF = spark.createDataFrame(Seq(
+    //  (652070, "vinta")
+    //)).toDF("user_id", "username")
+    //
+    //val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
+    //
+    //val fullTrainingDF = fullDF.join(trainingDF, Seq("user_id"))
+    //val fullTestDF = fullDF.join(testDF, Seq("user_id"))
 
     val Array(trainingDF, testDF) = fullDF.randomSplit(Array(0.8, 0.2))
     trainingDF.cache()
@@ -113,42 +128,45 @@ object LogisticRegressionRanker {
 
     val topK = 30
 
+    val popularityRecommender = new PopularityRecommender()
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setTopK(topK * 2)
+
+    val contentRecommender = new ContentRecommender()
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setTopK(topK * 2)
+
     val alsRecommender = new ALSRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
-      .setTopK(topK)
+      .setTopK(topK * 2)
 
-    val recommenders = Array(alsRecommender)
+    val recommenders = Array(popularityRecommender, contentRecommender, alsRecommender)
     val userRecommendedItemDF = recommenders
       .map((recommender: Transformer) => recommender.transform(testUserDF))
       .reduce(_ union _)
-
-    // TODO
-    // distinct() user id, repo_id
+      .select($"user_id", $"repo_id").distinct()
 
     val candidateDF = userRecommendedItemDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
 
-    //val candidateDF = spark.createDataFrame(Seq(
-    //  (1, 1, 0.1),
-    //  (1, 2, 1.0),
-    //  (1, 3, 0.8)
-    //))
-
     // Predict the Ranking
 
     val resultDF = pipelineModel.transform(candidateDF)
+    resultDF.cache()
 
     resultDF
-      .select("user_id", "repo_id", "starring", "prediction", "probability")
+      .select("user_id", "repo_id", "prediction", "probability")
       .where("user_id = 652070")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
       .show(false)
 
     // Evaluate the Model
 
-    val userActualItemsDF = resultDF
+    val userActualItemsDF = testDF
       .where($"starring" === 1.0)
       .join(rawStarringDS, Seq("user_id", "repo_id", "starring"), "left_outer") // 為了找回 starred_at 欄位
       .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
@@ -162,7 +180,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getMetricName} = $metric")
-    // NDCG@k = ???
+    // NDCG@k = 0.010176457322475685
 
     spark.stop()
   }
