@@ -23,15 +23,15 @@ object DBFunctions {
     LIMIT 15;
     """.stripMargin(' '))
 
-    val itemIds = ArrayBuffer.empty[Int]
+    val repoIds = ArrayBuffer.empty[Int]
 
     while (resultSet.next()) {
       val repoId = resultSet.getInt("repo_id")
-      itemIds += repoId
+      repoIds += repoId
     }
 
     connection.close()
 
-    itemIds.toArray
+    repoIds.toArray
   }
 }

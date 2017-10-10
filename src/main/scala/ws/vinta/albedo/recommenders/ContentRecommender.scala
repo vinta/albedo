@@ -29,14 +29,14 @@ class ContentRecommender(override val uid: String) extends Recommender {
       .as[Int]
       .flatMap {
         case (userId) => {
-          val itemIds = selectUserStarredRepos(userId)
+          val repoIds = selectUserStarredRepos(userId)
 
           val lowClient = RestClient.builder(new HttpHost("127.0.0.1", 9200, "http")).build()
           val highClient = new RestHighLevelClient(lowClient)
 
           val fields = Array("description", "full_name", "language", "topics")
           val texts = Array("")
-          val items = itemIds.map((itemId: Int) => new Item("repo", "repo_info_doc", itemId.toString))
+          val items = repoIds.map((itemId: Int) => new Item("repo", "repo_info_doc", itemId.toString))
           val queryBuilder = moreLikeThisQuery(fields, texts, items)
             .minTermFreq(1)
             .maxQueryTerms(20)
