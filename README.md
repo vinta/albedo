@@ -160,7 +160,7 @@ $ spark-submit \
 
 ## Related Posts
 
-- [Build a recommender system with Spark and Elasticsearch: Content-based](https://vinta.ws/code/build-a-recommender-system-with-spark-and-elasticsearch-content-based.html)
+- [Build a recommender system with Spark: Content-based and Elasticsearch](https://vinta.ws/code/build-a-recommender-system-with-spark-content-based-and-elasticsearch.html)
 - [Build a recommender system with Spark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
 - [Feature Engineering 特徵工程中常見的方法](https://vinta.ws/code/feature-engineering.html)
 - [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
