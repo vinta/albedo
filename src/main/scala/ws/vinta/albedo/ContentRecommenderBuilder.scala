@@ -43,7 +43,7 @@ object ContentRecommenderBuilder {
       (652070, "vinta")
     )).toDF("user_id", "username")
 
-    val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct().limit(5)
+    val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
 
     // Make Recommendations
 
@@ -61,23 +61,23 @@ object ContentRecommenderBuilder {
 
     // Evaluate the Model
 
-    //val userActualItemsDS = testDF
-    //  .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
-    //  .as[UserItems]
-    //
-    //val userPredictedItemsDS = userRecommendedItemDF
-    //  .join(testUserDF, Seq("user_id"))
-    //  .transform(intoUserPredictedItems($"user_id", $"repo_id", $"distance".asc, topK))
-    //  .as[UserItems]
-    //
-    //val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
-    //  .setMetricName("ndcg@k")
-    //  .setK(topK)
-    //  .setUserCol("user_id")
-    //  .setItemsCol("items")
-    //val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
-    //println(s"${rankingEvaluator.getMetricName} = $metric")
-    //// NDCG@k = ???
+    val userActualItemsDS = testDF
+      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
+      .as[UserItems]
+
+    val userPredictedItemsDS = userRecommendedItemDF
+      .join(testUserDF, Seq("user_id"))
+      .transform(intoUserPredictedItems($"user_id", $"repo_id", $"score".desc, topK))
+      .as[UserItems]
+
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
+      .setMetricName("ndcg@k")
+      .setK(topK)
+      .setUserCol("user_id")
+      .setItemsCol("items")
+    val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
+    println(s"${rankingEvaluator.getMetricName} = $metric")
+    // NDCG@k = 0.0016596269625977985
 
     spark.stop()
   }

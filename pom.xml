@@ -51,17 +51,17 @@
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.42</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/databricks/spark-avro -->
-        <dependency>
-            <groupId>com.databricks</groupId>
-            <artifactId>spark-avro_2.11</artifactId>
-            <version>3.2.0</version>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/com.hankcs/hanlp -->
         <dependency>
             <groupId>com.hankcs</groupId>
             <artifactId>hanlp</artifactId>
             <version>portable-1.3.4</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.2</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.elasticsearch.client/elasticsearch-rest-high-level-client -->
         <dependency>

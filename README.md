@@ -122,6 +122,20 @@ Elasticsearch's [More Like This](https://www.elastic.co/guide/en/elasticsearch/r
 $ (container) python manage.py sync_data_to_es
 ```
 
+See [ContentRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ContentRecommenderBuilder.scala) for complete code.
+
+```bash
+$ spark-submit \
+    --driver-memory 4g \
+    --executor-cores 4 \
+    --executor-memory 12g \
+    --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.apache.httpcomponents:httpclient:4.5.2,org.elasticsearch.client:elasticsearch-rest-high-level-client:5.6.2" \
+    --class ws.vinta.albedo.ContentRecommenderBuilder \
+    target/albedo-1.0.0-SNAPSHOT.jar
+# NDCG@k = 0.0016596269625977985
+```
+
 ## Train a Logistic Regression Model for Ranking
 
 See [LogisticRegressionRanker.scala](src/main/scala/ws/vinta/albedo/LogisticRegressionRanker.scala) for complete code.
@@ -139,7 +153,6 @@ $ spark-submit \
 
 ## TODO
 
-- Build a recommender system with Spark: Content-based
 - Build a recommender system with Spark: GDBT for Feature Learning
 - Build a recommender system with Spark: Factorization Machine
 - Build a recommender system with Spark: Item2Vec
@@ -148,6 +161,6 @@ $ spark-submit \
 ## Related Posts
 
 - [Build a recommender system with Spark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
-- [Spark SQL cookbook (Scala)](https://vinta.ws/code/spark-sql-cookbook-scala.html)
-- [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
 - [Feature Engineering 特徵工程中常見的方法](https://vinta.ws/code/feature-engineering.html)
+- [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
+- [Spark SQL cookbook (Scala)](https://vinta.ws/code/spark-sql-cookbook-scala.html)
