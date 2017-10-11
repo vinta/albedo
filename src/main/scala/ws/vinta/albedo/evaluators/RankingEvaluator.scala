@@ -21,6 +21,8 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
 
   val metricName = new Param[String](this, "metricName", "評估方式")
 
+  def getFormattedMetricName: String = $(metricName).replaceAll("@k", s"@$k")
+
   def getMetricName: String = $(metricName)
 
   def setMetricName(value: String): this.type = set(metricName, value)
@@ -94,8 +96,7 @@ object RankingEvaluator {
     val path = s"${settings.dataDir}/${settings.today}/userActualItemsDF-$k.parquet"
     loadOrCreateDataFrame(path, () => {
       val rawStarringDS = loadRawStarringDS()
-      val userActualItemsDF = rawStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
-      userActualItemsDF
+      rawStarringDS.transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, k))
     })
   }
 
