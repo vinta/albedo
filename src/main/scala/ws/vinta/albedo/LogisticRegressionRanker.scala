@@ -8,6 +8,7 @@ import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
+import ws.vinta.albedo.schemas.UserItems
 import ws.vinta.albedo.transformers.NegativeBalancer
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
@@ -39,8 +40,8 @@ object LogisticRegressionRanker {
 
     // Handle Imbalanced Samples
 
-    val fullDFpath = s"${settings.dataDir}/${settings.today}/fullDF.parquet"
-    val fullDF = loadOrCreateDataFrame(fullDFpath, () => {
+    val featuredDFpath = s"${settings.dataDir}/${settings.today}/featuredDF.parquet"
+    val featuredDF = loadOrCreateDataFrame(featuredDFpath, () => {
       val popularReposDS = loadPopularRepoDF()
       val popularRepos = popularReposDS
         .select($"repo_id".as[Int])
@@ -56,32 +57,23 @@ object LogisticRegressionRanker {
         .setNegativePositiveRatio(1.0)
       val balancedStarringDF = negativeBalancer.transform(rawStarringDS)
 
-      val fullDF = balancedStarringDF
+      balancedStarringDF
         .join(userProfileDF, Seq("user_id"))
         .join(repoProfileDF, Seq("repo_id"))
-      fullDF
     })
-    fullDF.persist()
+    featuredDF.persist()
 
     // Split Data
 
-    // TODO
-    //val Array(trainingDF, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
-    //trainingDF.cache()
-    //testDF.cache()
-    //
-    //val meDF = spark.createDataFrame(Seq(
-    //  (652070, "vinta")
-    //)).toDF("user_id", "username")
-    //
-    //val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
-    //
-    //val fullTrainingDF = fullDF.join(trainingDF, Seq("user_id"))
-    //val fullTestDF = fullDF.join(testDF, Seq("user_id"))
+    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(Array(0.8, 0.2))
+    trainingFeaturedDF.cache()
 
-    val Array(trainingDF, testDF) = fullDF.randomSplit(Array(0.8, 0.2))
-    trainingDF.cache()
-    testDF.cache()
+    val meDF = spark.createDataFrame(Seq(
+      (652070, "vinta")
+    )).toDF("user_id", "username")
+
+    val testUserDF = testFeaturedDF.select($"user_id").union(meDF.select($"user_id")).distinct()
+    testUserDF.cache()
 
     // Build the Model Pipeline
 
@@ -119,12 +111,10 @@ object LogisticRegressionRanker {
 
     val pipelineModelPath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel.parquet"
     val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
-      pipeline.fit(trainingDF)
+      pipeline.fit(trainingFeaturedDF)
     })
 
     // Make Recommendations
-
-    val testUserDF = testDF.select($"user_id").distinct()
 
     val topK = 30
 
@@ -149,16 +139,16 @@ object LogisticRegressionRanker {
       .reduce(_ union _)
       .select($"user_id", $"repo_id").distinct()
 
-    val candidateDF = userRecommendedItemDF
+    val userCandidateItemDF = userRecommendedItemDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
 
     // Predict the Ranking
 
-    val resultDF = pipelineModel.transform(candidateDF)
-    resultDF.cache()
+    val userRankedItemDF = pipelineModel.transform(userCandidateItemDF)
+    userRankedItemDF.cache()
 
-    resultDF
+    userRankedItemDF
       .select("user_id", "repo_id", "prediction", "probability")
       .where("user_id = 652070")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
@@ -166,21 +156,23 @@ object LogisticRegressionRanker {
 
     // Evaluate the Model
 
-    val userActualItemsDF = testDF
-      .where($"starring" === 1.0)
-      .join(rawStarringDS, Seq("user_id", "repo_id", "starring"), "left_outer") // 為了找回 starred_at 欄位
+    val userActualItemsDS = rawStarringDS
+      .join(testUserDF, Seq("user_id"))
       .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
+      .as[UserItems]
 
-    val userPredictedItemsDF = resultDF.transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
+    val userPredictedItemsDS = userRankedItemDF
+      .transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
+      .as[UserItems]
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("ndcg@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
-    val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
+    val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getMetricName} = $metric")
-    // NDCG@k = 0.010176457322475685
+    // NDCG@30 = 0.010176457322475685
 
     spark.stop()
   }
