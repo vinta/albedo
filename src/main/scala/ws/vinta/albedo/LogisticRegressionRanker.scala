@@ -72,7 +72,9 @@ object LogisticRegressionRanker {
       (652070, "vinta")
     )).toDF("user_id", "username")
 
-    val testUserDF = testFeaturedDF.select($"user_id").union(meDF.select($"user_id")).distinct()
+    val testUserDF = testFeaturedDF
+      .where($"starring" === 1.0)
+      .select($"user_id").union(meDF.select($"user_id")).distinct()
     testUserDF.cache()
 
     // Build the Model Pipeline
@@ -121,19 +123,19 @@ object LogisticRegressionRanker {
     val popularityRecommender = new PopularityRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
-      .setTopK(topK * 2)
+      .setTopK(topK)
 
     val contentRecommender = new ContentRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
-      .setTopK(topK * 2)
+      .setTopK(topK + 10)
 
     val alsRecommender = new ALSRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
-      .setTopK(topK * 2)
+      .setTopK(topK)
 
-    val recommenders = Array(popularityRecommender, contentRecommender, alsRecommender)
+    val recommenders = Array(contentRecommender, alsRecommender)
     val userRecommendedItemDF = recommenders
       .map((recommender: Transformer) => recommender.transform(testUserDF))
       .reduce(_ union _)
@@ -149,16 +151,16 @@ object LogisticRegressionRanker {
     userRankedItemDF.cache()
 
     userRankedItemDF
+      .where($"user_id" === 652070)
       .select("user_id", "repo_id", "prediction", "probability")
-      .where("user_id = 652070")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
+      .limit(topK)
       .show(false)
 
     // Evaluate the Model
 
-    val userActualItemsDS = rawStarringDS
+    val userActualItemsDS = loadUserActualItemsDF(topK)
       .join(testUserDF, Seq("user_id"))
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at".desc, topK))
       .as[UserItems]
 
     val userPredictedItemsDS = userRankedItemDF
@@ -171,7 +173,7 @@ object LogisticRegressionRanker {
       .setUserCol("user_id")
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
-    println(s"${rankingEvaluator.getMetricName} = $metric")
+    println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
     // NDCG@30 = 0.010176457322475685
 
     spark.stop()
