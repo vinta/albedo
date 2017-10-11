@@ -4,7 +4,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{AnalysisException, DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
 
@@ -163,19 +163,9 @@ object RepoProfileBuilder {
     // Save Results
 
     val path = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
-    val repoProfileDF = try {
-      spark.read.parquet(path)
-    } catch {
-      case e: AnalysisException => {
-        if (e.getMessage().contains("Path does not exist")) {
-          val df = repoPipelineModel.transform(transformedRepoInfoDF)
-          df.write.mode("overwrite").parquet(path)
-          df
-        } else {
-          throw e
-        }
-      }
-    }
+    val repoProfileDF = loadOrCreateDataFrame(path, () => {
+      repoPipelineModel.transform(transformedRepoInfoDF)
+    })
 
     // features length: 528
     repoProfileDF.select("repo_id", "full_name", "features").show(false)

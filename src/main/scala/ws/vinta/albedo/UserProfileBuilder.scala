@@ -3,9 +3,9 @@ package ws.vinta.albedo
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature._
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{AnalysisException, SparkSession}
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.transformers.HanLPTokenizer
 import ws.vinta.albedo.utils.DatasetUtils._
@@ -214,19 +214,9 @@ object UserProfileBuilder {
     // Save Results
 
     val path = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
-    val userProfileDF = try {
-      spark.read.parquet(path)
-    } catch {
-      case e: AnalysisException => {
-        if (e.getMessage().contains("Path does not exist")) {
-          val df = userPipelineModel.transform(transformedUserInfoDF)
-          df.write.mode("overwrite").parquet(path)
-          df
-        } else {
-          throw e
-        }
-      }
-    }
+    val userProfileDF = loadOrCreateDataFrame(path, () => {
+      userPipelineModel.transform(transformedUserInfoDF)
+    })
 
     // features length: 923
     userProfileDF.select("user_id", "login", "features").show(false)
