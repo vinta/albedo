@@ -34,10 +34,8 @@ object LogisticRegressionRankerCV {
     // Load Data
 
     val userProfileDF = loadUserProfileDF().select($"user_id", $"features".alias("user_features"))
-    userProfileDF.cache()
 
     val repoProfileDF = loadRepoProfileDF().select($"repo_id", $"features".alias("repo_features"))
-    repoProfileDF.cache()
 
     val rawStarringDS = loadRawStarringDS()
 
@@ -87,10 +85,6 @@ object LogisticRegressionRankerCV {
       .setOutputCol("features")
 
     val lr = new LogisticRegression()
-      .setMaxIter(10)
-      .setRegParam(0.0)
-      .setElasticNetParam(0.0)
-      .setStandardization(true)
       .setFeaturesCol("features")
       .setLabelCol("starring")
 
@@ -99,13 +93,13 @@ object LogisticRegressionRankerCV {
 
     // Cross-validate Models
 
-    val subsetFeaturedDF = featuredDF.sample(withReplacement = true, 0.05)
+    val subsetFeaturedDF = featuredDF.sample(withReplacement = true, 0.2)
     subsetFeaturedDF.cache()
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(lr.maxIter, Array(10))
-      .addGrid(lr.regParam, Array(0.0, 0.5, 0.8))
-      .addGrid(lr.elasticNetParam, Array(0.0, 0.5, 0.8))
+      .addGrid(lr.maxIter, Array(10, 15))
+      .addGrid(lr.regParam, Array(0.08, 0.5, 0.8))
+      .addGrid(lr.elasticNetParam, Array(0.08, 0.5, 0.8))
       .addGrid(lr.standardization, Array(false))
       .build()
 
