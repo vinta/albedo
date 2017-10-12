@@ -37,10 +37,8 @@ object LogisticRegressionRanker {
     // Load Data
 
     val userProfileDF = loadUserProfileDF().select($"user_id", $"features".alias("user_features"))
-    userProfileDF.cache()
 
     val repoProfileDF = loadRepoProfileDF().select($"repo_id", $"features".alias("repo_features"))
-    repoProfileDF.cache()
 
     val rawStarringDS = loadRawStarringDS()
 
@@ -67,11 +65,10 @@ object LogisticRegressionRanker {
         .join(userProfileDF, Seq("user_id"))
         .join(repoProfileDF, Seq("repo_id"))
     })
-    //featuredDF.persist()
 
     // Split Data
 
-    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(Array(0.8, 0.2))
+    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(Array(0.9, 0.1))
     trainingFeaturedDF.cache()
 
     val meDF = spark.createDataFrame(Seq(
@@ -79,8 +76,10 @@ object LogisticRegressionRanker {
     )).toDF("user_id", "username")
 
     val testUserDF = testFeaturedDF
-      .where($"starring" === 1.0)
-      .select($"user_id").union(meDF.select($"user_id")).distinct()
+      .select($"user_id")
+      .distinct()
+      .limit(500)
+      .union(meDF.select($"user_id"))
     testUserDF.cache()
 
     // Build the Model Pipeline
@@ -106,13 +105,13 @@ object LogisticRegressionRanker {
 
     val lr = new LogisticRegression()
       .setMaxIter(10)
-      .setRegParam(0.0)
-      .setElasticNetParam(0.0)
-      .setStandardization(true)
+      .setRegParam(0.5)
+      .setElasticNetParam(0.5)
+      .setStandardization(false)
       .setFeaturesCol("features")
       .setLabelCol("starring")
 
-    val pipeline: Pipeline = new Pipeline()
+    val pipeline = new Pipeline()
       .setStages((categoricalTransformers :+ vectorAssembler :+ lr).toArray)
 
     // Train the Model
@@ -147,11 +146,17 @@ object LogisticRegressionRanker {
       .setItemCol("repo_id")
       .setTopK(topK)
 
-    val recommenders = Array(alsRecommender, contentRecommender, curationRecommender, popularityRecommender)
+    val recommenders = mutable.ArrayBuffer.empty[Recommender]
+    recommenders += alsRecommender
+    //recommenders += contentRecommender
+    //recommenders += curationRecommender
+    //recommenders += popularityRecommender
+
     val userRecommendedItemDF = recommenders
       .map((recommender: Transformer) => recommender.transform(testUserDF))
       .reduce(_ union _)
-      .select($"user_id", $"repo_id").distinct()
+      .select($"user_id", $"repo_id")
+      .distinct()
 
     val userCandidateItemDF = userRecommendedItemDF
       .join(userProfileDF, Seq("user_id"))
@@ -160,7 +165,6 @@ object LogisticRegressionRanker {
     // Predict the Ranking
 
     val userRankedItemDF = pipelineModel.transform(userCandidateItemDF)
-    userRankedItemDF.cache()
 
     userRankedItemDF
       .where($"user_id" === 652070)

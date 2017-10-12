@@ -22,15 +22,17 @@ object ContentRecommenderBuilder {
 
     // Split Data
 
-    // 雖然不是每個演算法都需要劃分 training set 和 test set
-    // 不過為了方便比較，我們還是統一使用 20% 的 test set 來評估每個模型
-    val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
+    val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.9, 0.1))
 
     val meDF = spark.createDataFrame(Seq(
       (652070, "vinta")
     )).toDF("user_id", "username")
 
-    val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
+    val testUserDF = testDF
+      .select($"user_id")
+      .distinct()
+      .limit(500)
+      .union(meDF.select($"user_id"))
     testUserDF.cache()
 
     // Make Recommendations
@@ -63,7 +65,7 @@ object ContentRecommenderBuilder {
       .setUserCol("user_id")
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
-    println(s"${rankingEvaluator.getMetricName} = $metric")
+    println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
     // NDCG@30 = 0.0016596269625977985
 
     spark.stop()

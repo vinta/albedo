@@ -54,13 +54,17 @@ object ALSRecommenderBuilder {
 
     // Split Data
 
-    val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
+    val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.9, 0.1))
 
     val meDF = spark.createDataFrame(Seq(
       (652070, "vinta")
     )).toDF("user_id", "username")
 
-    val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
+    val testUserDF = testDF
+      .select($"user_id")
+      .distinct()
+      .limit(500)
+      .union(meDF.select($"user_id"))
     testUserDF.cache()
 
     // Make Recommendations
@@ -93,7 +97,7 @@ object ALSRecommenderBuilder {
       .setUserCol("user_id")
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
-    println(s"${rankingEvaluator.getMetricName} = $metric")
+    println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
     // NDCG@30 = 0.05026158143766048
 
     spark.stop()
