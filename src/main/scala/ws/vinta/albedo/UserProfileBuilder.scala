@@ -183,7 +183,7 @@ object UserProfileBuilder {
         .setInputCol(columnName)
         .setOutputCol(s"${columnName}_words")
 
-      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/20170903/word2VecModelCorpus.parquet")
+      val word2VecModel = Word2VecModel.load(s"${settings.dataDir}/${settings.today}/corpusPipelineModel.parquet")
         .setInputCol(s"${columnName}_words")
         .setOutputCol(s"${columnName}_w2v")
 
