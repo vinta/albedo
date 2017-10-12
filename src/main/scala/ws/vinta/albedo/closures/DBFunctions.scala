@@ -6,7 +6,7 @@ import java.util.Properties
 import scala.collection.mutable.ArrayBuffer
 
 object DBFunctions {
-  def selectUserStarredRepos(userId: Int): Array[Int] = {
+  def selectUserStarredRepos(userId: Int, limit: Int, offset: Int): Array[Int] = {
     val dbUrl = "jdbc:mysql://127.0.0.1:3306/albedo?verifyServerCertificate=false&useSSL=false&rewriteBatchedStatements=true"
     val props = new Properties()
     props.setProperty("driver", "com.mysql.jdbc.Driver")
@@ -20,7 +20,8 @@ object DBFunctions {
     FROM app_repostarring
     WHERE user_id = $userId
     ORDER BY starred_at DESC
-    LIMIT 15;
+    LIMIT $limit
+    OFFSET $offset;
     """.stripMargin(' '))
 
     val repoIds = ArrayBuffer.empty[Int]

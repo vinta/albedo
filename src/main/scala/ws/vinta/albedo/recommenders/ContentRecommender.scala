@@ -1,6 +1,7 @@
 package ws.vinta.albedo.recommenders
 
 import org.apache.http.HttpHost
+import org.apache.spark.ml.param.Param
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset}
@@ -18,6 +19,13 @@ class ContentRecommender(override val uid: String) extends Recommender {
     this(Identifiable.randomUID("contentRecommender"))
   }
 
+  val enableEvaluationMode = new Param[Boolean](this, "enableEvaluationMode", "Should be enable for evaluation only")
+
+  def getEnableEvaluationMode: Boolean = $(enableEvaluationMode)
+
+  def setEnableEvaluationMode(value: Boolean): this.type = set(enableEvaluationMode, value)
+  setDefault(enableEvaluationMode -> false)
+
   override def source = "content"
 
   override def recommendForUsers(userDF: Dataset[_]): DataFrame = {
@@ -29,7 +37,13 @@ class ContentRecommender(override val uid: String) extends Recommender {
       .as[Int]
       .flatMap {
         case (userId) => {
-          val repoIds = selectUserStarredRepos(userId)
+          // 因為 More Like This query 用 document id 查詢時
+          // 結果會過濾掉那些做為條件的 document ids
+          // 但是這樣在 evaluate 的時候就不太合適了
+          // 所以我們改用後 k 個 repo 當作查詢條件
+          val limit = $(topK)
+          val offset = if ($(enableEvaluationMode)) $(topK) else 0
+          val repoIds = selectUserStarredRepos(userId, limit, offset)
 
           val lowClient = RestClient.builder(new HttpHost("127.0.0.1", 9200, "http")).build()
           val highClient = new RestHighLevelClient(lowClient)
@@ -38,13 +52,13 @@ class ContentRecommender(override val uid: String) extends Recommender {
           val texts = Array("")
           val items = repoIds.map((itemId: Int) => new Item("repo", "repo_info_doc", itemId.toString))
           val queryBuilder = moreLikeThisQuery(fields, texts, items)
-            .minTermFreq(1)
-            .maxQueryTerms(20)
+            .minTermFreq(2)
+            .maxQueryTerms(50)
 
           val searchSourceBuilder = new SearchSourceBuilder()
           searchSourceBuilder.query(queryBuilder)
-          searchSourceBuilder.from(0)
           searchSourceBuilder.size($(topK))
+          searchSourceBuilder.from(0)
 
           val searchRequest = new SearchRequest()
           searchRequest.indices("repo")

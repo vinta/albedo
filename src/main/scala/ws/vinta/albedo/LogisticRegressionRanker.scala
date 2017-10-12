@@ -135,6 +135,7 @@ object LogisticRegressionRanker {
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setTopK(topK)
+      .setEnableEvaluationMode(true)
 
     val curationRecommender = new CurationRecommender()
       .setUserCol("user_id")
