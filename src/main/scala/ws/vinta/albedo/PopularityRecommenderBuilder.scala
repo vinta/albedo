@@ -70,7 +70,7 @@ object PopularityRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.0010226370987782996
+    // NDCG@30 = 0.002017744675282716
 
     spark.stop()
   }

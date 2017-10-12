@@ -98,7 +98,7 @@ object ALSRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.05026158143766048
+    // NDCG@30 = 0.0446297620472787
 
     spark.stop()
   }

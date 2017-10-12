@@ -68,7 +68,7 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(Array(0.9, 0.1))
+    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(Array(0.8, 0.2))
     trainingFeaturedDF.cache()
 
     val meDF = spark.createDataFrame(Seq(
@@ -148,8 +148,8 @@ object LogisticRegressionRanker {
 
     val recommenders = mutable.ArrayBuffer.empty[Recommender]
     recommenders += alsRecommender
-    //recommenders += contentRecommender
-    //recommenders += curationRecommender
+    recommenders += contentRecommender
+    recommenders += curationRecommender
     //recommenders += popularityRecommender
 
     val userRecommendedItemDF = recommenders

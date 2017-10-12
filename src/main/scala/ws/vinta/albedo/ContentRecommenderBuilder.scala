@@ -43,6 +43,7 @@ object ContentRecommenderBuilder {
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setTopK(topK)
+      .setEnableEvaluationMode(true)
 
     val userRecommendedItemDF = contentRecommender.recommendForUsers(testUserDF)
     userRecommendedItemDF.cache()
@@ -66,7 +67,7 @@ object ContentRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.0016596269625977985
+    // NDCG@30 = 0.002559563451967487
 
     spark.stop()
   }

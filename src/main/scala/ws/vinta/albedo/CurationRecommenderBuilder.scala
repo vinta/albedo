@@ -67,7 +67,7 @@ object CurationRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.00067849479
+    // NDCG@30 = 0.003191581739397516
 
     spark.stop()
   }
