@@ -14,6 +14,25 @@ object DatasetUtils {
   props.setProperty("user", "root")
   props.setProperty("password", "123")
 
+  def randomSplitByUser(df: DataFrame, userCol: String, trainingTestRatio: Double): Array[DataFrame] = {
+    val spark = df.sparkSession
+    import spark.implicits._
+
+    val fractions = df
+      .select(userCol)
+      .distinct()
+      .map(row => (row.getInt(0), trainingTestRatio))
+      .collect()
+      .to[List]
+      .toMap
+    val trainingDF = df.stat.sampleBy("user_id", fractions, 42)
+
+    val testRDD = df.rdd.subtract(trainingDF.rdd)
+    val testDF = spark.createDataFrame(testRDD, df.schema)
+
+    Array(trainingDF, testDF)
+  }
+
   def loadOrCreateDataFrame(path: String, createDataFrameFunc: () => DataFrame)(implicit spark: SparkSession): DataFrame = {
     try {
       spark.read.parquet(path)
