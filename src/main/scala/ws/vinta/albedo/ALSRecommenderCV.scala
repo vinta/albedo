@@ -69,7 +69,7 @@ object ALSRecommenderCV {
       .as[UserItems]
     userActualItemsDS.cache()
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
+    val evaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
@@ -78,7 +78,7 @@ object ALSRecommenderCV {
     val cv = new CrossValidator()
       .setEstimator(pipeline)
       .setEstimatorParamMaps(paramGrid)
-      .setEvaluator(rankingEvaluator)
+      .setEvaluator(evaluator)
       .setNumFolds(2)
 
     val cvModel = cv.fit(rawStarringDS)
