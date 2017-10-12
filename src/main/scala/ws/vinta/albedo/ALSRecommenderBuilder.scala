@@ -25,9 +25,6 @@ object ALSRecommenderBuilder {
 
     import spark.implicits._
 
-    val sc = spark.sparkContext
-    sc.setCheckpointDir("./spark-data/checkpoint")
-
     // Load Data
 
     val rawStarringDS = loadRawStarringDS()
@@ -56,15 +53,9 @@ object ALSRecommenderBuilder {
 
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.9, 0.1))
 
-    val meDF = spark.createDataFrame(Seq(
-      (652070, "vinta")
-    )).toDF("user_id", "username")
-
-    val testUserDF = testDF
-      .select($"user_id")
-      .distinct()
-      .limit(500)
-      .union(meDF.select($"user_id"))
+    val largeUserIds = testDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(500) :+ 652070
+    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_))).toDF("user_id")
     testUserDF.cache()
 
     // Make Recommendations
@@ -98,7 +89,7 @@ object ALSRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.0446297620472787
+    // NDCG@30 = 0.04818769346035656
 
     spark.stop()
   }

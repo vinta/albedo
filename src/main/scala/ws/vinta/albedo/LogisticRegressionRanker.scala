@@ -32,7 +32,6 @@ object LogisticRegressionRanker {
     import spark.implicits._
 
     val sc = spark.sparkContext
-    sc.setCheckpointDir("./spark-data/checkpoint")
 
     // Load Data
 
@@ -68,18 +67,15 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(Array(0.8, 0.2))
+    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.01, 0.99) else Array(0.8, 0.2)
+    val takeN = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 50 else 500
+
+    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
     trainingFeaturedDF.cache()
 
-    val meDF = spark.createDataFrame(Seq(
-      (652070, "vinta")
-    )).toDF("user_id", "username")
-
-    val testUserDF = testFeaturedDF
-      .select($"user_id")
-      .distinct()
-      .limit(500)
-      .union(meDF.select($"user_id"))
+    val largeUserIds = testFeaturedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(takeN) :+ 652070
+    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_))).toDF("user_id")
     testUserDF.cache()
 
     // Build the Model Pipeline
@@ -148,8 +144,8 @@ object LogisticRegressionRanker {
 
     val recommenders = mutable.ArrayBuffer.empty[Recommender]
     recommenders += alsRecommender
-    recommenders += contentRecommender
-    recommenders += curationRecommender
+    //recommenders += contentRecommender
+    //recommenders += curationRecommender
     //recommenders += popularityRecommender
 
     val userRecommendedItemDF = recommenders
@@ -165,10 +161,11 @@ object LogisticRegressionRanker {
     // Predict the Ranking
 
     val userRankedItemDF = pipelineModel.transform(userCandidateItemDF)
+    userCandidateItemDF.cache()
 
     userRankedItemDF
       .where($"user_id" === 652070)
-      .select("user_id", "repo_id", "prediction", "probability")
+      .select("user_id", "repo_id", "prediction", "probability", "rawPrediction")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
       .limit(topK)
       .show(false)
@@ -190,7 +187,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.010176457322475685
+    // NDCG@30 = 0.0035347470446850824
 
     spark.stop()
   }
