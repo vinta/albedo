@@ -1,5 +1,6 @@
 package ws.vinta.albedo
 
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
@@ -11,15 +12,21 @@ import ws.vinta.albedo.recommenders.ALSRecommender
 
 object ALSRecommenderBuilder {
   def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.set("spark.driver.memory", "4g")
+    conf.set("spark.executor.memory", "12g")
+    conf.set("spark.executor.cores", "4")
+
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("ALSRecommenderBuilder")
+      .config(conf)
       .getOrCreate()
+
+    import spark.implicits._
 
     val sc = spark.sparkContext
     sc.setCheckpointDir("./spark-data/checkpoint")
-
-    import spark.implicits._
 
     // Load Data
 
@@ -47,8 +54,6 @@ object ALSRecommenderBuilder {
 
     // Split Data
 
-    // 雖然不是每個演算法都需要劃分 training set 和 test set
-    // 不過為了方便比較，我們還是統一使用 20% 的 test set 來評估每個模型
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.8, 0.2))
 
     val meDF = spark.createDataFrame(Seq(
@@ -83,7 +88,7 @@ object ALSRecommenderBuilder {
       .as[UserItems]
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
-      .setMetricName("ndcg@k")
+      .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")

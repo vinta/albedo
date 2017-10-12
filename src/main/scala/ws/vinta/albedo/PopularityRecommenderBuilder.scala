@@ -62,7 +62,7 @@ object PopularityRecommenderBuilder {
       .as[UserItems]
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
-      .setMetricName("ndcg@k")
+      .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")

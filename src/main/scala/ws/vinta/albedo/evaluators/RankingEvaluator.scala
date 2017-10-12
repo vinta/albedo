@@ -19,30 +19,30 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
     this(Identifiable.randomUID("rankingEvaluator"), userActualItemsDF)
   }
 
-  val metricName = new Param[String](this, "metricName", "評估方式")
+  val metricName = new Param[String](this, "metricName", "Metric name (supports \"NDCG@k\" (default), \"Precision@k\", and \"MAP\")")
 
-  def getFormattedMetricName: String = $(metricName).replaceAll("@k", s"@$k")
+  def getFormattedMetricName: String = $(metricName).replaceAll("@k", s"@${$(k)}")
 
   def getMetricName: String = $(metricName)
 
   def setMetricName(value: String): this.type = set(metricName, value)
-  setDefault(metricName -> "ndcg@k")
+  setDefault(metricName -> "NDCG@k")
 
-  val k = new IntParam(this, "k", "只評估前 k 個 items 的排序結果")
+  val k = new IntParam(this, "k", "Evaluate top-k items for every user")
 
   def getK: Int = $(k)
 
   def setK(value: Int): this.type = set(k, value)
   setDefault(k -> 15)
 
-  val userCol = new Param[String](this, "userCol", "User 所在的欄位名稱")
+  val userCol = new Param[String](this, "userCol", "User column name")
 
   def getUserCol: String = $(userCol)
 
   def setUserCol(value: String): this.type = set(userCol, value)
   setDefault(userCol -> "user")
 
-  val itemsCol = new Param[String](this, "itemsCol", "Items 所在的欄位名稱")
+  val itemsCol = new Param[String](this, "itemsCol", "Items column name")
 
   def getItemsCol: String = $(itemsCol)
 
@@ -50,9 +50,9 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
   setDefault(itemsCol -> "items")
 
   override def isLargerBetter: Boolean = $(metricName) match {
-    case "map" => true
-    case "ndcg@k" => true
-    case "precision@k" => true
+    case "NDCG@k" => true
+    case "Precision@k" => true
+    case "MAP" => true
   }
 
   def evaluateSchema(schema: StructType): StructType = {
@@ -77,9 +77,9 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
 
     val rankingMetrics = new RankingMetrics(bothItemsRDD)
     val metric = $(metricName) match {
-      case "map" => rankingMetrics.meanAveragePrecision
-      case "ndcg@k" => rankingMetrics.ndcgAt($(k))
-      case "precision@k" => rankingMetrics.precisionAt($(k))
+      case "NDCG@k" => rankingMetrics.ndcgAt($(k))
+      case "Precision@k" => rankingMetrics.precisionAt($(k))
+      case "MAP" => rankingMetrics.meanAveragePrecision
     }
     metric
   }

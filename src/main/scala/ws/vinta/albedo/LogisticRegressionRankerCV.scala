@@ -1,5 +1,6 @@
 package ws.vinta.albedo
 
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
@@ -8,13 +9,21 @@ import org.apache.spark.sql.SparkSession
 
 object LogisticRegressionRankerCV {
   def main(args: Array[String]): Unit = {
-    implicit val spark = SparkSession
+    val conf = new SparkConf()
+    conf.set("spark.driver.memory", "4g")
+    conf.set("spark.executor.memory", "12g")
+    conf.set("spark.executor.cores", "4")
+
+    implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("LRRankerCV")
+      .appName("LogisticRegressionRankerCV")
+      .config(conf)
       .getOrCreate()
 
-    implicit val sc = spark.sparkContext
-    sc.setLogLevel("WARN")
+    import spark.implicits._
+
+    val sc = spark.sparkContext
+    sc.setCheckpointDir("./spark-data/checkpoint")
 
     // Cross-validate Models
 

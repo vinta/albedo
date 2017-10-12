@@ -1,6 +1,5 @@
 package ws.vinta.albedo
 
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
@@ -10,25 +9,14 @@ import ws.vinta.albedo.utils.DatasetUtils._
 
 object ContentRecommenderBuilder {
   def main(args: Array[String]): Unit = {
-    val conf = new SparkConf()
-    conf.set("spark.driver.memory", "4g")
-    conf.set("spark.executor.memory", "12g")
-    conf.set("spark.executor.cores", "4")
-
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("ContentRecommenderBuilder")
-      .config(conf)
       .getOrCreate()
 
     import spark.implicits._
 
-    val sc = spark.sparkContext
-    sc.setCheckpointDir("./spark-data/checkpoint")
-
     // Load Data
-
-    val rawRepoInfoDS = loadRawRepoInfoDS()
 
     val rawStarringDS = loadRawStarringDS()
 
@@ -70,7 +58,7 @@ object ContentRecommenderBuilder {
       .as[UserItems]
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
-      .setMetricName("ndcg@k")
+      .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")

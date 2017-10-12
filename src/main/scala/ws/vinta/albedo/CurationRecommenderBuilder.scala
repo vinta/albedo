@@ -33,7 +33,7 @@ object CurationRecommenderBuilder {
 
     val testUserDF = testDF.select($"user_id").union(meDF.select($"user_id")).distinct()
     testUserDF.cache()
-    
+
     // Make Recommendations
 
     val topK = 30
@@ -59,7 +59,7 @@ object CurationRecommenderBuilder {
       .as[UserItems]
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
-      .setMetricName("ndcg@k")
+      .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")

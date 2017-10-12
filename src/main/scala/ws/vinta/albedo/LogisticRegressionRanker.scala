@@ -1,5 +1,6 @@
 package ws.vinta.albedo
 
+import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
@@ -17,9 +18,15 @@ import scala.collection.mutable
 
 object LogisticRegressionRanker {
   def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+    conf.set("spark.driver.memory", "4g")
+    conf.set("spark.executor.memory", "12g")
+    conf.set("spark.executor.cores", "4")
+
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("LogisticRegressionRanker")
+      .config(conf)
       .getOrCreate()
 
     import spark.implicits._
@@ -36,7 +43,6 @@ object LogisticRegressionRanker {
     repoProfileDF.cache()
 
     val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
 
     // Handle Imbalanced Samples
 
@@ -61,7 +67,7 @@ object LogisticRegressionRanker {
         .join(userProfileDF, Seq("user_id"))
         .join(repoProfileDF, Seq("repo_id"))
     })
-    featuredDF.persist()
+    //featuredDF.persist()
 
     // Split Data
 
@@ -120,22 +126,27 @@ object LogisticRegressionRanker {
 
     val topK = 30
 
+    val alsRecommender = new ALSRecommender()
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setTopK(topK * 2)
+
+    val contentRecommender = new ContentRecommender()
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setTopK(topK)
+
+    val curationRecommender = new CurationRecommender()
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setTopK(topK)
+
     val popularityRecommender = new PopularityRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setTopK(topK)
 
-    val contentRecommender = new ContentRecommender()
-      .setUserCol("user_id")
-      .setItemCol("repo_id")
-      .setTopK(topK + 10)
-
-    val alsRecommender = new ALSRecommender()
-      .setUserCol("user_id")
-      .setItemCol("repo_id")
-      .setTopK(topK)
-
-    val recommenders = Array(contentRecommender, alsRecommender)
+    val recommenders = Array(alsRecommender, contentRecommender, curationRecommender, popularityRecommender)
     val userRecommendedItemDF = recommenders
       .map((recommender: Transformer) => recommender.transform(testUserDF))
       .reduce(_ union _)
@@ -168,7 +179,7 @@ object LogisticRegressionRanker {
       .as[UserItems]
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
-      .setMetricName("ndcg@k")
+      .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
