@@ -4,6 +4,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
+import org.apache.spark.ml.recommendation.ALSModel
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
@@ -67,7 +68,7 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.2, 0.8) else Array(0.8, 0.2)
+    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.1, 0.9) else Array(0.8, 0.2)
     val takeN = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 50 else 500
 
     val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
@@ -95,8 +96,15 @@ object LogisticRegressionRanker {
       Array(stringIndexer, oneHotEncoder)
     })
 
+    val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
+    val alsModel = ALSModel.load(alsModelPath)
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setPredictionCol("als_score")
+      .setColdStartStrategy("drop")
+
     val vectorAssembler = new VectorAssembler()
-      .setInputCols(Array("user_id_ohe", "repo_id_ohe", "user_features", "repo_features"))
+      .setInputCols(Array("user_id_ohe", "repo_id_ohe", "user_features", "repo_features", "als_score"))
       .setOutputCol("features")
 
     val lr = new LogisticRegression()
@@ -108,7 +116,7 @@ object LogisticRegressionRanker {
       .setLabelCol("starring")
 
     val pipeline = new Pipeline()
-      .setStages((categoricalTransformers :+ vectorAssembler :+ lr).toArray)
+      .setStages((categoricalTransformers :+ alsModel :+ vectorAssembler :+ lr).toArray)
 
     // Train the Model
 
