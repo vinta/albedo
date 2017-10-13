@@ -7,9 +7,9 @@ import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
-import ws.vinta.albedo.evaluators.RankingEvaluator.intoUserActualItems
-import ws.vinta.albedo.transformers.PredictionFormatter
+import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas.UserItems
+import ws.vinta.albedo.transformers.ALSPredictionFormatter
 import ws.vinta.albedo.utils.DatasetUtils._
 
 object ALSRecommenderCV {
@@ -45,13 +45,13 @@ object ALSRecommenderCV {
       .setItemCol("repo_id")
       .setRatingCol("starring")
 
-    val predictionFormatter = new PredictionFormatter()
+    val alsPredictionFormatter = new ALSPredictionFormatter()
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setPredictionCol("prediction")
 
     val pipeline = new Pipeline()
-      .setStages(Array(als, predictionFormatter))
+      .setStages(Array(als, alsPredictionFormatter))
 
     // Cross-validate Models
 
@@ -64,8 +64,7 @@ object ALSRecommenderCV {
 
     val topK = 30
 
-    val userActualItemsDS = rawStarringDS
-      .transform(intoUserActualItems($"user_id", $"repo_id", $"starred_at", topK))
+    val userActualItemsDS = loadUserActualItemsDF(topK)
       .as[UserItems]
     userActualItemsDS.cache()
 
