@@ -6,7 +6,6 @@ import org.apache.spark.ml.param.{DoubleParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
-import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 import scala.collection.mutable
 
@@ -53,9 +52,13 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
   setDefault(negativePositiveRatio -> 1.0)
 
   override def transformSchema(schema: StructType): StructType = {
-    checkColumnType(schema, $(userCol), IntegerType)
-    checkColumnType(schema, $(itemCol), IntegerType)
-    checkColumnType(schema, $(labelCol), DoubleType)
+    Map($(userCol) -> IntegerType, $(itemCol) -> IntegerType, $(labelCol) -> DoubleType)
+      .foreach{
+        case(columnName: String, expectedDataType: DataType) => {
+          val actualDataType = schema(columnName).dataType
+          require(actualDataType.equals(IntegerType), s"Column $columnName must be of type $expectedDataType but was actually $actualDataType.")
+        }
+      }
 
     schema
   }

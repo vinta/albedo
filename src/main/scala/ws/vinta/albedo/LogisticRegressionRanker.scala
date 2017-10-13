@@ -100,8 +100,8 @@ object LogisticRegressionRanker {
       .setOutputCol("features")
 
     val lr = new LogisticRegression()
-      .setMaxIter(15)
-      .setRegParam(0.5)
+      .setMaxIter(10)
+      .setRegParam(0.8)
       .setElasticNetParam(0.5)
       .setStandardization(false)
       .setFeaturesCol("features")
