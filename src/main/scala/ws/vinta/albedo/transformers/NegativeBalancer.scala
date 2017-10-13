@@ -16,35 +16,35 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
     this(Identifiable.randomUID("negativeBalancer"), bcPopularItems)
   }
 
-  val userCol = new Param[String](this, "userCol", "User 所在的欄位名稱")
+  val userCol = new Param[String](this, "userCol", "User column name")
 
   def getUserCol: String = $(userCol)
 
   def setUserCol(value: String): this.type = set(userCol, value)
   setDefault(userCol -> "user")
 
-  val itemCol = new Param[String](this, "itemCol", "Item 所在的欄位名稱")
+  val itemCol = new Param[String](this, "itemCol", "Item column name")
 
   def getItemCol: String = $(itemCol)
 
   def setItemCol(value: String): this.type = set(itemCol, value)
   setDefault(itemCol -> "item")
 
-  val labelCol = new Param[String](this, "labelCol", "Label 所在的欄位名稱")
+  val labelCol = new Param[String](this, "labelCol", "Label column name")
 
   def getLabelCol: String = $(labelCol)
 
   def setLabelCol(value: String): this.type = set(labelCol, value)
   setDefault(labelCol -> "label")
 
-  val negativeValue = new DoubleParam(this, "negativeValue", "負樣本的值")
+  val negativeValue = new DoubleParam(this, "negativeValue", "The value of negative samples")
 
   def getNegativeValue: Double = $(negativeValue)
 
   def setNegativeValue(value: Double): this.type = set(negativeValue, value)
   setDefault(negativeValue -> 0.0)
 
-  val negativePositiveRatio = new DoubleParam(this, "negativePositiveRatio", "負樣本與正樣本的比例")
+  val negativePositiveRatio = new DoubleParam(this, "negativePositiveRatio", "The ratio of negative and positive samples")
 
   def getNegativePositiveRatio: Double = $(negativePositiveRatio)
 

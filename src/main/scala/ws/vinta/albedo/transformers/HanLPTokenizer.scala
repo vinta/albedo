@@ -15,7 +15,7 @@ class HanLPTokenizer(override val uid: String)
     this(Identifiable.randomUID("hanLPTokenizer"))
   }
 
-  val shouldRemoveStopWords = new BooleanParam(this, "shouldRemoveStopWords", "是否移除 Stop Words")
+  val shouldRemoveStopWords = new BooleanParam(this, "shouldRemoveStopWords", "Whether to remove stop words")
 
   def getShouldRemoveStopWords: Boolean = $(shouldRemoveStopWords)
 
