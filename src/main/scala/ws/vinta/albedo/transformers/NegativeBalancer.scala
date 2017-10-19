@@ -56,7 +56,7 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
       .foreach{
         case(columnName: String, expectedDataType: DataType) => {
           val actualDataType = schema(columnName).dataType
-          require(actualDataType.equals(IntegerType), s"Column $columnName must be of type $expectedDataType but was actually $actualDataType.")
+          require(actualDataType.equals(expectedDataType), s"Column $columnName must be of type $expectedDataType but was actually $actualDataType.")
         }
       }
 
