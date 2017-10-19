@@ -31,15 +31,15 @@ class HanLPTokenizer(override val uid: String)
     if ($(shouldRemoveStopWords)) {
       CoreStopWordDictionary.apply(termList)
 
-      val OneCharRE = """([`~\!@#$%\^&\*\(\)_\-=\+\{\}\[\]\|:;\"\',<\.>\/\\\?])""".r
-      val LanguageRE = """(\w[\+\#]+)""".r
+      val LanguageRE = """(c|r|c\+\+|c#|f#)""".r
+      val OneCharExceptCJKRE = """([^\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}])""".r
       termList
         .toArray
         .flatMap((term: java.lang.Object) => {
           val word = term.asInstanceOf[Term].word
           word match {
-            case OneCharRE(_) => Array.empty[String]
-            case LanguageRE(lang) => Array(lang)
+            case LanguageRE(language) => Array(language)
+            case OneCharExceptCJKRE(_) => Array.empty[String]
             case _ => """([\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}]+)""".r.findAllIn(word).toList
           }
         })

@@ -73,7 +73,7 @@ object Word2VecBuilder {
     })
 
     val word2vecDF = word2VecModel.transform(filteredDF)
-    word2vecDF.sample(false, 0.5).show(500, false)
+    word2vecDF.show(false)
 
     spark.stop()
   }
