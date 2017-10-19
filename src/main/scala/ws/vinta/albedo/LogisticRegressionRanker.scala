@@ -2,6 +2,7 @@ package ws.vinta.albedo
 
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
 import org.apache.spark.ml.recommendation.ALSModel
@@ -146,6 +147,7 @@ object LogisticRegressionRanker {
 
     val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
     trainingFeaturedDF.cache()
+    testFeaturedDF.cache()
 
     val largeUserIds = testFeaturedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
     val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(takeN) :+ 652070
@@ -229,7 +231,7 @@ object LogisticRegressionRanker {
 
     val lr = new LogisticRegression()
       .setMaxIter(10)
-      .setRegParam(0.5)
+      .setRegParam(0.0)
       .setElasticNetParam(0.1)
       .setStandardization(false)
       .setFeaturesCol("standard_features")
@@ -245,6 +247,18 @@ object LogisticRegressionRanker {
     val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
       pipeline.fit(trainingFeaturedDF)
     })
+
+    // Evaluate
+
+    val testResultDF = pipelineModel.transform(testFeaturedDF)
+
+    val binaryClassificationEvaluator = new BinaryClassificationEvaluator()
+      .setMetricName("areaUnderROC")
+      .setRawPredictionCol("rawPrediction")
+      .setLabelCol("starring")
+
+    val classificationMetric = binaryClassificationEvaluator.evaluate(testResultDF)
+    println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
 
     // Make Recommendations
 
