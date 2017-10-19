@@ -3,7 +3,7 @@ package ws.vinta.albedo.transformers
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{DoubleParam, Param, ParamMap}
-import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
+import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 
@@ -104,3 +104,5 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
     defaultCopy(extra)
   }
 }
+
+object NegativeBalancer extends DefaultParamsReadable[NegativeBalancer]
