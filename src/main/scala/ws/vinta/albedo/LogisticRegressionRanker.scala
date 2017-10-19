@@ -11,7 +11,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.NegativeBalancer
+import ws.vinta.albedo.transformers.{HanLPTokenizer, NegativeBalancer}
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
@@ -36,16 +36,16 @@ object LogisticRegressionRanker {
 
     // Load Data
 
-    val userProfileDF = loadUserProfileDF().select($"user_id", $"features".alias("user_features"))
+    val userProfileDF = loadUserProfileDF()
 
-    val repoProfileDF = loadRepoProfileDF().select($"repo_id", $"features".alias("repo_features"))
+    val repoProfileDF = loadRepoProfileDF()
 
     val rawStarringDS = loadRawStarringDS()
 
     // Handle Imbalanced Samples
 
-    val featuredDFpath = s"${settings.dataDir}/${settings.today}/featuredDF.parquet"
-    val featuredDF = loadOrCreateDataFrame(featuredDFpath, () => {
+    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF.parquet"
+    val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
       val popularReposDS = loadPopularRepoDF()
       val popularRepos = popularReposDS
         .select($"repo_id".as[Int])
@@ -59,17 +59,90 @@ object LogisticRegressionRanker {
         .setLabelCol("starring")
         .setNegativeValue(0.0)
         .setNegativePositiveRatio(1.0)
-      val balancedStarringDF = negativeBalancer.transform(rawStarringDS)
-
-      balancedStarringDF
-        .join(userProfileDF, Seq("user_id"))
-        .join(repoProfileDF, Seq("repo_id"))
+      negativeBalancer.transform(rawStarringDS)
     })
+
+    // Feature Engineering
+
+    val continuousColumnNames = mutable.ArrayBuffer.empty[String]
+    val categoricalColumnNames = mutable.ArrayBuffer.empty[String]
+    val listColumnNames = mutable.ArrayBuffer.empty[String]
+    val textColumnNames = mutable.ArrayBuffer.empty[String]
+
+    val featuredDF = balancedStarringDF
+      .join(userProfileDF, Seq("user_id"))
+      .join(repoProfileDF, Seq("repo_id"))
+
+    featuredDF.show(false)
+
+    categoricalColumnNames += "user_id"
+    categoricalColumnNames += "repo_id"
+
+    // User Profile
+    continuousColumnNames += "public_repos"
+    continuousColumnNames += "public_gists"
+    continuousColumnNames += "followers"
+    continuousColumnNames += "following"
+    continuousColumnNames += "follower_following_ratio"
+    continuousColumnNames += "days_between_created_at_today"
+    continuousColumnNames += "days_between_updated_at_today"
+    continuousColumnNames += "starred_repos_count"
+    continuousColumnNames += "avg_daily_starred_repos_count"
+
+    categoricalColumnNames += "account_type"
+    categoricalColumnNames += "has_null"
+    categoricalColumnNames += "knows_web"
+    categoricalColumnNames += "knows_backend"
+    categoricalColumnNames += "knows_frontend"
+    categoricalColumnNames += "knows_mobile"
+    categoricalColumnNames += "knows_devops"
+    categoricalColumnNames += "knows_data"
+    categoricalColumnNames += "knows_recsys"
+    categoricalColumnNames += "is_lead"
+    categoricalColumnNames += "is_scholar"
+    categoricalColumnNames += "is_freelancer"
+    categoricalColumnNames += "is_junior"
+    categoricalColumnNames += "is_pm"
+    categoricalColumnNames += "has_blog"
+    categoricalColumnNames += "binned_company"
+    categoricalColumnNames += "binned_location"
+
+    listColumnNames += "top_languages"
+    listColumnNames += "top_topics"
+
+    textColumnNames += "clean_bio"
+    textColumnNames += "top_descriptions"
+
+    // Repo Profile
+    continuousColumnNames += "size"
+    continuousColumnNames += "stargazers_count"
+    continuousColumnNames += "forks_count"
+    continuousColumnNames += "subscribers_count"
+    continuousColumnNames += "open_issues_count"
+    continuousColumnNames += "days_between_created_at_today"
+    continuousColumnNames += "days_between_updated_at_today"
+    continuousColumnNames += "days_between_pushed_at_today"
+    continuousColumnNames += "stargazers_subscribers_count_ratio"
+    continuousColumnNames += "stargazers_forks_count_ratio"
+
+    categoricalColumnNames += "owner_type"
+    categoricalColumnNames += "clean_has_issues"
+    categoricalColumnNames += "clean_has_projects"
+    categoricalColumnNames += "clean_has_downloads"
+    categoricalColumnNames += "clean_has_wiki"
+    categoricalColumnNames += "clean_has_pages"
+    categoricalColumnNames += "is_vinta_starred"
+    categoricalColumnNames += "has_homepage"
+    categoricalColumnNames += "binned_language"
+
+    listColumnNames += "clean_topics"
+
+    textColumnNames += "text"
 
     // Split Data
 
-    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.1, 0.9) else Array(0.8, 0.2)
-    val takeN = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 50 else 500
+    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.3, 0.7) else Array(0.8, 0.2)
+    val takeN = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 100 else 500
 
     val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
     trainingFeaturedDF.cache()
@@ -79,9 +152,8 @@ object LogisticRegressionRanker {
     val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_))).toDF("user_id")
     testUserDF.cache()
 
-    // Build the Model Pipeline
+    // Build the Pipeline
 
-    val categoricalColumnNames = mutable.ArrayBuffer("user_id", "repo_id")
     val categoricalTransformers = categoricalColumnNames.flatMap((columnName: String) => {
       val stringIndexer = new StringIndexer()
         .setInputCol(columnName)
@@ -96,6 +168,44 @@ object LogisticRegressionRanker {
       Array(stringIndexer, oneHotEncoder)
     })
 
+    val listTransformers = listColumnNames.flatMap((columnName: String) => {
+      val countVectorizerModel = new CountVectorizer()
+        .setInputCol(columnName)
+        .setOutputCol(s"${columnName}_cv")
+        .setMinDF(10)
+        .setMinTF(1)
+
+      Array(countVectorizerModel)
+    })
+
+    val textTransformers = textColumnNames.flatMap((columnName: String) => {
+      val hanLPTokenizer = new HanLPTokenizer()
+        .setInputCol(columnName)
+        .setOutputCol(s"${columnName}_words")
+        .setShouldRemoveStopWords(true)
+
+      val word2VecModel = new Word2Vec()
+        .setInputCol(s"${columnName}_words")
+        .setOutputCol(s"${columnName}_w2v")
+        .setMaxIter(20)
+        .setVectorSize(200)
+        .setWindowSize(5)
+        .setMinCount(10)
+
+      Array(hanLPTokenizer, word2VecModel)
+    })
+
+    // TODO: add UDFTransformer()
+    // user_repo_follows_repo_owner: 該用戶是否追蹤該 repo 的作者
+    // user_repo_starred_language_count: 針對該 repo 所屬的語言，該用戶打星了多少個該語言的 repo
+    // user_repo_starred_language_days_until_today: 針對該 repo 的語言，該用戶最近打星任一該語言的 repo 時距離今天幾天
+
+    // TODO: add weightCol
+    // .setWeightCol("weight")
+    // 讓 positive 的權重高一點
+    // 讓新 repo 的權重高一點
+    // 有在 top_languages 裡的 repo 權重高一點
+
     val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
     val alsModel = ALSModel.load(alsModelPath)
       .setUserCol("user_id")
@@ -103,20 +213,31 @@ object LogisticRegressionRanker {
       .setPredictionCol("als_score")
       .setColdStartStrategy("drop")
 
+    val finalContinuousColumnNames = (continuousColumnNames :+ "als_score").toArray
+    val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}_ohe").toArray
+    val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}_cv").toArray
+    val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}_w2v").toArray
     val vectorAssembler = new VectorAssembler()
-      .setInputCols(Array("user_id_ohe", "repo_id_ohe", "user_features", "repo_features", "als_score"))
+      .setInputCols(finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
       .setOutputCol("features")
+
+    val standardScaler = new StandardScaler()
+      .setInputCol("features")
+      .setOutputCol("standard_features")
+      .setWithStd(true)
+      .setWithMean(false)
 
     val lr = new LogisticRegression()
       .setMaxIter(10)
-      .setRegParam(0.8)
-      .setElasticNetParam(0.5)
+      .setRegParam(0.5)
+      .setElasticNetParam(0.1)
       .setStandardization(false)
-      .setFeaturesCol("features")
+      .setFeaturesCol("standard_features")
       .setLabelCol("starring")
 
+    val stages = categoricalTransformers ++ listTransformers ++ textTransformers :+ alsModel :+ vectorAssembler :+ standardScaler :+ lr
     val pipeline = new Pipeline()
-      .setStages((categoricalTransformers :+ alsModel :+ vectorAssembler :+ lr).toArray)
+      .setStages(stages.toArray)
 
     // Train the Model
 
@@ -128,7 +249,6 @@ object LogisticRegressionRanker {
     // Make Recommendations
 
     val topK = 30
-
     val alsRecommender = new ALSRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
@@ -173,7 +293,7 @@ object LogisticRegressionRanker {
 
     userRankedItemDF
       .where($"user_id" === 652070)
-      .select("user_id", "repo_id", "prediction", "probability", "rawPrediction")
+      .select("user_id", "repo_id", "als_score", "prediction", "probability", "rawPrediction")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
       .limit(topK)
       .show(false)
@@ -196,6 +316,7 @@ object LogisticRegressionRanker {
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
     // NDCG@30 = 0.0035347470446850824
+    // NDCG@30 = 0.0014685120623806613
 
     spark.stop()
   }

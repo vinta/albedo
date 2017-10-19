@@ -6,6 +6,7 @@ import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.recommendation.ALSModel
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.transformers.NegativeBalancer
@@ -80,8 +81,15 @@ object LogisticRegressionRankerCV {
       Array(stringIndexer, oneHotEncoder)
     })
 
+    val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
+    val alsModel = ALSModel.load(alsModelPath)
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setPredictionCol("als_score")
+      .setColdStartStrategy("drop")
+
     val vectorAssembler = new VectorAssembler()
-      .setInputCols(Array("user_id_ohe", "repo_id_ohe", "user_features", "repo_features"))
+      .setInputCols(Array("user_id_ohe", "repo_id_ohe", "user_features", "repo_features", "als_score"))
       .setOutputCol("features")
 
     val lr = new LogisticRegression()
@@ -89,18 +97,19 @@ object LogisticRegressionRankerCV {
       .setLabelCol("starring")
 
     val pipeline = new Pipeline()
-      .setStages((categoricalTransformers :+ vectorAssembler :+ lr).toArray)
+      .setStages((categoricalTransformers :+ alsModel :+ vectorAssembler :+ lr).toArray)
 
     // Cross-validate Models
 
-    val subsetFeaturedDF = featuredDF.sample(withReplacement = true, 0.2)
+    val subsetFeaturedDF = featuredDF.sample(withReplacement = true, 0.3)
     subsetFeaturedDF.cache()
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(lr.maxIter, Array(10, 15))
-      .addGrid(lr.regParam, Array(0.08, 0.5, 0.8))
-      .addGrid(lr.elasticNetParam, Array(0.08, 0.5, 0.8))
-      .addGrid(lr.standardization, Array(false))
+      .addGrid(lr.maxIter, Array(10, 100))
+      .addGrid(lr.regParam, Array(0.5, 0.8))
+      .addGrid(lr.elasticNetParam, Array(0.05, 0.2))
+      .addGrid(lr.threshold, Array(0.25, 0.5, 0.75))
+      .addGrid(lr.standardization, Array(false, true))
       .build()
 
     val evaluator = new BinaryClassificationEvaluator()
