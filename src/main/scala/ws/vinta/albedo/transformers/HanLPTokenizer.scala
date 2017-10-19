@@ -30,9 +30,22 @@ class HanLPTokenizer(override val uid: String)
 
     if ($(shouldRemoveStopWords)) {
       CoreStopWordDictionary.apply(termList)
-    }
 
-    termList.toArray.map(_.asInstanceOf[Term].word)
+      val OneCharRE = """([`~\!@#$%\^&\*\(\)_\-=\+\{\}\[\]\|:;\"\',<\.>\/\\\?])""".r
+      val LanguageRE = """(\w[\+\#]+)""".r
+      termList
+        .toArray
+        .flatMap((term: java.lang.Object) => {
+          val word = term.asInstanceOf[Term].word
+          word match {
+            case OneCharRE(_) => Array.empty[String]
+            case LanguageRE(lang) => Array(lang)
+            case _ => """([\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}]+)""".r.findAllIn(word).toList
+          }
+        })
+    } else {
+      termList.toArray.map(_.asInstanceOf[Term].word)
+    }
   }
 
   override protected def validateInputType(inputType: DataType): Unit = {

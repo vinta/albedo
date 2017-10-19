@@ -2,7 +2,6 @@ package ws.vinta.albedo
 
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.feature._
-import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import ws.vinta.albedo.transformers.HanLPTokenizer
@@ -30,7 +29,7 @@ object Word2VecBuilder {
 
     val rawRepoInfoDS = loadRawRepoInfoDS()
 
-    // Build the Pipeline
+    // Train the Model
 
     val userTextDF = rawUserInfoDS
       .withColumn("text", concat_ws(", ", $"login", $"name", $"company", $"location", $"bio"))
@@ -47,36 +46,33 @@ object Word2VecBuilder {
       .setInputCol("text")
       .setOutputCol("text_words")
       .setShouldRemoveStopWords(true)
+    val tokenizedDF = hanLPTokenizer.transform(corpusDF)
 
     val stopWordsRemover = new StopWordsRemover()
       .setInputCol("text_words")
       .setOutputCol("text_filtered_words")
       .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
+    val filteredDF = stopWordsRemover.transform(tokenizedDF)
 
     //val snowballStemmer = new SnowballStemmer()
     //  .setInputCol("text_filtered_words")
     //  .setOutputCol("text_stemmed_words")
     //  .setLanguage("english")
+    //val stemmedDF = snowballStemmer.transform(filteredDF)
 
-    val word2Vec = new Word2Vec()
-      .setInputCol("text_filtered_words")
-      .setOutputCol("text_w2v")
-      .setMaxIter(20)
-      .setVectorSize(200)
-      .setWindowSize(5)
-      .setMinCount(10)
-
-    val pipeline = new Pipeline()
-      .setStages(Array(hanLPTokenizer, stopWordsRemover, word2Vec))
-
-    // Train the Model
-
-    val pipelineModelPath = s"${settings.dataDir}/${settings.today}/corpusPipelineModel.parquet"
-    val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
-      pipeline.fit(corpusDF)
+    val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
+    val word2VecModel = loadOrCreateModel[Word2VecModel](Word2VecModel, word2VecModelPath, () => {
+      val word2Vec = new Word2Vec()
+        .setInputCol("text_filtered_words")
+        .setOutputCol("text_w2v")
+        .setMaxIter(20)
+        .setVectorSize(200)
+        .setWindowSize(5)
+        .setMinCount(10)
+      word2Vec.fit(filteredDF)
     })
 
-    val word2vecDF = pipelineModel.transform(corpusDF)
+    val word2vecDF = word2VecModel.transform(filteredDF)
     word2vecDF.sample(false, 0.5).show(500, false)
 
     spark.stop()
