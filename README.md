@@ -136,6 +136,21 @@ $ spark-submit \
 # NDCG@k = 0.0016596269625977985
 ```
 
+## Train a Word2Vec Model for Text Vectorization
+
+See [Word2VecBuilder.scala](src/main/scala/ws/vinta/albedo/Word2VecBuilder.scala) for complete code.
+
+```bash
+$ spark-submit \
+    --driver-memory 4g \
+    --executor-cores 4 \
+    --executor-memory 12g \
+    --master spark://localhost:7077 \
+    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --class ws.vinta.albedo.Word2VecBuilder \
+    target/albedo-1.0.0-SNAPSHOT.jar
+```
+
 ## Train a Logistic Regression Model for Ranking
 
 See [LogisticRegressionRanker.scala](src/main/scala/ws/vinta/albedo/LogisticRegressionRanker.scala) for complete code.
