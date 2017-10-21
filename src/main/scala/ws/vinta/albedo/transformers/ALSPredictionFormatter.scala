@@ -2,7 +2,7 @@ package ws.vinta.albedo.transformers
 
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{IntParam, Param, ParamMap}
-import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
+import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset}
@@ -65,3 +65,5 @@ class ALSPredictionFormatter(override val uid: String)
     defaultCopy(extra)
   }
 }
+
+object ALSPredictionFormatter extends DefaultParamsReadable[ALSPredictionFormatter]
