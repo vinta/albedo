@@ -9,7 +9,9 @@ import org.tartarus.snowball.ext.EnglishStemmer
 class SnowballStemmer(override val uid: String)
   extends UnaryTransformer[Seq[String], Seq[String], SnowballStemmer] with DefaultParamsWritable {
 
-  def this() = this(Identifiable.randomUID("snowballStemmer"))
+  def this() = {
+    this(Identifiable.randomUID("snowballStemmer"))
+  }
 
   override protected def createTransformFunc: Seq[String] => Seq[String] = { strings =>
     val stemmer = new EnglishStemmer()
@@ -33,7 +35,9 @@ class SnowballStemmer(override val uid: String)
     ArrayType(StringType)
   }
 
-  override def copy(extra: ParamMap): this.type = defaultCopy(extra)
+  override def copy(extra: ParamMap): this.type = {
+    defaultCopy(extra)
+  }
 }
 
 object SnowballStemmer extends DefaultParamsReadable[SnowballStemmer]
