@@ -4,11 +4,11 @@ import org.apache.spark.SparkConf
 import org.apache.spark.ml.feature._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import ws.vinta.albedo.transformers.{CoreNLPLemmatizer, HanLPTokenizer}
+import ws.vinta.albedo.transformers._
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
-object Word2VecBuilder {
+object Word2VecCorpusBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     conf.set("spark.driver.memory", "4g")
@@ -17,7 +17,7 @@ object Word2VecBuilder {
 
     implicit val spark: SparkSession = SparkSession
       .builder()
-      .appName("Word2VecBuilder")
+      .appName("Word2VecCorpusBuilder")
       .config(conf)
       .getOrCreate()
 
@@ -31,18 +31,18 @@ object Word2VecBuilder {
 
     // Train the Model
 
+    val columnName = "text"
+
     val userTextDF = rawUserInfoDS
-      .withColumn("text", concat_ws(", ", $"login", $"name", $"company", $"location", $"bio"))
-      .select($"user_id", $"login", $"text")
+      .withColumn(columnName, concat_ws(", ", $"login", $"name", $"bio", $"company", $"location"))
+      .select("user_id", "login", columnName)
 
     val repoTextDF = rawRepoInfoDS
-      .withColumn("text", concat_ws(", ", $"owner_username", $"name", $"language", $"description", $"topics"))
-      .select($"repo_id", $"full_name", $"text")
+      .withColumn(columnName, concat_ws(", ", $"owner_username", $"name", $"language", $"description", $"topics"))
+      .select("repo_id", "full_name", columnName)
 
-    val corpusDF = userTextDF.select($"text").union(repoTextDF.select($"text"))
+    val corpusDF = userTextDF.select(columnName).union(repoTextDF.select(columnName))
     corpusDF.cache()
-
-    val columnName = "text"
 
     val hanLPTokenizer = new HanLPTokenizer()
       .setInputCol(columnName)
@@ -56,17 +56,13 @@ object Word2VecBuilder {
       .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
     val filteredDF = stopWordsRemover.transform(tokenizedDF)
 
-    val coreNLPLemmatizer = new CoreNLPLemmatizer()
-      .setInputCol(s"${columnName}_filtered_words")
-      .setOutputCol(s"${columnName}_lemmatized_words")
-    val lemmatizedDF = coreNLPLemmatizer.transform(filteredDF)
-
-    val finalDF = lemmatizedDF
+    val finalDF = filteredDF
+    finalDF.cache()
 
     val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
     val word2VecModel = loadOrCreateModel[Word2VecModel](Word2VecModel, word2VecModelPath, () => {
       val word2Vec = new Word2Vec()
-        .setInputCol(s"${columnName}_lemmatized_words")
+        .setInputCol(s"${columnName}_filtered_words")
         .setOutputCol(s"${columnName}_w2v")
         .setMaxIter(30)
         .setVectorSize(200)
@@ -75,8 +71,8 @@ object Word2VecBuilder {
       word2Vec.fit(finalDF)
     })
 
-    val word2vecDF = word2VecModel.transform(finalDF)
-    word2vecDF.show(false)
+    val word2VecDF = word2VecModel.transform(finalDF)
+    word2VecDF.show(false)
 
     spark.stop()
   }
