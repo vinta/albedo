@@ -4,15 +4,15 @@ import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
-import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
 import org.apache.spark.ml.recommendation.ALSModel
+import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.{HanLPTokenizer, NegativeBalancer}
+import ws.vinta.albedo.transformers.{CoreNLPLemmatizer, HanLPTokenizer, NegativeBalancer}
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
@@ -74,12 +74,11 @@ object LogisticRegressionRanker {
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
 
-    featuredDF.show(false)
-
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
 
     // User Profile
+
     continuousColumnNames += "public_repos"
     continuousColumnNames += "public_gists"
     continuousColumnNames += "followers"
@@ -115,6 +114,7 @@ object LogisticRegressionRanker {
     textColumnNames += "top_descriptions"
 
     // Repo Profile
+
     continuousColumnNames += "size"
     continuousColumnNames += "stargazers_count"
     continuousColumnNames += "forks_count"
@@ -186,15 +186,21 @@ object LogisticRegressionRanker {
         .setOutputCol(s"${columnName}_words")
         .setShouldRemoveStopWords(true)
 
-      val word2VecModel = new Word2Vec()
+      val stopWordsRemover = new StopWordsRemover()
         .setInputCol(s"${columnName}_words")
-        .setOutputCol(s"${columnName}_w2v")
-        .setMaxIter(20)
-        .setVectorSize(200)
-        .setWindowSize(5)
-        .setMinCount(10)
+        .setOutputCol(s"${columnName}_filtered_words")
+        .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
 
-      Array(hanLPTokenizer, word2VecModel)
+      val coreNLPLemmatizer = new CoreNLPLemmatizer()
+        .setInputCol(s"${columnName}_filtered_words")
+        .setOutputCol(s"${columnName}_lemmatized_words")
+
+      val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
+      val word2VecModel = Word2VecModel.load(word2VecModelPath)
+        .setInputCol(s"${columnName}_lemmatized_words")
+        .setOutputCol(s"${columnName}_w2v")
+
+      Array(hanLPTokenizer, stopWordsRemover, coreNLPLemmatizer, word2VecModel)
     })
 
     // TODO: add UDFTransformer()
@@ -206,7 +212,7 @@ object LogisticRegressionRanker {
     // .setWeightCol("weight")
     // 讓 positive 的權重高一點
     // 讓新 repo 的權重高一點
-    // 有在 top_languages 裡的 repo 權重高一點
+    // 讓有在 top_languages 裡的 repo 權重高一點
 
     val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
     val alsModel = ALSModel.load(alsModelPath)
