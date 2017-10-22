@@ -12,7 +12,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.{CoreNLPLemmatizer, HanLPTokenizer, NegativeBalancer}
+import ws.vinta.albedo.transformers.{HanLPTokenizer, NegativeBalancer}
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
@@ -195,16 +195,12 @@ object LogisticRegressionRanker {
         .setOutputCol(s"${columnName}_filtered_words")
         .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
 
-      val coreNLPLemmatizer = new CoreNLPLemmatizer()
-        .setInputCol(s"${columnName}_filtered_words")
-        .setOutputCol(s"${columnName}_lemmatized_words")
-
       val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
       val word2VecModel = Word2VecModel.load(word2VecModelPath)
-        .setInputCol(s"${columnName}_lemmatized_words")
+        .setInputCol(s"${columnName}_filtered_words")
         .setOutputCol(s"${columnName}_w2v")
 
-      Array(hanLPTokenizer, stopWordsRemover, coreNLPLemmatizer, word2VecModel)
+      Array(hanLPTokenizer, stopWordsRemover, word2VecModel)
     })
 
     val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
