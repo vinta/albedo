@@ -5,7 +5,7 @@ import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.recommendation.ALSModel
-import org.apache.spark.ml.{Pipeline, PipelineModel, Transformer}
+import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
@@ -57,11 +57,13 @@ object LogisticRegressionRanker {
       val negativeBalancer = new NegativeBalancer(bcPopularRepos)
         .setUserCol("user_id")
         .setItemCol("repo_id")
+        .setTimeCol("starred_at")
         .setLabelCol("starring")
         .setNegativeValue(0.0)
         .setNegativePositiveRatio(1.0)
       negativeBalancer.transform(rawStarringDS)
     })
+    .repartition($"user_id")
 
     // Feature Engineering
 
@@ -70,87 +72,89 @@ object LogisticRegressionRanker {
     val listColumnNames = mutable.ArrayBuffer.empty[String]
     val textColumnNames = mutable.ArrayBuffer.empty[String]
 
-    val featuredDF = balancedStarringDF
-      .join(userProfileDF, Seq("user_id"))
-      .join(repoProfileDF, Seq("repo_id"))
+    val featuredDFpath = s"${settings.dataDir}/${settings.today}/featuredDF.parquet"
+    val featuredDF = loadOrCreateDataFrame(featuredDFpath, () => {
+      balancedStarringDF
+        .join(userProfileDF, Seq("user_id"))
+        .join(repoProfileDF, Seq("repo_id"))
+    })
+    .repartition($"user_id")
 
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
 
     // User Profile
 
-    continuousColumnNames += "public_repos"
-    continuousColumnNames += "public_gists"
-    continuousColumnNames += "followers"
-    continuousColumnNames += "following"
-    continuousColumnNames += "follower_following_ratio"
-    continuousColumnNames += "days_between_created_at_today"
-    continuousColumnNames += "days_between_updated_at_today"
-    continuousColumnNames += "starred_repos_count"
-    continuousColumnNames += "avg_daily_starred_repos_count"
+    continuousColumnNames += "user_public_repos_count"
+    continuousColumnNames += "user_public_gists_count"
+    continuousColumnNames += "user_followers_count"
+    continuousColumnNames += "user_following_count"
+    continuousColumnNames += "user_followers_following_ratio"
+    continuousColumnNames += "user_days_between_created_at_today"
+    continuousColumnNames += "user_days_between_updated_at_today"
+    continuousColumnNames += "user_starred_repos_count"
+    continuousColumnNames += "user_avg_daily_starred_repos_count"
 
-    categoricalColumnNames += "account_type"
-    categoricalColumnNames += "has_null"
-    categoricalColumnNames += "knows_web"
-    categoricalColumnNames += "knows_backend"
-    categoricalColumnNames += "knows_frontend"
-    categoricalColumnNames += "knows_mobile"
-    categoricalColumnNames += "knows_devops"
-    categoricalColumnNames += "knows_data"
-    categoricalColumnNames += "knows_recsys"
-    categoricalColumnNames += "is_lead"
-    categoricalColumnNames += "is_scholar"
-    categoricalColumnNames += "is_freelancer"
-    categoricalColumnNames += "is_junior"
-    categoricalColumnNames += "is_pm"
-    categoricalColumnNames += "has_blog"
-    categoricalColumnNames += "binned_company"
-    categoricalColumnNames += "binned_location"
+    categoricalColumnNames += "user_account_type"
+    categoricalColumnNames += "user_has_null"
+    categoricalColumnNames += "user_knows_web"
+    categoricalColumnNames += "user_knows_backend"
+    categoricalColumnNames += "user_knows_frontend"
+    categoricalColumnNames += "user_knows_mobile"
+    categoricalColumnNames += "user_knows_devops"
+    categoricalColumnNames += "user_knows_data"
+    categoricalColumnNames += "user_knows_recsys"
+    categoricalColumnNames += "user_is_lead"
+    categoricalColumnNames += "user_is_scholar"
+    categoricalColumnNames += "user_is_freelancer"
+    categoricalColumnNames += "user_is_junior"
+    categoricalColumnNames += "user_is_pm"
+    categoricalColumnNames += "user_has_blog"
+    categoricalColumnNames += "user_binned_company"
+    categoricalColumnNames += "user_binned_location"
 
-    listColumnNames += "top_languages"
-    listColumnNames += "top_topics"
+    listColumnNames += "user_recent_repo_languages"
+    listColumnNames += "user_recent_repo_topics"
 
-    textColumnNames += "clean_bio"
-    textColumnNames += "top_descriptions"
+    textColumnNames += "user_clean_bio"
+    textColumnNames += "user_recent_repo_descriptions"
 
     // Repo Profile
 
-    continuousColumnNames += "size"
-    continuousColumnNames += "stargazers_count"
-    continuousColumnNames += "forks_count"
-    continuousColumnNames += "subscribers_count"
-    continuousColumnNames += "open_issues_count"
-    continuousColumnNames += "days_between_created_at_today"
-    continuousColumnNames += "days_between_updated_at_today"
-    continuousColumnNames += "days_between_pushed_at_today"
-    continuousColumnNames += "stargazers_subscribers_count_ratio"
-    continuousColumnNames += "stargazers_forks_count_ratio"
+    continuousColumnNames += "repo_size"
+    continuousColumnNames += "repo_stargazers_count"
+    continuousColumnNames += "repo_forks_count"
+    continuousColumnNames += "repo_subscribers_count"
+    continuousColumnNames += "repo_open_issues_count"
+    continuousColumnNames += "repo_days_between_created_at_today"
+    continuousColumnNames += "repo_days_between_updated_at_today"
+    continuousColumnNames += "repo_days_between_pushed_at_today"
+    continuousColumnNames += "repo_stargazers_subscribers_ratio"
+    continuousColumnNames += "repo_stargazers_forks_ratio"
 
-    categoricalColumnNames += "owner_type"
-    categoricalColumnNames += "clean_has_issues"
-    categoricalColumnNames += "clean_has_projects"
-    categoricalColumnNames += "clean_has_downloads"
-    categoricalColumnNames += "clean_has_wiki"
-    categoricalColumnNames += "clean_has_pages"
-    categoricalColumnNames += "is_vinta_starred"
-    categoricalColumnNames += "has_homepage"
-    categoricalColumnNames += "binned_language"
+    categoricalColumnNames += "repo_owner_type"
+    categoricalColumnNames += "repo_clean_has_issues"
+    categoricalColumnNames += "repo_clean_has_projects"
+    categoricalColumnNames += "repo_clean_has_downloads"
+    categoricalColumnNames += "repo_clean_has_wiki"
+    categoricalColumnNames += "repo_clean_has_pages"
+    categoricalColumnNames += "repo_is_vinta_starred"
+    categoricalColumnNames += "repo_has_homepage"
+    categoricalColumnNames += "repo_binned_language"
 
-    listColumnNames += "clean_topics"
+    listColumnNames += "repo_clean_topics"
 
-    textColumnNames += "text"
+    textColumnNames += "repo_text"
 
     // Split Data
 
-    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.3, 0.7) else Array(0.8, 0.2)
-    val takeN = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 100 else 500
-
+    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.2, 0.8) else Array(0.8, 0.2)
     val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
     trainingFeaturedDF.cache()
     testFeaturedDF.cache()
 
     val largeUserIds = testFeaturedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
-    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(takeN) :+ 652070
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(500) :+ 652070
     val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_))).toDF("user_id")
     testUserDF.cache()
 
@@ -165,7 +169,7 @@ object LogisticRegressionRanker {
       val oneHotEncoder = new OneHotEncoder()
         .setInputCol(s"${columnName}_idx")
         .setOutputCol(s"${columnName}_ohe")
-        .setDropLast(true)
+        .setDropLast(false)
 
       Array(stringIndexer, oneHotEncoder)
     })
@@ -202,17 +206,6 @@ object LogisticRegressionRanker {
 
       Array(hanLPTokenizer, stopWordsRemover, coreNLPLemmatizer, word2VecModel)
     })
-
-    // TODO: add UDFTransformer()
-    // user_repo_follows_repo_owner: 該用戶是否追蹤該 repo 的作者
-    // user_repo_starred_language_count: 針對該 repo 所屬的語言，該用戶打星了多少個該語言的 repo
-    // user_repo_starred_language_days_until_today: 針對該 repo 的語言，該用戶最近打星任一該語言的 repo 時距離今天幾天
-
-    // TODO: add weightCol
-    // .setWeightCol("weight")
-    // 讓 positive 的權重高一點
-    // 讓新 repo 的權重高一點
-    // 讓有在 top_languages 裡的 repo 權重高一點
 
     val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
     val alsModel = ALSModel.load(alsModelPath)
@@ -254,7 +247,7 @@ object LogisticRegressionRanker {
       pipeline.fit(trainingFeaturedDF)
     })
 
-    // Evaluate
+    // Evaluate the Model: Classification
 
     val testResultDF = pipelineModel.transform(testFeaturedDF)
 
@@ -269,6 +262,7 @@ object LogisticRegressionRanker {
     // Make Recommendations
 
     val topK = 30
+
     val alsRecommender = new ALSRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
@@ -297,7 +291,7 @@ object LogisticRegressionRanker {
     //recommenders += popularityRecommender
 
     val userRecommendedItemDF = recommenders
-      .map((recommender: Transformer) => recommender.transform(testUserDF))
+      .map((recommender: Recommender) => recommender.recommendForUsers(testUserDF))
       .reduce(_ union _)
       .select($"user_id", $"repo_id")
       .distinct()
@@ -318,7 +312,7 @@ object LogisticRegressionRanker {
       .limit(topK)
       .show(false)
 
-    // Evaluate the Model
+    // Evaluate the Model: Ranking
 
     val userActualItemsDS = loadUserActualItemsDF(topK)
       .join(testUserDF, Seq("user_id"))
