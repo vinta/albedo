@@ -6,6 +6,7 @@ import org.apache.spark.ml.param.{DoubleParam, Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.functions._
 
 import scala.collection.mutable
 
@@ -30,6 +31,13 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
   def setItemCol(value: String): this.type = set(itemCol, value)
   setDefault(itemCol -> "item")
 
+  val timeCol = new Param[String](this, "timeCol", "Time column name")
+
+  def getTimeCol: String = $(timeCol)
+
+  def setTimeCol(value: String): this.type = set(timeCol, value)
+  setDefault(timeCol -> "time")
+
   val labelCol = new Param[String](this, "labelCol", "Label column name")
 
   def getLabelCol: String = $(labelCol)
@@ -52,8 +60,8 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
   setDefault(negativePositiveRatio -> 1.0)
 
   override def transformSchema(schema: StructType): StructType = {
-    Map($(userCol) -> IntegerType, $(itemCol) -> IntegerType, $(labelCol) -> DoubleType)
-      .foreach{
+    Map($(userCol) -> IntegerType, $(itemCol) -> IntegerType, $(timeCol) -> TimestampType, $(labelCol) -> DoubleType)
+      .foreach {
         case(columnName: String, expectedDataType: DataType) => {
           val actualDataType = schema(columnName).dataType
           require(actualDataType.equals(expectedDataType), s"Column $columnName must be of type $expectedDataType but was actually $actualDataType.")
@@ -65,6 +73,8 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
 
   override def transform(rawStarringDS: Dataset[_]): DataFrame = {
     transformSchema(rawStarringDS.schema)
+
+    import rawStarringDS.sparkSession.implicits._
 
     val popularItems: mutable.LinkedHashSet[Int] = this.bcPopularItems.value
 
@@ -80,10 +90,8 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
     }
     val expandNegativeItems = (userItemsPair: (Int, mutable.LinkedHashSet[Int])) => {
       val (user, negativeItems) = userItemsPair
-      negativeItems.map({(user, _, $(negativeValue))})
+      negativeItems.map({(user, _)})
     }
-
-    import rawStarringDS.sparkSession.implicits._
 
     // TODO: 目前是假設傳進來的 dataset 都是 positive samples，之後可能得處理含有 negative samples 的情況
     val negativeDF = rawStarringDS
@@ -95,9 +103,12 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
       .aggregateByKey(emptyItemSet)(addToItemSet, mergeItemSets)
       .map(getUserNegativeItems)
       .flatMap(expandNegativeItems)
-      .toDF($(userCol), $(itemCol), $(labelCol))
+      .toDF($(userCol), $(itemCol))
+      .select(col($(userCol)), col($(itemCol)), lit("1999-07-01T00:00:00.000+0000").cast("timestamp").alias($(timeCol)), lit($(negativeValue)).alias($(labelCol)))
 
-    rawStarringDS.select($(userCol), $(itemCol), $(labelCol)).union(negativeDF)
+    rawStarringDS
+      .select(col("*"))
+      .union(negativeDF)
   }
 
   override def copy(extra: ParamMap): this.type = {
