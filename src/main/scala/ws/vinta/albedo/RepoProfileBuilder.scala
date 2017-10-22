@@ -51,9 +51,9 @@ object RepoProfileBuilder {
     val nullableColumnNames = Array("description", "homepage")
 
     val imputedRepoInfoDF = rawRepoInfoDS
-      .where($"stargazers_count".between(2, 100000))
-      .where($"forks_count" <= 90000)
       .where($"fork" === false)
+      .where($"forks_count" <= 90000)
+      .where($"stargazers_count".between(10, 100000))
       .na.fill("", nullableColumnNames)
 
     // Clean Data
