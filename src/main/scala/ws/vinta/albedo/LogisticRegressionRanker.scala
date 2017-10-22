@@ -232,7 +232,7 @@ object LogisticRegressionRanker {
 
     val lr = new LogisticRegression()
       .setMaxIter(100)
-      .setRegParam(0.0)
+      .setRegParam(0.15)
       .setElasticNetParam(0.1)
       .setStandardization(false)
       .setFeaturesCol("standard_features")
@@ -331,8 +331,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.0035347470446850824
-    // NDCG@30 = 0.0014685120623806613
+    // NDCG@30 = 0.006932765266175483
 
     spark.stop()
   }
