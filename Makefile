@@ -81,7 +81,7 @@ ifeq ($(platform),gcp)
 	# n1-standard-8 (8 vCPU, 30.0 GB memory) x 2
 	time gcloud dataproc jobs submit spark \
 	--cluster cluster-507f \
-	--properties 'spark.driver.memory=13g,spark.executor.cores=4,spark.executor.instances=4,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--properties "spark.driver.memory=13g,spark.executor.cores=4,spark.executor.instances=4,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.UserProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -100,7 +100,7 @@ build_repo_profile:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster cluster-507f \
-	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--properties "spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.RepoProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -119,7 +119,7 @@ train_als:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster cluster-507f \
-	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--properties "spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.ALSRecommenderBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -138,7 +138,7 @@ train_word2vec:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster cluster-507f \
-	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data,spark.jars.packages=com.hankcs:hanlp:portable-1.3.4' \
+	--properties "spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data,spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
 	--class ws.vinta.albedo.Word2VecCorpusBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -155,18 +155,18 @@ endif
 .PHONY: train_ranker
 train_ranker:
 ifeq ($(platform),gcp)
-	time gcloud dataproc jobs submit spark \
+	time gcloud beta dataproc jobs submit spark \
 	--cluster cluster-507f \
-	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.PersonalizedRankerTrainer \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar
+	--properties "^;^spark.driver.memory=13g;spark.executor.memory=7g;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.8.0,com.google.protobuf:protobuf-java:3.4.0" \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar,gs://albedo/java-packages/stanford-corenlp-3.8.0-models.jar \
+	--class ws.vinta.albedo.LogisticRegressionRanker
 else
 	time spark-submit \
 	--driver-memory 4g \
 	--executor-cores 4 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2" \
-	--class ws.vinta.albedo.PersonalizedRankerTrainer \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.LogisticRegressionRanker \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
