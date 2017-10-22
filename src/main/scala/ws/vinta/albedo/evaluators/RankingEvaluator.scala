@@ -10,7 +10,6 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import ws.vinta.albedo.settings
 import ws.vinta.albedo.utils.DatasetUtils._
-import ws.vinta.albedo.utils.SchemaUtils.checkColumnType
 
 class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[_])
   extends Evaluator with DefaultParamsWritable {
@@ -56,8 +55,27 @@ class RankingEvaluator(override val uid: String, val userActualItemsDF: Dataset[
   }
 
   def evaluateSchema(schema: StructType): StructType = {
-    checkColumnType(schema, $(userCol), IntegerType)
-    checkColumnType(schema, $(itemsCol), ArrayType(IntegerType))
+    def equalsIgnoreNullability(left: DataType, right: DataType): Boolean = {
+      (left, right) match {
+        case (ArrayType(leftElementType, _), ArrayType(rightElementType, _)) =>
+          equalsIgnoreNullability(leftElementType, rightElementType)
+        case (MapType(leftKeyType, leftValueType, _), MapType(rightKeyType, rightValueType, _)) =>
+          equalsIgnoreNullability(leftKeyType, rightKeyType) && equalsIgnoreNullability(leftValueType, rightValueType)
+        case (StructType(leftFields), StructType(rightFields)) =>
+          leftFields.length == rightFields.length && leftFields.zip(rightFields).forall { case (l, r) =>
+            l.name == r.name && equalsIgnoreNullability(l.dataType, r.dataType)
+          }
+        case (l, r) => l == r
+      }
+    }
+
+    Map($(userCol) -> IntegerType, $(itemsCol) -> ArrayType(IntegerType))
+      .foreach{
+        case(columnName: String, expectedDataType: DataType) => {
+          val actualDataType = schema(columnName).dataType
+          require(equalsIgnoreNullability(actualDataType, expectedDataType), s"Column $columnName must be $expectedDataType but got $actualDataType.")
+        }
+      }
 
     schema
   }

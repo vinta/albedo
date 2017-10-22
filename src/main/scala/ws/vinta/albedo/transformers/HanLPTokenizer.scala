@@ -45,7 +45,7 @@ class HanLPTokenizer(override val uid: String)
         word match {
           case LanguageRE(language) => Array(language)
           case OneCharExceptCJKRE(_) => Array.empty[String]
-          case _ => """([\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}]+)""".r.findAllIn(word).toArray
+          case _ => """([\w\.\-_\p{InHiragana}\p{InKatakana}\p{InBopomofo}\p{InCJKCompatibilityIdeographs}\p{InCJKUnifiedIdeographs}]+)""".r.findAllIn(word).toList
         }
       })
   }

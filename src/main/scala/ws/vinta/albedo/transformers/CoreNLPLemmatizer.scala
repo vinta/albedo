@@ -22,11 +22,26 @@ class CoreNLPLemmatizer(override val uid: String)
   }
 
   override protected def validateInputType(inputType: DataType): Unit = {
-    require(inputType == ArrayType(StringType), s"Input type must be string type but got $inputType.")
+    def equalsIgnoreNullability(left: DataType, right: DataType): Boolean = {
+      (left, right) match {
+        case (ArrayType(leftElementType, _), ArrayType(rightElementType, _)) =>
+          equalsIgnoreNullability(leftElementType, rightElementType)
+        case (MapType(leftKeyType, leftValueType, _), MapType(rightKeyType, rightValueType, _)) =>
+          equalsIgnoreNullability(leftKeyType, rightKeyType) && equalsIgnoreNullability(leftValueType, rightValueType)
+        case (StructType(leftFields), StructType(rightFields)) =>
+          leftFields.length == rightFields.length && leftFields.zip(rightFields).forall { case (l, r) =>
+            l.name == r.name && equalsIgnoreNullability(l.dataType, r.dataType)
+          }
+        case (l, r) => l == r
+      }
+    }
+
+    val expectedDataType = ArrayType(StringType, true)
+    require(equalsIgnoreNullability(inputType, expectedDataType), s"Input type must be $expectedDataType but got $inputType.")
   }
 
   override protected def outputDataType: DataType = {
-    ArrayType(StringType)
+    ArrayType(StringType, true)
   }
 
   override def copy(extra: ParamMap): this.type = {

@@ -63,8 +63,8 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
     schema
   }
 
-  override def transform(dataset: Dataset[_]): DataFrame = {
-    transformSchema(dataset.schema)
+  override def transform(rawStarringDS: Dataset[_]): DataFrame = {
+    transformSchema(rawStarringDS.schema)
 
     val popularItems: mutable.LinkedHashSet[Int] = this.bcPopularItems.value
 
@@ -83,10 +83,10 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
       negativeItems.map({(user, _, $(negativeValue))})
     }
 
-    import dataset.sparkSession.implicits._
+    import rawStarringDS.sparkSession.implicits._
 
     // TODO: 目前是假設傳進來的 dataset 都是 positive samples，之後可能得處理含有 negative samples 的情況
-    val negativeDF = dataset
+    val negativeDF = rawStarringDS
       .select($(userCol), $(itemCol))
       .rdd
       .map({
@@ -97,7 +97,7 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
       .flatMap(expandNegativeItems)
       .toDF($(userCol), $(itemCol), $(labelCol))
 
-    dataset.select($(userCol), $(itemCol), $(labelCol)).union(negativeDF)
+    rawStarringDS.select($(userCol), $(itemCol), $(labelCol)).union(negativeDF)
   }
 
   override def copy(extra: ParamMap): this.type = {
