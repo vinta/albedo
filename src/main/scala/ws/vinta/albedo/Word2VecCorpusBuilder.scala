@@ -11,9 +11,11 @@ import ws.vinta.albedo.utils.ModelUtils._
 object Word2VecCorpusBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-    conf.set("spark.driver.memory", "4g")
-    conf.set("spark.executor.memory", "12g")
-    conf.set("spark.executor.cores", "4")
+    if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
+      conf.set("spark.driver.memory", "4g")
+      conf.set("spark.executor.memory", "12g")
+      conf.set("spark.executor.cores", "4")
+    }
 
     implicit val spark: SparkSession = SparkSession
       .builder()
