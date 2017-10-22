@@ -152,9 +152,9 @@ object DatasetUtils {
     loadOrCreateDataFrame(path, () => {
       val rawRepoInfoDS = loadRawRepoInfoDS()
       rawRepoInfoDS
-        .select($"repo_id", $"stargazers_count", $"created_at")
-        .where($"stargazers_count".between(1000, 290000))
-        .orderBy($"stargazers_count".desc)
+        .select($"repo_id", $"repo_stargazers_count", $"repo_created_at")
+        .where($"repo_stargazers_count".between(1000, 290000))
+        .orderBy($"repo_stargazers_count".desc)
         .repartition(1)
     })
   }
