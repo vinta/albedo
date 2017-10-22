@@ -34,12 +34,12 @@ object Word2VecCorpusBuilder {
     val columnName = "text"
 
     val userTextDF = rawUserInfoDS
-      .withColumn(columnName, concat_ws(", ", $"login", $"name", $"bio", $"company", $"location"))
-      .select("user_id", "login", columnName)
+      .withColumn(columnName, concat_ws(", ", $"user_login", $"user_name", $"user_bio", $"user_company", $"user_location"))
+      .select("user_id", "user_login", columnName)
 
     val repoTextDF = rawRepoInfoDS
-      .withColumn(columnName, concat_ws(", ", $"owner_username", $"name", $"language", $"description", $"topics"))
-      .select("repo_id", "full_name", columnName)
+      .withColumn(columnName, concat_ws(", ", $"repo_owner_username", $"repo_name", $"repo_language", $"repo_description", $"repo_topics"))
+      .select("repo_id", "repo_full_name", columnName)
 
     val corpusDF = userTextDF.select(columnName).union(repoTextDF.select(columnName))
     corpusDF.cache()
