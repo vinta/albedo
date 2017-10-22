@@ -157,8 +157,8 @@ train_ranker:
 ifeq ($(platform),gcp)
 	time gcloud beta dataproc jobs submit spark \
 	--cluster cluster-507f \
-	--properties "^;^spark.driver.memory=13g;spark.executor.memory=7g;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.8.0,com.google.protobuf:protobuf-java:3.4.0" \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar,gs://albedo/java-packages/stanford-corenlp-3.8.0-models.jar \
+	--properties "^;^spark.driver.memory=13g;spark.executor.memory=7g;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.LogisticRegressionRanker
 else
 	time spark-submit \
