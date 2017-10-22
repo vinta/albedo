@@ -72,88 +72,16 @@ baseline:
 	--class ws.vinta.albedo.PopularityRecommenderTrainer \
 	target/albedo-1.0.0-SNAPSHOT.jar
 
-.PHONY: cv_als
-cv_als:
-ifeq ($(platform),gcp)
-	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--properties 'spark.executor.memory=11823m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.ALSRecommenderCV \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar
-else
-	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
-	--executor-memory 12g \
-	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-	--class ws.vinta.albedo.ALSRecommenderCV \
-	target/albedo-1.0.0-SNAPSHOT.jar
-endif
-
-.PHONY: train_als
-train_als:
-ifeq ($(platform),gcp)
-	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.jars.packages=mysql:mysql-connector-java:5.1.41,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.ALSRecommender \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar
-else
-	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
-	--executor-memory 12g \
-	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-	--class ws.vinta.albedo.ALSRecommender \
-	target/albedo-1.0.0-SNAPSHOT.jar
-endif
-
-.PHONY: train_word2vec
-train_word2vec:
-ifeq ($(platform),gcp)
-	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.Word2VecRecommender \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar
-else
-	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
-	--executor-memory 12g \
-	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4" \
-	--class ws.vinta.albedo.Word2VecRecommender \
-	target/albedo-1.0.0-SNAPSHOT.jar
-endif
-
-.PHONY: train_ranker
-train_ranker:
-ifeq ($(platform),gcp)
-	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.jars.packages=com.databricks:spark-avro_2.11:3.2.0,spark.albedo.dataDir=gs://albedo/spark-data' \
-	--class ws.vinta.albedo.PersonalizedRankerTrainer \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar
-else
-	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
-	--executor-memory 12g \
-	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2" \
-	--class ws.vinta.albedo.PersonalizedRankerTrainer \
-	target/albedo-1.0.0-SNAPSHOT.jar
-endif
-
+# https://spark.apache.org/docs/latest/configuration.html
+# https://spoddutur.github.io/spark-notes/distribution_of_executors_cores_and_memory_for_spark_application
 .PHONY: build_user_profile
 build_user_profile:
 ifeq ($(platform),gcp)
+	# n1-standard-4 (4 vCPU, 15.0 GB memory) x 1
+	# n1-standard-8 (8 vCPU, 30.0 GB memory) x 2
 	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--cluster cluster-507f \
+	--properties 'spark.driver.memory=13g,spark.executor.cores=4,spark.executor.instances=4,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
 	--class ws.vinta.albedo.UserProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -171,8 +99,8 @@ endif
 build_repo_profile:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
-	--cluster albedo \
-	--properties 'spark.executor.memory=13312m,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--cluster cluster-507f \
+	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
 	--class ws.vinta.albedo.RepoProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -183,5 +111,62 @@ else
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
 	--class ws.vinta.albedo.RepoProfileBuilder \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
+
+.PHONY: train_als
+train_als:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster cluster-507f \
+	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.ALSRecommenderBuilder \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.ALSRecommenderBuilder \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
+
+.PHONY: train_word2vec
+train_word2vec:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster cluster-507f \
+	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data,spark.jars.packages=com.hankcs:hanlp:portable-1.3.4' \
+	--class ws.vinta.albedo.Word2VecCorpusBuilder \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.hankcs:hanlp:portable-1.3.4" \
+	--class ws.vinta.albedo.Word2VecCorpusBuilder \
+	target/albedo-1.0.0-SNAPSHOT.jar
+endif
+
+.PHONY: train_ranker
+train_ranker:
+ifeq ($(platform),gcp)
+	time gcloud dataproc jobs submit spark \
+	--cluster cluster-507f \
+	--properties 'spark.driver.memory=13g,spark.executor.memory=7g,spark.albedo.dataDir=gs://albedo/spark-data' \
+	--class ws.vinta.albedo.PersonalizedRankerTrainer \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar
+else
+	time spark-submit \
+	--driver-memory 4g \
+	--executor-cores 4 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2" \
+	--class ws.vinta.albedo.PersonalizedRankerTrainer \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
