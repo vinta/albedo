@@ -5,14 +5,14 @@ import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.recommendation.ALSModel
-import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.{ALSPredictionWeighter, CoreNLPLemmatizer, HanLPTokenizer, NegativeBalancer}
+import ws.vinta.albedo.transformers._
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
@@ -78,6 +78,7 @@ object LogisticRegressionRanker {
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .repartition($"user_id")
+      .cache()
 
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
@@ -147,15 +148,16 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.05, 0.95) else Array(0.9, 0.1)
-    val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
-    trainingFeaturedDF.cache()
-    testFeaturedDF.cache()
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.03, 0.03, 0.94) else Array(0.97, 0.03, 0.0)
+    val Array(trainingDF, testDF, _) = featuredDF.randomSplit(weights)
+    trainingDF.cache()
+    testDF.cache()
 
-    val largeUserIds = testFeaturedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
+    val largeUserIds = testDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
     val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(500) :+ 652070
-    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_))).toDF("user_id")
-    testUserDF.cache()
+    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
+      .toDF("user_id")
+      .cache()
 
     // Build the Pipeline
 
@@ -231,8 +233,9 @@ object LogisticRegressionRanker {
     SELECT *, CASE WHEN als_score < 0 THEN 0 ELSE als_score END AS weight
     FROM __THIS__
     """.stripMargin
-    val weightTransformer = new SQLTransformer()
-      .setStatement(sql)
+    val weightTransformer = new SQLTransformer().setStatement(sql)
+
+    val intermediateCacher = new IntermediateCacher()
 
     val lr = new LogisticRegression()
       .setMaxIter(100)
@@ -243,20 +246,29 @@ object LogisticRegressionRanker {
       .setLabelCol("starring")
       .setWeightCol("weight")
 
-    val stages = categoricalTransformers ++ listTransformers ++ textTransformers :+ alsModel :+ vectorAssembler :+ standardScaler :+ weightTransformer :+ lr
-    val pipeline = new Pipeline()
-      .setStages(stages.toArray)
+    val stages = mutable.ArrayBuffer.empty[PipelineStage]
+    stages ++= categoricalTransformers
+    stages ++= listTransformers
+    stages ++= textTransformers
+    stages += alsModel
+    stages += vectorAssembler
+    stages += standardScaler
+    stages += weightTransformer
+    stages += intermediateCacher
+    stages += lr
+
+    val pipeline = new Pipeline().setStages(stages.toArray)
 
     // Train the Model
 
     val pipelineModelPath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel.parquet"
     val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
-      pipeline.fit(trainingFeaturedDF)
+      pipeline.fit(trainingDF)
     })
 
     // Evaluate the Model: Classification
 
-    val testResultDF = pipelineModel.transform(testFeaturedDF)
+    val testResultDF = pipelineModel.transform(testDF)
 
     val binaryClassificationEvaluator = new BinaryClassificationEvaluator()
       .setMetricName("areaUnderROC")
@@ -309,8 +321,9 @@ object LogisticRegressionRanker {
 
     // Predict the Ranking
 
-    val userRankedItemDF = pipelineModel.transform(userCandidateItemDF)
-    userCandidateItemDF.cache()
+    val userRankedItemDF = pipelineModel
+      .transform(userCandidateItemDF)
+      .cache()
 
     userRankedItemDF
       .where($"user_id" === 652070)
