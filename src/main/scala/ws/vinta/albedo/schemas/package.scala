@@ -36,6 +36,7 @@ package object schemas {
     repo_stargazers_count: Int,
     repo_forks_count: Int,
     repo_subscribers_count: Int,
+    repo_is_fork: Boolean,
     repo_has_issues: Boolean,
     repo_has_projects: Boolean,
     repo_has_downloads: Boolean,

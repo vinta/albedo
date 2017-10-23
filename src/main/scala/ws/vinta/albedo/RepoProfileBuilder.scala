@@ -28,8 +28,6 @@ object RepoProfileBuilder {
 
     val rawRepoInfoDS = loadRawRepoInfoDS().cache()
 
-    val rawUserInfoDS = loadRawUserInfoDS().cache()
-
     val rawStarringDS = loadRawStarringDS().cache()
 
     // Feature Engineering
@@ -52,18 +50,28 @@ object RepoProfileBuilder {
     val nullableColumnNames = Array("repo_description", "repo_homepage")
 
     val imputedRepoInfoDF = rawRepoInfoDS
-      .where($"repo_is_fork" === false)
-      .where($"repo_forks_count" <= 90000)
-      .where($"repo_stargazers_count".between(10, 100000))
+      .withColumn("repo_has_null", when(nullableColumnNames.map(rawRepoInfoDS(_).isNull).reduce(_ || _), 1.0).otherwise(0.0))
       .na.fill("", nullableColumnNames)
+
+    categoricalColumnNames += "repo_has_null"
 
     // Clean Data
 
-    val lowerableColumnNames = Array("repo_description", "repo_language", "repo_topics")
+    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
+    val assignmentWords = Array("%assignment%")
 
+    val reducedRepoInfo = imputedRepoInfoDF
+      .where($"repo_is_fork" === false)
+      .where($"repo_forks_count" <= 90000)
+      .where($"repo_stargazers_count".between(10, 100000))
+      .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .where($"repo_is_unmaintained" === 0 and $"repo_is_assignment" === 0)
+
+    val lowerableColumnNames = Array("repo_description", "repo_language", "repo_topics")
     val booleanColumnNames = Array("repo_has_issues", "repo_has_projects", "repo_has_downloads", "repo_has_wiki", "repo_has_pages")
 
-    val cleanRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](imputedRepoInfoDF)((accDF, columnName) => {
+    val cleanRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](reducedRepoInfo)((accDF, columnName) => {
       columnName match {
         case _ if lowerableColumnNames.contains(columnName) =>
           accDF.withColumn(columnName.replaceFirst("repo_", "repo_clean_"), lower(col(columnName)))
@@ -81,9 +89,6 @@ object RepoProfileBuilder {
 
     // Construct Features
 
-    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
-    val assignmentWords = Array("%assignment%")
-
     val vintaStarredRepos = rawStarringDS
       .where($"user_id" === 652070)
       .select($"repo_id".as[Int])
@@ -91,9 +96,6 @@ object RepoProfileBuilder {
       .to[List]
 
     val constructedRepoInfoDF = cleanRepoInfoDF
-      .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-      .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-      .where($"repo_is_unmaintained" === 0 and $"repo_is_assignment" === 0)
       .withColumn("repo_days_between_created_at_today", datediff(current_date(), $"repo_created_at"))
       .withColumn("repo_days_between_updated_at_today", datediff(current_date(), $"repo_updated_at"))
       .withColumn("repo_days_between_pushed_at_today", datediff(current_date(), $"repo_pushed_at"))
