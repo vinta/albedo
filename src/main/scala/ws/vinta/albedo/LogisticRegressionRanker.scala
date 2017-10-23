@@ -12,7 +12,7 @@ import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.{CoreNLPLemmatizer, HanLPTokenizer, NegativeBalancer}
+import ws.vinta.albedo.transformers.{ALSPredictionWeighter, CoreNLPLemmatizer, HanLPTokenizer, NegativeBalancer}
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
 
@@ -74,13 +74,10 @@ object LogisticRegressionRanker {
     val listColumnNames = mutable.ArrayBuffer.empty[String]
     val textColumnNames = mutable.ArrayBuffer.empty[String]
 
-    val featuredDFpath = s"${settings.dataDir}/${settings.today}/featuredDF.parquet"
-    val featuredDF = loadOrCreateDataFrame(featuredDFpath, () => {
-      balancedStarringDF
-        .join(userProfileDF, Seq("user_id"))
-        .join(repoProfileDF, Seq("repo_id"))
-    })
-    .repartition($"user_id")
+    val featuredDF = balancedStarringDF
+      .join(userProfileDF, Seq("user_id"))
+      .join(repoProfileDF, Seq("repo_id"))
+      .repartition($"user_id")
 
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
@@ -150,7 +147,7 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.05, 0.95) else Array(0.8, 0.2)
+    val trainingTestWeights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.05, 0.95) else Array(0.9, 0.1)
     val Array(trainingFeaturedDF, testFeaturedDF) = featuredDF.randomSplit(trainingTestWeights)
     trainingFeaturedDF.cache()
     testFeaturedDF.cache()
@@ -230,15 +227,23 @@ object LogisticRegressionRanker {
       .setWithStd(true)
       .setWithMean(false)
 
+    val sql = """
+    SELECT *, CASE WHEN als_score < 0 THEN 0 ELSE als_score END AS weight
+    FROM __THIS__
+    """.stripMargin
+    val weightTransformer = new SQLTransformer()
+      .setStatement(sql)
+
     val lr = new LogisticRegression()
       .setMaxIter(100)
-      .setRegParam(0.15)
-      .setElasticNetParam(0.1)
+      .setRegParam(0.05)
+      .setElasticNetParam(0.01)
       .setStandardization(false)
       .setFeaturesCol("standard_features")
       .setLabelCol("starring")
+      .setWeightCol("weight")
 
-    val stages = categoricalTransformers ++ listTransformers ++ textTransformers :+ alsModel :+ vectorAssembler :+ standardScaler :+ lr
+    val stages = categoricalTransformers ++ listTransformers ++ textTransformers :+ alsModel :+ vectorAssembler :+ standardScaler :+ weightTransformer :+ lr
     val pipeline = new Pipeline()
       .setStages(stages.toArray)
 
