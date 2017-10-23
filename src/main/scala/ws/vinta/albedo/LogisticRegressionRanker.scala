@@ -235,7 +235,7 @@ object LogisticRegressionRanker {
     """.stripMargin
     val weightTransformer = new SQLTransformer().setStatement(sql)
 
-    val intermediateCacher = new IntermediateCacher()
+    val intermediateCacher = new IntermediateCacher().setInputCols(Array("standard_features", "weight", "starring"))
 
     val lr = new LogisticRegression()
       .setMaxIter(100)
