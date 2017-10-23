@@ -19,8 +19,9 @@ class PopularityRecommender(override val uid: String) extends Recommender {
     implicit val spark: SparkSession = userDF.sparkSession
     import spark.implicits._
 
-    val popularRepoDF = loadPopularRepoDF().limit($(topK))
-    popularRepoDF.cache()
+    val popularRepoDF = loadPopularRepoDF()
+      .limit($(topK))
+      .cache()
 
     def calculateScoreUDF = udf((stargazers_count: Int, created_at: java.sql.Timestamp) => {
       val valueScore = math.round(math.log10(stargazers_count) * 1000.0) / 1000.0

@@ -33,7 +33,7 @@ object ContentRecommenderBuilder {
       .distinct()
       .limit(500)
       .union(meDF.select($"user_id"))
-    testUserDF.cache()
+      .cache()
 
     // Make Recommendations
 
@@ -45,8 +45,9 @@ object ContentRecommenderBuilder {
       .setTopK(topK)
       .setEnableEvaluationMode(true)
 
-    val userRecommendedItemDF = contentRecommender.recommendForUsers(testUserDF)
-    userRecommendedItemDF.cache()
+    val userRecommendedItemDF = contentRecommender
+      .recommendForUsers(testUserDF)
+      .cache()
 
     userRecommendedItemDF.where($"user_id" === 652070).show(false)
 

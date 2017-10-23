@@ -29,8 +29,7 @@ object ALSRecommenderBuilder {
 
     // Load Data
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     // Train the Model
 
@@ -57,8 +56,9 @@ object ALSRecommenderBuilder {
 
     val largeUserIds = testDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
     val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(500) :+ 652070
-    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_))).toDF("user_id")
-    testUserDF.cache()
+    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
+      .toDF("user_id")
+      .cache()
 
     // Make Recommendations
 
@@ -69,8 +69,9 @@ object ALSRecommenderBuilder {
       .setItemCol("repo_id")
       .setTopK(topK)
 
-    val userRecommendedItemDF = alsRecommender.recommendForUsers(testUserDF)
-    userRecommendedItemDF.cache()
+    val userRecommendedItemDF = alsRecommender
+      .recommendForUsers(testUserDF)
+      .cache()
 
     userRecommendedItemDF.where($"user_id" === 652070).show(false)
 

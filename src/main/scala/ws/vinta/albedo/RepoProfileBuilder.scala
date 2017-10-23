@@ -26,14 +26,11 @@ object RepoProfileBuilder {
 
     // Load Data
 
-    val rawRepoInfoDS = loadRawRepoInfoDS()
-    rawRepoInfoDS.cache()
+    val rawRepoInfoDS = loadRawRepoInfoDS().cache()
 
-    val rawUserInfoDS = loadRawUserInfoDS()
-    rawUserInfoDS.cache()
+    val rawUserInfoDS = loadRawUserInfoDS().cache()
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     // Feature Engineering
 
@@ -74,7 +71,7 @@ object RepoProfileBuilder {
           accDF.withColumn(columnName.replaceFirst("repo_", "repo_clean_"), col(columnName).cast("double"))
       }
     })
-    cleanRepoInfoDF.cache()
+    .cache()
 
     categoricalColumnNames += "repo_clean_has_issues"
     categoricalColumnNames += "repo_clean_has_projects"
@@ -126,7 +123,7 @@ object RepoProfileBuilder {
       .withColumn("repo_has_homepage", when($"repo_homepage" === "", 0.0).otherwise(1.0))
       .withColumn("repo_binned_language", when($"count_per_repo_language" <= 30, "__other").otherwise($"repo_clean_language"))
       .withColumn("repo_clean_topics", split($"repo_topics", ","))
-    transformedRepoInfoDF.cache()
+      .cache()
 
     categoricalColumnNames += "repo_has_homepage"
     categoricalColumnNames += "repo_binned_language"

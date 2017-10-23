@@ -32,8 +32,7 @@ object ALSRecommenderCV {
 
     // Load Data
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     // Build the Pipeline
 
@@ -66,7 +65,7 @@ object ALSRecommenderCV {
 
     val userActualItemsDS = loadUserActualItemsDF(topK)
       .as[UserItems]
-    userActualItemsDS.cache()
+      .cache()
 
     val evaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("NDCG@k")

@@ -19,8 +19,7 @@ class CurationRecommender(override val uid: String) extends Recommender {
     implicit val spark: SparkSession = userDF.sparkSession
     import spark.implicits._
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     val curatorIds = Array(652070, 1912583, 59990, 646843, 28702) // vinta, saiday, tzangms, fukuball, wancw
     val curatedRepoDF = rawStarringDS
@@ -30,7 +29,7 @@ class CurationRecommender(override val uid: String) extends Recommender {
       .agg(max($"starred_at").alias("starred_at"))
       .orderBy($"starred_at".desc)
       .limit($(topK))
-    curatedRepoDF.cache()
+      .cache()
 
     def calculateScoreUDF = udf((starred_at: java.sql.Timestamp) => {
       starred_at.getTime / 1000.0

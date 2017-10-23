@@ -60,21 +60,6 @@ class ALSRecommender(override val uid: String) extends Recommender {
         output.toSeq
       }
 
-    //ratings.cache()
-    //
-    //val topKAggregator = new TopByKeyAggregator[Int, Int, Float](num, Ordering.by(_._2))
-    //val recs = ratings.as[(Int, Int, Float)]
-    //  .groupByKey(_._1)
-    //  .agg(topKAggregator.toColumn)
-    //  .toDF("id", "recommendations")
-    //val arrayType = ArrayType(
-    //  new StructType()
-    //    .add($(itemCol), IntegerType)
-    //    .add("rating", FloatType)
-    //)
-    //val df = recs.select($"id".as($(userCol)), $"recommendations".cast(arrayType))
-    //df.show(false)
-
     ratings
       .toDF($(userCol), $(itemCol), $(scoreCol))
       .withColumn($(sourceCol), lit(source))

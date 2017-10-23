@@ -28,14 +28,11 @@ object UserProfileBuilder {
 
     // Load Data
 
-    val rawUserInfoDS = loadRawUserInfoDS()
-    rawUserInfoDS.cache()
+    val rawUserInfoDS = loadRawUserInfoDS().cache()
 
-    val rawRepoInfoDS = loadRawRepoInfoDS()
-    rawRepoInfoDS.cache()
+    val rawRepoInfoDS = loadRawRepoInfoDS().cache()
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     // Feature Engineering
 
@@ -67,7 +64,7 @@ object UserProfileBuilder {
       .withColumn("user_clean_company", cleanCompanyUDF($"user_company"))
       .withColumn("user_clean_location", cleanLocationUDF($"user_location"))
       .withColumn("user_clean_bio", lower($"user_bio"))
-    cleanUserInfoDF.cache()
+      .cache()
 
     textColumnNames += "user_clean_bio"
 
@@ -91,8 +88,9 @@ object UserProfileBuilder {
       .groupBy($"user_id")
       .agg(count("*").alias("user_starred_repos_count"))
 
-    val starringRepoInfoDF = rawStarringDS.join(rawRepoInfoDS, Seq("repo_id"))
-    starringRepoInfoDF.cache()
+    val starringRepoInfoDF = rawStarringDS
+      .join(rawRepoInfoDS, Seq("repo_id"))
+      .cache()
 
     val userTopLanguagesDF = starringRepoInfoDF
       .withColumn("rank", rank.over(Window.partitionBy($"user_id").orderBy($"starred_at".desc)))
@@ -138,7 +136,7 @@ object UserProfileBuilder {
       .join(userTopDescriptionDF, Seq("user_id"))
       .join(userTopTopicsDF, Seq("user_id"))
       .join(userTopLanguagesDF, Seq("user_id"))
-    constructedUserInfoDF.cache()
+      .cache()
 
     continuousColumnNames += "user_followers_following_ratio"
     continuousColumnNames += "user_days_between_created_at_today"

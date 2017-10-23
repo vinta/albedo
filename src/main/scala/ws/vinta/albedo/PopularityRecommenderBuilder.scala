@@ -18,11 +18,9 @@ object PopularityRecommenderBuilder {
 
     // Load Data
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
-    val rawUserInfoDS = loadRawUserInfoDS()
-    rawUserInfoDS.cache()
+    val rawUserInfoDS = loadRawUserInfoDS().cache()
 
     // Split Data
 
@@ -37,7 +35,7 @@ object PopularityRecommenderBuilder {
       .distinct()
       .limit(500)
       .union(meDF.select($"user_id"))
-    testUserDF.cache()
+      .cache()
 
     // Make Recommendations
 
@@ -48,8 +46,9 @@ object PopularityRecommenderBuilder {
       .setItemCol("repo_id")
       .setTopK(topK)
 
-    val userRecommendedItemDF = popularityRecommender.recommendForUsers(testUserDF)
-    userRecommendedItemDF.cache()
+    val userRecommendedItemDF = popularityRecommender
+      .recommendForUsers(testUserDF)
+      .cache()
 
     userRecommendedItemDF.where($"user_id" === 652070).show(false)
 

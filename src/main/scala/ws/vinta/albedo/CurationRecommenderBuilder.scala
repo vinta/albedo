@@ -18,8 +18,7 @@ object CurationRecommenderBuilder {
 
     // Load Data
 
-    val rawStarringDS = loadRawStarringDS()
-    rawStarringDS.cache()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     // Split Data
 
@@ -34,7 +33,7 @@ object CurationRecommenderBuilder {
       .distinct()
       .limit(500)
       .union(meDF.select($"user_id"))
-    testUserDF.cache()
+      .cache()
 
     // Make Recommendations
 
@@ -45,8 +44,9 @@ object CurationRecommenderBuilder {
       .setItemCol("repo_id")
       .setTopK(topK)
 
-    val userRecommendedItemDF = curationRecommender.recommendForUsers(testUserDF)
-    userRecommendedItemDF.cache()
+    val userRecommendedItemDF = curationRecommender
+      .recommendForUsers(testUserDF)
+      .cache()
 
     userRecommendedItemDF.where($"user_id" === 652070).show(false)
 

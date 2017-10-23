@@ -101,8 +101,9 @@ object LogisticRegressionRankerCV {
 
     // Cross-validate Models
 
-    val subsetFeaturedDF = featuredDF.sample(withReplacement = true, 0.3)
-    subsetFeaturedDF.cache()
+    val subsetFeaturedDF = featuredDF
+      .sample(withReplacement = true, 0.3)
+      .cache()
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(10, 100))

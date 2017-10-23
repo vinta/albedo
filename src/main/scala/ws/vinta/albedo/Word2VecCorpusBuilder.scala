@@ -43,8 +43,9 @@ object Word2VecCorpusBuilder {
       .withColumn(columnName, concat_ws(", ", $"repo_owner_username", $"repo_name", $"repo_language", $"repo_description", $"repo_topics"))
       .select("repo_id", "repo_full_name", columnName)
 
-    val corpusDF = userTextDF.select(columnName).union(repoTextDF.select(columnName))
-    corpusDF.cache()
+    val corpusDF = userTextDF.select(columnName)
+      .union(repoTextDF.select(columnName))
+      .cache()
 
     val hanLPTokenizer = new HanLPTokenizer()
       .setInputCol(columnName)
@@ -58,8 +59,7 @@ object Word2VecCorpusBuilder {
       .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
     val filteredDF = stopWordsRemover.transform(tokenizedDF)
 
-    val finalDF = filteredDF
-    finalDF.cache()
+    val finalDF = filteredDF.cache()
 
     val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
     val word2VecModel = loadOrCreateModel[Word2VecModel](Word2VecModel, word2VecModelPath, () => {
