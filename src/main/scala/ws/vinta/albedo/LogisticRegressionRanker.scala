@@ -148,7 +148,7 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.03, 0.03, 0.94) else Array(0.97, 0.03, 0.0)
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.01, 0.01, 0.98) else Array(0.95, 0.05, 0.0)
     val Array(trainingDF, testDF, _) = featuredDF.randomSplit(weights)
     trainingDF.cache()
     testDF.cache()
