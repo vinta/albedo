@@ -42,7 +42,9 @@ pyspark_notebook:
 	PYSPARK_DRIVER_PYTHON_OPTS="notebook --ip 0.0.0.0" \
 	pyspark \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-	--driver-memory 4g \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--py-files src/main/python/deps.zip
@@ -64,8 +66,9 @@ build_jar:
 .PHONY: baseline
 baseline:
 	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -77,13 +80,14 @@ build_user_profile:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=12g;spark.executor.instances=3;spark.executor.cores=1;spark.executor.memory=21g;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.UserProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -96,13 +100,14 @@ build_repo_profile:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=12g;spark.executor.instances=3;spark.executor.cores=1;spark.executor.memory=21g;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.RepoProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -115,13 +120,14 @@ train_als:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=12g;spark.executor.instances=3;spark.executor.cores=1;spark.executor.memory=21g;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.ALSRecommenderBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -134,13 +140,14 @@ train_word2vec:
 ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=12g;spark.executor.instances=3;spark.executor.cores=1;spark.executor.memory=21g;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
 	--class ws.vinta.albedo.Word2VecCorpusBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.hankcs:hanlp:portable-1.3.4" \
@@ -153,17 +160,18 @@ train_ranker:
 ifeq ($(platform),gcp)
 	time gcloud beta dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=12g;spark.executor.instances=3;spark.executor.cores=1;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.7.0" \
+	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.7.0" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar,gs://albedo/java-packages/stanford-corenlp-3.8.0-models.jar \
 	--class ws.vinta.albedo.LogisticRegressionRanker
 else
 	time spark-submit \
-	--driver-memory 4g \
-	--executor-cores 4 \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
 	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.7.0" \
-	--jars "stanford-corenlp-3.8.0-models.jar"
+	--jars "/Users/vinta/Projects/albedo/spark-data/stanford-corenlp-3.8.0-models.jar" \
 	--class ws.vinta.albedo.LogisticRegressionRanker \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
