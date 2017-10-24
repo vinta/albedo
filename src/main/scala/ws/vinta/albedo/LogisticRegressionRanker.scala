@@ -245,7 +245,6 @@ object LogisticRegressionRanker {
       .setStatement(sql)
 
     val intermediateCacher = new IntermediateCacher()
-      .setInputCols(Array("user_id", "repo_id", "standard_features", "weight", "starring"))
 
     val lr = new LogisticRegression()
       .setMaxIter(100)
