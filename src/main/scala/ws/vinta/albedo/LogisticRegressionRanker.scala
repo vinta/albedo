@@ -241,9 +241,11 @@ object LogisticRegressionRanker {
     SELECT *, IF (als_score < 0.0, 1.0, 1.0 + als_score) AS weight
     FROM __THIS__
     """.stripMargin
-    val weightTransformer = new SQLTransformer().setStatement(sql)
+    val weightTransformer = new SQLTransformer()
+      .setStatement(sql)
 
-    val intermediateCacher = new IntermediateCacher().setInputCols(Array("standard_features", "weight", "starring"))
+    val intermediateCacher = new IntermediateCacher()
+      .setInputCols(Array("user_id", "repo_id", "standard_features", "weight", "starring"))
 
     val lr = new LogisticRegression()
       .setMaxIter(100)
@@ -285,7 +287,7 @@ object LogisticRegressionRanker {
 
     val classificationMetric = binaryClassificationEvaluator.evaluate(testResultDF)
     println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
-    // areaUnderROC = ???
+    // areaUnderROC = 0.8132682857346346
 
     // Make Recommendations
 
@@ -340,7 +342,7 @@ object LogisticRegressionRanker {
 
     userRankedItemDF
       .where($"user_id" === 652070)
-      .select("user_id", "repo_id", "als_score", "prediction", "probability", "rawPrediction")
+      .select("user_id", "repo_id", "prediction", "probability", "rawPrediction")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
       .limit(topK)
       .show(false)
@@ -360,8 +362,8 @@ object LogisticRegressionRanker {
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
-    val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
-    println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
+    val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDS)
+    println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
     // NDCG@30 = 0.006932765266175483
 
     spark.stop()
