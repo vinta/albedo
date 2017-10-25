@@ -14,9 +14,7 @@ object ALSRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
-      conf.set("spark.driver.memory", "4g")
-      conf.set("spark.executor.memory", "12g")
-      conf.set("spark.executor.cores", "4")
+      conf.setMaster("local-cluster[1, 3, 14336]")
     }
 
     implicit val spark: SparkSession = SparkSession
@@ -40,7 +38,7 @@ object ALSRecommenderBuilder {
         .setRank(50)
         .setRegParam(0.5)
         .setAlpha(40)
-        .setMaxIter(20)
+        .setMaxIter(26)
         .setSeed(42)
         .setColdStartStrategy("drop")
         .setUserCol("user_id")
