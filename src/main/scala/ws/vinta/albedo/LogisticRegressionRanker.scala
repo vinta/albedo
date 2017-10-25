@@ -3,7 +3,7 @@ package ws.vinta.albedo
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-import org.apache.spark.ml.feature.{SimpleVectorAssembler, _}
+import org.apache.spark.ml.feature._
 import org.apache.spark.ml.recommendation.ALSModel
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.sql.SparkSession
@@ -22,12 +22,12 @@ import scala.collection.mutable
 object LogisticRegressionRanker {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-    if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
-      conf.set("spark.driver.memory", "4g")
-      conf.set("spark.executor.memory", "12g")
-      conf.set("spark.executor.cores", "4")
-    }
+        .setMaster("spark://localhost:7077")
+        .set("spark.driver.memory", "2g")
+        .set("spark.executor.cores", "3")
+        .set("spark.executor.memory", "12g")
 
+    // -Dspark.master=spark://localhost:7077 -Dspark.driver.memory=2g -Dspark.executor.memory=12g -Dspark.executor.cores=3
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("LogisticRegressionRanker")
@@ -40,11 +40,11 @@ object LogisticRegressionRanker {
 
     // Load Data
 
-    val userProfileDF = loadUserProfileDF()
+    val userProfileDF = loadUserProfileDF().cache()
 
-    val repoProfileDF = loadRepoProfileDF()
+    val repoProfileDF = loadRepoProfileDF().cache()
 
-    val rawStarringDS = loadRawStarringDS()
+    val rawStarringDS = loadRawStarringDS().cache()
 
     // Handle Imbalanced Samples
 
@@ -162,7 +162,7 @@ object LogisticRegressionRanker {
       .cache()
 
     val largeUserIds = featuredTestDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
-    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(500) :+ 652070
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
     val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
       .toDF("user_id")
       .cache()
@@ -245,6 +245,7 @@ object LogisticRegressionRanker {
       .setStatement(sql)
 
     val intermediateCacher = new IntermediateCacher()
+      .setInputCols(Array("user_id", "repo_id", "standard_features", "weight", "starring"))
 
     val lr = new LogisticRegression()
       .setMaxIter(100)
@@ -286,7 +287,7 @@ object LogisticRegressionRanker {
 
     val classificationMetric = binaryClassificationEvaluator.evaluate(testResultDF)
     println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
-    // areaUnderROC = 0.8132682857346346
+    // areaUnderROC = 0.8269639130385324
 
     // Make Recommendations
 
@@ -332,6 +333,7 @@ object LogisticRegressionRanker {
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .select(col("*"), current_date().cast("timestamp").alias("starred_at"), lit(1.0).alias("starring"))
+      .cache()
 
     // Predict the Ranking
 
