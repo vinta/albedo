@@ -16,11 +16,7 @@
     <option name="ENV_VARIABLES" />
     <option name="PASS_PARENT_ENVS" value="true" />
     <module name="albedo" />
-    <envs>
-      <env name="RUN_ON_SMALL_MACHINE" value="true" />
-    </envs>
-    <method>
-      <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/pom.xml" goal="clean package" />
-    </method>
+    <envs />
+    <method />
   </configuration>
 </component>

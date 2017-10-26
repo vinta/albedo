@@ -363,7 +363,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
-    // NDCG@30 = 0.006932765266175483
+    // NDCG@30 = 0.007115621459151691
 
     spark.stop()
   }
