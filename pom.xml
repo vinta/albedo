@@ -28,18 +28,21 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.compactVersion}</artifactId>
       <version>${spark.version}</version>
+      <scope>compile</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-sql_2.11 -->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_${scala.compactVersion}</artifactId>
       <version>${spark.version}</version>
+      <scope>compile</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-mllib_2.11 -->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-mllib_${scala.compactVersion}</artifactId>
       <version>${spark.version}</version>
+      <scope>compile</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
     <dependency>
@@ -70,13 +73,6 @@
       <groupId>edu.stanford.nlp</groupId>
       <artifactId>stanford-corenlp</artifactId>
       <version>3.7.0</version>
-    </dependency>
-    <!-- https://stanfordnlp.github.io/CoreNLP/download.html -->
-    <dependency>
-      <groupId>edu.stanford.nlp</groupId>
-      <artifactId>stanford-corenlp</artifactId>
-      <version>3.8.0</version>
-      <classifier>models-english</classifier>
     </dependency>
     <!-- https://mvnrepository.com/artifact/com.github.rholder/snowball-stemmer -->
     <dependency>
@@ -118,21 +114,31 @@
         <version>3.1.0</version>
         <executions>
           <execution>
-            <!-- <phase>package</phase> -->
-            <phase>none</phase>
+            <phase>package</phase>
+            <!-- <phase>none</phase>-->
             <goals>
               <goal>shade</goal>
             </goals>
             <configuration>
-              <minimizeJar>true</minimizeJar>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/*.SF</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <artifactSet>
                 <excludes>
-                  <exclude>org.scala-lang:*</exclude>
-                  <exclude>org.apache.spark:*</exclude>
+                  <exclude>com.apple:AppleJavaExtensions:*</exclude>
+                  <exclude>javax.servlet:*</exclude>
                   <exclude>org.apache.hadoop:*</exclude>
-                  <exclude>org.apache.parquet:*</exclude>
                   <exclude>org.apache.maven.plugins:*</exclude>
-                  <exclude>edu.stanford.nlp:stanford-corenlp:models-*</exclude>
+                  <exclude>org.apache.parquet:*</exclude>
+                  <exclude>org.apache.spark:*</exclude>
+                  <exclude>org.scala-lang:*</exclude>
                 </excludes>
               </artifactSet>
               <finalName>${project.artifactId}-${project.version}-uber</finalName>
