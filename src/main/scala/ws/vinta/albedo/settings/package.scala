@@ -1,5 +1,8 @@
 package ws.vinta.albedo
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 import org.apache.spark.sql.SparkSession
 
 package object settings {
@@ -9,7 +12,9 @@ package object settings {
   val dataDir: String = sc.getConf.get("spark.albedo.dataDir", "./spark-data")
 
   def today: String = {
-    val dateFormatter = new java.text.SimpleDateFormat("yyyyMMdd")
-    dateFormatter.format(new java.util.Date())
+    val now = LocalDateTime.now()
+    val formatter = DateTimeFormatter.ofPattern("yyyyMMdd")
+    now.format(formatter)
+    // 20171026
   }
 }
