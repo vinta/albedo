@@ -15,6 +15,6 @@ package object settings {
     val now = LocalDateTime.now()
     val formatter = DateTimeFormatter.ofPattern("yyyyMMdd")
     now.format(formatter)
-    // 20171026
+    "20171022"
   }
 }
