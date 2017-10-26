@@ -22,12 +22,7 @@ import scala.collection.mutable
 object LogisticRegressionRanker {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-        .setMaster("spark://localhost:7077")
-        .set("spark.driver.memory", "2g")
-        .set("spark.executor.cores", "3")
-        .set("spark.executor.memory", "12g")
 
-    // -Dspark.master=spark://localhost:7077 -Dspark.driver.memory=2g -Dspark.executor.memory=12g -Dspark.executor.cores=3
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("LogisticRegressionRanker")
@@ -203,17 +198,12 @@ object LogisticRegressionRanker {
         .setInputCol(s"${columnName}_words")
         .setOutputCol(s"${columnName}_filtered_words")
         .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
-
-      val coreNLPLemmatizer = new CoreNLPLemmatizer()
-        .setInputCol(s"${columnName}_filtered_words")
-        .setOutputCol(s"${columnName}_lemmatized_words")
-
       val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
       val word2VecModel = Word2VecModel.load(word2VecModelPath)
-        .setInputCol(s"${columnName}_lemmatized_words")
+        .setInputCol(s"${columnName}_filtered_words")
         .setOutputCol(s"${columnName}_w2v")
 
-      Array(hanLPTokenizer, stopWordsRemover, coreNLPLemmatizer, word2VecModel)
+      Array(hanLPTokenizer, stopWordsRemover, word2VecModel)
     })
 
     val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
