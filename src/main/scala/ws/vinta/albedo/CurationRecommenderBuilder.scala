@@ -11,6 +11,15 @@ import ws.vinta.albedo.utils.DatasetUtils._
 object CurationRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
+    if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
+      conf.setMaster("local[*]")
+      conf.set("spark.driver.memory", "12g")
+      //conf.setMaster("spark://localhost:7077")
+      //conf.set("spark.driver.memory", "2g")
+      //conf.set("spark.executor.cores", "3")
+      //conf.set("spark.executor.memory", "12g")
+      //conf.setJars(List("target/albedo-1.0.0-SNAPSHOT-uber.jar"))
+    }
 
     implicit val spark: SparkSession = SparkSession
       .builder()

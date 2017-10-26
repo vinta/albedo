@@ -11,6 +11,15 @@ import ws.vinta.albedo.utils.DatasetUtils._
 object ContentRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
+    if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
+      conf.setMaster("local[*]")
+      conf.set("spark.driver.memory", "12g")
+      //conf.setMaster("spark://localhost:7077")
+      //conf.set("spark.driver.memory", "2g")
+      //conf.set("spark.executor.cores", "3")
+      //conf.set("spark.executor.memory", "12g")
+      //conf.setJars(List("target/albedo-1.0.0-SNAPSHOT-uber.jar"))
+    }
 
     implicit val spark: SparkSession = SparkSession
       .builder()
@@ -28,15 +37,10 @@ object ContentRecommenderBuilder {
 
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.9, 0.1))
 
-    val meDF = spark.createDataFrame(Seq(
-      (652070, "vinta")
-    )).toDF("user_id", "username")
-
-    val testUserDF = testDF
-      .select($"user_id")
-      .distinct()
-      .limit(500)
-      .union(meDF.select($"user_id"))
+    val largeUserIds = testDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
+    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
+      .toDF("user_id")
       .cache()
 
     // Make Recommendations
