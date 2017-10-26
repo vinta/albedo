@@ -12,9 +12,11 @@ import scala.collection.mutable
 object UserProfileBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-    if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
+    if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") {
       conf.setMaster("local[*]")
       conf.set("spark.driver.memory", "12g")
+      //conf.setMaster("local-cluster[1, 3, 12288]")
+      //conf.setJars(List("target/albedo-1.0.0-SNAPSHOT-uber.jar"))
       //conf.setMaster("spark://localhost:7077")
       //conf.set("spark.driver.memory", "2g")
       //conf.set("spark.executor.cores", "3")
