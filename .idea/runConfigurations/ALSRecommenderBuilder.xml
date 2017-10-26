@@ -7,7 +7,7 @@
       </pattern>
     </extension>
     <option name="MAIN_CLASS_NAME" value="ws.vinta.albedo.ALSRecommenderBuilder" />
-    <option name="VM_PARAMETERS" value="-Xms12g -Xmx14g" />
+    <option name="VM_PARAMETERS" value="-Xms12g -Xmx12g" />
     <option name="PROGRAM_PARAMETERS" value="" />
     <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
