@@ -63,6 +63,18 @@ zeppelin_stop:
 build_jar:
 	mvn clean package -DskipTests
 
+.PHONY: play
+play:
+	time spark-submit \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.Playground \
+	target/albedo-1.0.0-SNAPSHOT.jar
+
 .PHONY: baseline
 baseline:
 	time spark-submit \
