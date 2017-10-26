@@ -147,6 +147,18 @@ else
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
 
+.PHONY: build_cb
+build_cb:
+	time spark-submit \
+	--driver-memory 2g \
+	--total-executor-cores 3 \
+	--executor-cores 3 \
+	--executor-memory 12g \
+	--master spark://localhost:7077 \
+	--packages "com.github.fommil.netlib:all:1.1.2,org.apache.httpcomponents:httpclient:4.5.2,org.elasticsearch.client:elasticsearch-rest-high-level-client:5.6.2,mysql:mysql-connector-java:5.1.41" \
+	--class ws.vinta.albedo.ContentRecommenderBuilder \
+	target/albedo-1.0.0-SNAPSHOT.jar
+
 .PHONY: train_word2vec
 train_word2vec:
 ifeq ($(platform),gcp)
@@ -162,7 +174,7 @@ else
 	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.hankcs:hanlp:portable-1.3.4" \
+	--packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
 	--class ws.vinta.albedo.Word2VecCorpusBuilder \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
@@ -172,8 +184,8 @@ train_ranker:
 ifeq ($(platform),gcp)
 	time gcloud beta dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.7.0" \
-	--jars target/albedo-1.0.0-SNAPSHOT.jar,gs://albedo/java-packages/stanford-corenlp-3.8.0-models.jar \
+	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.LogisticRegressionRanker
 else
 	time spark-submit \
@@ -182,8 +194,7 @@ else
 	--executor-cores 3 \
 	--executor-memory 12g \
 	--master spark://localhost:7077 \
-	--packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,com.hankcs:hanlp:portable-1.3.4,edu.stanford.nlp:stanford-corenlp:3.7.0" \
-	--jars "/Users/vinta/Projects/albedo/spark-data/stanford-corenlp-3.8.0-models.jar" \
+	--packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
 	--class ws.vinta.albedo.LogisticRegressionRanker \
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif

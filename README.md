@@ -49,14 +49,15 @@ See [PopularityRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/Populari
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-    --class ws.vinta.albedo.PopularityRecommenderBuilder \
+    --class ws.vinta.albedo.PopularityRecommenderTrainer \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.0010226370987782996
+# NDCG@30 = 0.002017744675282716
 ```
 
 ## Build the User Profile for Feature Engineering
@@ -65,8 +66,9 @@ See [UserProfileBuilder.scala](src/main/scala/ws/vinta/albedo/UserProfileBuilder
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -80,8 +82,9 @@ See [RepoProfileBuilder.scala](src/main/scala/ws/vinta/albedo/RepoProfileBuilder
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
@@ -91,27 +94,19 @@ $ spark-submit \
 
 ## Train an ALS Model for Candidate Generation
 
-See [ALSRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderBuilder.scala) and [ALSRecommenderCV.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderCV.scala) for complete code.
+See [ALSRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderBuilder.scala) for complete code.
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
-    --executor-memory 12g \
-    --master spark://localhost:7077 \
-    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
-    --class ws.vinta.albedo.ALSRecommenderCV \
-    target/albedo-1.0.0-SNAPSHOT.jar
-
-$ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ALSRecommenderBuilder \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.05026158143766048
+# NDCG@30 = 0.04380662848324943
 ```
 
 ## Build a Content-based Recommender for Candidate Generation
@@ -126,14 +121,15 @@ See [ContentRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ContentReco
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
-    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41,org.apache.httpcomponents:httpclient:4.5.2,org.elasticsearch.client:elasticsearch-rest-high-level-client:5.6.2" \
+    --packages "com.github.fommil.netlib:all:1.1.2,org.apache.httpcomponents:httpclient:4.5.2,org.elasticsearch.client:elasticsearch-rest-high-level-client:5.6.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ContentRecommenderBuilder \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@k = 0.0016596269625977985
+# NDCG@30 = 0.002559563451967487
 ```
 
 ## Train a Word2Vec Model for Text Vectorization
@@ -142,11 +138,12 @@ See [Word2VecCorpusBuilder.scala](src/main/scala/ws/vinta/albedo/Word2VecCorpusB
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
-    --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
+    --packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.Word2VecCorpusBuilder \
     target/albedo-1.0.0-SNAPSHOT.jar
 ```
@@ -157,11 +154,12 @@ See [LogisticRegressionRanker.scala](src/main/scala/ws/vinta/albedo/LogisticRegr
 
 ```bash
 $ spark-submit \
-    --driver-memory 4g \
-    --executor-cores 4 \
+    --driver-memory 2g \
+    --total-executor-cores 3 \
+    --executor-cores 3 \
     --executor-memory 12g \
     --master spark://localhost:7077 \
-    --packages "com.github.fommil.netlib:all:1.1.2" \
+    --packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.LogisticRegressionRanker \
     target/albedo-1.0.0-SNAPSHOT.jar
 ```
