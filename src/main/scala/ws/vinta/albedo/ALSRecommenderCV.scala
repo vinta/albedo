@@ -15,9 +15,6 @@ import ws.vinta.albedo.utils.DatasetUtils._
 object ALSRecommenderCV {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-    conf.set("spark.driver.memory", "4g")
-    conf.set("spark.executor.memory", "12g")
-    conf.set("spark.executor.cores", "4")
 
     implicit val spark: SparkSession = SparkSession
       .builder()

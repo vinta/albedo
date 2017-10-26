@@ -12,12 +12,13 @@ import org.apache.spark.sql.functions.lit
 object Playground {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
-      //.setMaster("local-cluster[1, 3, 14336]")
-      .setMaster("spark://localhost:7077")
-      .setJars(List("target/albedo-1.0.0-SNAPSHOT-uber.jar"))
-      .set("spark.driver.memory", "2g")
-      .set("spark.executor.memory", "12g")
-      .set("spark.executor.cores", "3")
+    conf.setMaster("local[*]")
+    conf.set("spark.driver.memory", "12g")
+    //conf.setMaster("spark://localhost:7077")
+    //conf.set("spark.driver.memory", "2g")
+    //conf.set("spark.executor.cores", "3")
+    //conf.set("spark.executor.memory", "12g")
+    //conf.setJars(List("target/albedo-1.0.0-SNAPSHOT-uber.jar"))
 
     implicit val spark: SparkSession = SparkSession
       .builder()

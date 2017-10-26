@@ -1,5 +1,6 @@
 package ws.vinta.albedo
 
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
@@ -9,9 +10,12 @@ import ws.vinta.albedo.utils.DatasetUtils._
 
 object PopularityRecommenderBuilder {
   def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("PopularityRecommenderBuilder")
+      .config(conf)
       .getOrCreate()
 
     import spark.implicits._

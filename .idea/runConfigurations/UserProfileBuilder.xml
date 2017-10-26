@@ -7,7 +7,7 @@
       </pattern>
     </extension>
     <option name="MAIN_CLASS_NAME" value="ws.vinta.albedo.UserProfileBuilder" />
-    <option name="VM_PARAMETERS" value="-Dspark.master=local[*]" />
+    <option name="VM_PARAMETERS" value="" />
     <option name="PROGRAM_PARAMETERS" value="" />
     <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
@@ -17,6 +17,8 @@
     <option name="PASS_PARENT_ENVS" value="true" />
     <module name="albedo" />
     <envs />
-    <method />
+    <method>
+      <option name="Make" enabled="false" />
+    </method>
   </configuration>
 </component>
