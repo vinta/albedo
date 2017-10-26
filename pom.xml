@@ -23,6 +23,12 @@
     </repository>
   </repositories>
   <dependencies>
+    <!-- https://mvnrepository.com/artifact/org.scala-lang/scala-library -->
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>${scala.version}</version>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-core_2.11 -->
     <dependency>
       <groupId>org.apache.spark</groupId>
@@ -114,8 +120,8 @@
         <version>3.1.0</version>
         <executions>
           <execution>
-           <phase>package</phase>
-           <!--<phase>none</phase>-->
+           <!--<phase>package</phase>-->
+           <phase>none</phase>
             <goals>
               <goal>shade</goal>
             </goals>

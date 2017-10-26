@@ -14,7 +14,8 @@ object ALSRecommenderBuilder {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") {
-      conf.setMaster("local-cluster[1, 3, 14336]")
+      conf.setMaster("local-cluster[1, 3, 12288]")
+      conf.setJars(List("target/albedo-1.0.0-SNAPSHOT-uber.jar"))
     }
 
     implicit val spark: SparkSession = SparkSession
@@ -53,7 +54,7 @@ object ALSRecommenderBuilder {
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.9, 0.1))
 
     val largeUserIds = testDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
-    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(500) :+ 652070
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
     val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
       .toDF("user_id")
       .cache()
@@ -90,7 +91,7 @@ object ALSRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.04818769346035656
+    // NDCG@30 = 0.04380662848324943
 
     spark.stop()
   }
