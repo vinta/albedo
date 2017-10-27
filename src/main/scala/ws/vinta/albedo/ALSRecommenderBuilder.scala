@@ -33,6 +33,9 @@ object ALSRecommenderBuilder {
 
     import spark.implicits._
 
+    val sc = spark.sparkContext
+    sc.setCheckpointDir(s"${settings.checkpointDir}")
+
     // Load Data
 
     val rawStarringDS = loadRawStarringDS().cache()

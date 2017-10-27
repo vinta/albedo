@@ -31,6 +31,9 @@ object Word2VecCorpusBuilder {
 
     import spark.implicits._
 
+    val sc = spark.sparkContext
+    sc.setCheckpointDir(s"${settings.checkpointDir}")
+
     // Load Data
 
     val rawUserInfoDS = loadRawUserInfoDS().cache()
