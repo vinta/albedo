@@ -90,9 +90,10 @@ baseline:
 .PHONY: build_user_profile
 build_user_profile:
 ifeq ($(platform),gcp)
+	# 5 min 0 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.UserProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -110,9 +111,10 @@ endif
 .PHONY: build_repo_profile
 build_repo_profile:
 ifeq ($(platform),gcp)
+	# 3 min 0 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.RepoProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -130,9 +132,10 @@ endif
 .PHONY: train_als
 train_als:
 ifeq ($(platform),gcp)
+	# 7 min 15 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
 	--class ws.vinta.albedo.ALSRecommenderBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -162,9 +165,10 @@ build_cb:
 .PHONY: train_word2vec
 train_word2vec:
 ifeq ($(platform),gcp)
+	# 38 min 58 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
 	--class ws.vinta.albedo.Word2VecCorpusBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -179,12 +183,13 @@ else
 	target/albedo-1.0.0-SNAPSHOT.jar
 endif
 
-.PHONY: train_ranker
-train_ranker:
+.PHONY: train_lr
+train_lr:
 ifeq ($(platform),gcp)
+	# 1 hr 28 min
 	time gcloud beta dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.memory=6g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.instances=4;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.LogisticRegressionRanker
 else
