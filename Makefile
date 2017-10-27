@@ -66,6 +66,7 @@ build_jar:
 .PHONY: play
 play:
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -78,6 +79,7 @@ play:
 .PHONY: baseline
 baseline:
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -93,11 +95,12 @@ ifeq ($(platform),gcp)
 	# 5 min 0 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.UserProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -114,11 +117,12 @@ ifeq ($(platform),gcp)
 	# 3 min 0 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.RepoProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -135,11 +139,12 @@ ifeq ($(platform),gcp)
 	# 7 min 15 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.ALSRecommenderBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -153,6 +158,7 @@ endif
 .PHONY: build_cb
 build_cb:
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -168,11 +174,12 @@ ifeq ($(platform),gcp)
 	# 38 min 58 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
-	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.Word2VecCorpusBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
@@ -188,12 +195,14 @@ train_lr:
 ifeq ($(platform),gcp)
 	# 1 hr 28 min
 	time gcloud beta dataproc jobs submit spark \
+	--verbosity \
 	--cluster albedo \
-	--properties "^;^spark.driver.maxResultSize=3g;spark.driver.memory=12g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer;spark.albedo.dataDir=gs://albedo/spark-data;spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.LogisticRegressionRanker
 else
 	time spark-submit \
+	--verbose \
 	--driver-memory 2g \
 	--total-executor-cores 3 \
 	--executor-cores 3 \
