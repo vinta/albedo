@@ -43,6 +43,7 @@ object LogisticRegressionRanker {
     import spark.implicits._
 
     val sc = spark.sparkContext
+    sc.setCheckpointDir(s"${settings.checkpointDir}")
 
     // Load Data
 
@@ -150,7 +151,7 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.95, 0.05, 0.0)
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
     val Array(trainingDF, testDF, _) = balancedStarringDF.randomSplit(weights)
 
     val featuredTrainingDF = trainingDF
@@ -249,9 +250,9 @@ object LogisticRegressionRanker {
       .setInputCols(Array("user_id", "repo_id", "standard_features", "weight", "starring"))
 
     val lr = new LogisticRegression()
-      .setMaxIter(100)
-      .setRegParam(0.05)
-      .setElasticNetParam(0.01)
+      .setMaxIter(150)
+      .setRegParam(0.1)
+      .setElasticNetParam(0.0)
       .setStandardization(false)
       .setFeaturesCol("standard_features")
       .setWeightCol("weight")
@@ -272,7 +273,7 @@ object LogisticRegressionRanker {
 
     // Train the Model
 
-    val pipelineModelPath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel.parquet"
+    val pipelineModelPath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel-als_weight-150-0.1-0.0.parquet"
     val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
       pipeline.fit(featuredTrainingDF)
     })
@@ -288,7 +289,7 @@ object LogisticRegressionRanker {
 
     val classificationMetric = binaryClassificationEvaluator.evaluate(testResultDF)
     println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
-    // areaUnderROC = 0.8269639130385324
+    // areaUnderROC = 0.9603482464685226
 
     // Make Recommendations
 
@@ -366,7 +367,16 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
-    // NDCG@30 = 0.007115621459151691
+
+    // MaxIter: 100
+    // RegParam: 0.05
+    // ElasticNetParam: 0.01
+    // NDCG@30 = 0.00285760091321761
+
+    // MaxIter: 150
+    // RegParam: 0.1
+    // ElasticNetParam: 0.0
+    // NDCG@30 = 0.011879982124895225
 
     spark.stop()
   }
