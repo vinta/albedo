@@ -10,6 +10,7 @@ package object settings {
   private val sc = spark.sparkContext
 
   val dataDir: String = sc.getConf.get("spark.albedo.dataDir", "./spark-data")
+  val checkpointDir: String = sc.getConf.get("spark.albedo.checkpointDir", "./spark-data/checkpoint")
 
   def today: String = {
     val now = LocalDateTime.now()
