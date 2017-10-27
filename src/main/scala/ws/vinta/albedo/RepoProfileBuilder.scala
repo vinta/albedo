@@ -58,24 +58,23 @@ object RepoProfileBuilder {
     val imputedRepoInfoDF = rawRepoInfoDS
       .withColumn("repo_has_null", when(nullableColumnNames.map(rawRepoInfoDS(_).isNull).reduce(_ || _), 1.0).otherwise(0.0))
       .na.fill("", nullableColumnNames)
+      .cache()
 
     categoricalColumnNames += "repo_has_null"
 
     // Clean Data
 
-    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
-    val assignmentWords = Array("%assignment%")
-
     val reducedRepoInfo = imputedRepoInfoDF
       .where($"repo_is_fork" === false)
       .where($"repo_forks_count" <= 90000)
-      .where($"repo_stargazers_count".between(10, 100000))
-      .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-      .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-      .where($"repo_is_unmaintained" === 0 and $"repo_is_assignment" === 0)
+      .where($"repo_stargazers_count".between(30, 100000))
+      .cache()
 
     val lowerableColumnNames = Array("repo_description", "repo_language", "repo_topics")
     val booleanColumnNames = Array("repo_has_issues", "repo_has_projects", "repo_has_downloads", "repo_has_wiki", "repo_has_pages")
+
+    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
+    val assignmentWords = Array("%assignment%")
 
     val cleanRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](reducedRepoInfo)((accDF, columnName) => {
       columnName match {
@@ -85,6 +84,10 @@ object RepoProfileBuilder {
           accDF.withColumn(columnName.replaceFirst("repo_", "repo_clean_"), col(columnName).cast("double"))
       }
     })
+    .cache()
+    .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+    .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+    .where($"repo_is_unmaintained" === 0 and $"repo_is_assignment" === 0)
     .cache()
 
     categoricalColumnNames += "repo_clean_has_issues"
