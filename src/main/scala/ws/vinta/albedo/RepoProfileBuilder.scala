@@ -73,28 +73,37 @@ object RepoProfileBuilder {
     val lowerableColumnNames = Array("repo_description", "repo_language", "repo_topics")
     val booleanColumnNames = Array("repo_has_issues", "repo_has_projects", "repo_has_downloads", "repo_has_wiki", "repo_has_pages")
 
-    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
-    val assignmentWords = Array("%assignment%")
-
-    val cleanRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](reducedRepoInfo)((accDF, columnName) => {
+    val normalizedRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](reducedRepoInfo)((accDF, columnName) => {
       columnName match {
         case _ if lowerableColumnNames.contains(columnName) =>
           accDF.withColumn(columnName.replaceFirst("repo_", "repo_clean_"), lower(col(columnName)))
         case _ if booleanColumnNames.contains(columnName) =>
-          accDF.withColumn(columnName.replaceFirst("repo_", "repo_clean_"), col(columnName).cast("double"))
+          accDF.withColumn(columnName, col(columnName).cast("double"))
       }
     })
     .cache()
-    .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-    .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-    .where($"repo_is_unmaintained" === 0 and $"repo_is_assignment" === 0)
-    .cache()
 
-    categoricalColumnNames += "repo_clean_has_issues"
-    categoricalColumnNames += "repo_clean_has_projects"
-    categoricalColumnNames += "repo_clean_has_downloads"
-    categoricalColumnNames += "repo_clean_has_wiki"
-    categoricalColumnNames += "repo_clean_has_pages"
+    categoricalColumnNames += "repo_has_issues"
+    categoricalColumnNames += "repo_has_projects"
+    categoricalColumnNames += "repo_has_downloads"
+    categoricalColumnNames += "repo_has_wiki"
+    categoricalColumnNames += "repo_has_pages"
+
+    val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
+    val assignmentWords = Array("%assignment%", "%作業%", "%作业%")
+    val demoWords = Array("test", "%demo project%")
+    val blogWords = Array("my blog")
+
+    val cleanRepoInfoDF = normalizedRepoInfoDF
+      .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
+      .withColumn("repo_is_demo", when(demoWords.map($"repo_clean_description".like(_)).reduce(_ or _) and $"repo_stargazers_count" <= 50, 1.0).otherwise(0.0))
+      .withColumn("repo_is_blog", when(blogWords.map($"repo_clean_description".like(_)).reduce(_ or _) and $"repo_stargazers_count" <= 50, 1.0).otherwise(0.0))
+      .where($"repo_is_unmaintained" === 0.0)
+      .where($"repo_is_assignment" === 0.0)
+      .where($"repo_is_demo" === 0.0)
+      .where($"repo_is_blog" === 0.0)
+      .cache()
 
     // Construct Features
 
