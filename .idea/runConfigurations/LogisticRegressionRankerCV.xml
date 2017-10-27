@@ -19,8 +19,6 @@
     <envs>
       <env name="RUN_WITH_INTELLIJ" value="true" />
     </envs>
-    <method>
-      <option name="Make" enabled="true" />
-    </method>
+    <method />
   </configuration>
 </component>
