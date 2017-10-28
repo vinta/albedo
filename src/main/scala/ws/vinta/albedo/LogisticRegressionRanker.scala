@@ -78,6 +78,7 @@ object LogisticRegressionRanker {
 
     // Feature Engineering
 
+    val booleanColumnNames = mutable.ArrayBuffer.empty[String]
     val continuousColumnNames = mutable.ArrayBuffer.empty[String]
     val categoricalColumnNames = mutable.ArrayBuffer.empty[String]
     val listColumnNames = mutable.ArrayBuffer.empty[String]
@@ -87,6 +88,21 @@ object LogisticRegressionRanker {
     categoricalColumnNames += "repo_id"
 
     // User Profile
+
+    booleanColumnNames += "user_has_null"
+    booleanColumnNames += "user_knows_web"
+    booleanColumnNames += "user_knows_backend"
+    booleanColumnNames += "user_knows_frontend"
+    booleanColumnNames += "user_knows_mobile"
+    booleanColumnNames += "user_knows_devops"
+    booleanColumnNames += "user_knows_data"
+    booleanColumnNames += "user_knows_recsys"
+    booleanColumnNames += "user_is_lead"
+    booleanColumnNames += "user_is_scholar"
+    booleanColumnNames += "user_is_freelancer"
+    booleanColumnNames += "user_is_junior"
+    booleanColumnNames += "user_is_pm"
+    booleanColumnNames += "user_has_blog"
 
     continuousColumnNames += "user_public_repos_count"
     continuousColumnNames += "user_public_gists_count"
@@ -99,20 +115,6 @@ object LogisticRegressionRanker {
     continuousColumnNames += "user_avg_daily_starred_repos_count"
 
     categoricalColumnNames += "user_account_type"
-    categoricalColumnNames += "user_has_null"
-    categoricalColumnNames += "user_knows_web"
-    categoricalColumnNames += "user_knows_backend"
-    categoricalColumnNames += "user_knows_frontend"
-    categoricalColumnNames += "user_knows_mobile"
-    categoricalColumnNames += "user_knows_devops"
-    categoricalColumnNames += "user_knows_data"
-    categoricalColumnNames += "user_knows_recsys"
-    categoricalColumnNames += "user_is_lead"
-    categoricalColumnNames += "user_is_scholar"
-    categoricalColumnNames += "user_is_freelancer"
-    categoricalColumnNames += "user_is_junior"
-    categoricalColumnNames += "user_is_pm"
-    categoricalColumnNames += "user_has_blog"
     categoricalColumnNames += "user_binned_company"
     categoricalColumnNames += "user_binned_location"
 
@@ -124,6 +126,16 @@ object LogisticRegressionRanker {
 
     // Repo Profile
 
+    booleanColumnNames += "repo_has_issues"
+    booleanColumnNames += "repo_has_projects"
+    booleanColumnNames += "repo_has_downloads"
+    booleanColumnNames += "repo_has_wiki"
+    booleanColumnNames += "repo_has_pages"
+    booleanColumnNames += "repo_has_null"
+    booleanColumnNames += "repo_has_activities_in_60days"
+    booleanColumnNames += "repo_has_homepage"
+    booleanColumnNames += "repo_is_vinta_starred"
+
     continuousColumnNames += "repo_size"
     continuousColumnNames += "repo_stargazers_count"
     continuousColumnNames += "repo_forks_count"
@@ -132,17 +144,11 @@ object LogisticRegressionRanker {
     continuousColumnNames += "repo_days_between_created_at_today"
     continuousColumnNames += "repo_days_between_updated_at_today"
     continuousColumnNames += "repo_days_between_pushed_at_today"
-    continuousColumnNames += "repo_stargazers_subscribers_ratio"
-    continuousColumnNames += "repo_stargazers_forks_ratio"
+    continuousColumnNames += "repo_subscribers_stargazers_ratio"
+    continuousColumnNames += "repo_forks_stargazers_ratio"
+    continuousColumnNames += "repo_open_issues_stargazers_ratio"
 
     categoricalColumnNames += "repo_owner_type"
-    categoricalColumnNames += "repo_clean_has_issues"
-    categoricalColumnNames += "repo_clean_has_projects"
-    categoricalColumnNames += "repo_clean_has_downloads"
-    categoricalColumnNames += "repo_clean_has_wiki"
-    categoricalColumnNames += "repo_clean_has_pages"
-    categoricalColumnNames += "repo_is_vinta_starred"
-    categoricalColumnNames += "repo_has_homepage"
     categoricalColumnNames += "repo_binned_language"
 
     listColumnNames += "repo_clean_topics"
@@ -225,12 +231,13 @@ object LogisticRegressionRanker {
       .setPredictionCol("als_score")
       .setColdStartStrategy("drop")
 
+    val finalBooleanColumnNames = booleanColumnNames.toArray
     val finalContinuousColumnNames = (continuousColumnNames :+ "als_score").toArray
     val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}_ohe").toArray
     val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}_cv").toArray
     val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}_w2v").toArray
     val vectorAssembler = new SimpleVectorAssembler()
-      .setInputCols(finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
+      .setInputCols(finalBooleanColumnNames ++ finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
       .setOutputCol("features")
 
     val standardScaler = new StandardScaler()

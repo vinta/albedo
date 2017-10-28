@@ -1,8 +1,8 @@
 package ws.vinta.albedo
 
 import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import ws.vinta.albedo.utils.DatasetUtils._
 
 import scala.collection.mutable
@@ -38,10 +38,17 @@ object RepoProfileBuilder {
 
     // Feature Engineering
 
+    val booleanColumnNames = mutable.ArrayBuffer.empty[String]
     val continuousColumnNames = mutable.ArrayBuffer.empty[String]
     val categoricalColumnNames = mutable.ArrayBuffer.empty[String]
     val listColumnNames = mutable.ArrayBuffer.empty[String]
     val textColumnNames = mutable.ArrayBuffer.empty[String]
+
+    booleanColumnNames += "repo_has_issues"
+    booleanColumnNames += "repo_has_projects"
+    booleanColumnNames += "repo_has_downloads"
+    booleanColumnNames += "repo_has_wiki"
+    booleanColumnNames += "repo_has_pages"
 
     continuousColumnNames += "repo_size"
     continuousColumnNames += "repo_stargazers_count"
@@ -56,11 +63,11 @@ object RepoProfileBuilder {
     val nullableColumnNames = Array("repo_description", "repo_homepage")
 
     val imputedRepoInfoDF = rawRepoInfoDS
-      .withColumn("repo_has_null", when(nullableColumnNames.map(rawRepoInfoDS(_).isNull).reduce(_ || _), 1.0).otherwise(0.0))
+      .withColumn("repo_has_null", when(nullableColumnNames.map(rawRepoInfoDS(_).isNull).reduce(_ || _), true).otherwise(false))
       .na.fill("", nullableColumnNames)
       .cache()
 
-    categoricalColumnNames += "repo_has_null"
+    booleanColumnNames += "repo_has_null"
 
     // Clean Data
 
@@ -70,39 +77,24 @@ object RepoProfileBuilder {
       .where($"repo_stargazers_count".between(30, 100000))
       .cache()
 
-    val lowerableColumnNames = Array("repo_description", "repo_language", "repo_topics")
-    val booleanColumnNames = Array("repo_has_issues", "repo_has_projects", "repo_has_downloads", "repo_has_wiki", "repo_has_pages")
-
-    val normalizedRepoInfoDF = (lowerableColumnNames ++ booleanColumnNames).foldLeft[DataFrame](reducedRepoInfo)((accDF, columnName) => {
-      columnName match {
-        case _ if lowerableColumnNames.contains(columnName) =>
-          accDF.withColumn(columnName.replaceFirst("repo_", "repo_clean_"), lower(col(columnName)))
-        case _ if booleanColumnNames.contains(columnName) =>
-          accDF.withColumn(columnName, col(columnName).cast("double"))
-      }
-    })
-    .cache()
-
-    categoricalColumnNames += "repo_has_issues"
-    categoricalColumnNames += "repo_has_projects"
-    categoricalColumnNames += "repo_has_downloads"
-    categoricalColumnNames += "repo_has_wiki"
-    categoricalColumnNames += "repo_has_pages"
-
     val unmaintainedWords = Array("%unmaintained%", "%no longer maintained%", "%no longer actively maintained%", "%not maintained%", "%not actively maintained%", "%deprecated%", "%moved to%")
     val assignmentWords = Array("%assignment%", "%作業%", "%作业%")
     val demoWords = Array("test", "%demo project%")
     val blogWords = Array("my blog")
 
-    val cleanRepoInfoDF = normalizedRepoInfoDF
-      .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-      .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), 1.0).otherwise(0.0))
-      .withColumn("repo_is_demo", when(demoWords.map($"repo_clean_description".like(_)).reduce(_ or _) and $"repo_stargazers_count" <= 50, 1.0).otherwise(0.0))
-      .withColumn("repo_is_blog", when(blogWords.map($"repo_clean_description".like(_)).reduce(_ or _) and $"repo_stargazers_count" <= 50, 1.0).otherwise(0.0))
-      .where($"repo_is_unmaintained" === 0.0)
-      .where($"repo_is_assignment" === 0.0)
-      .where($"repo_is_demo" === 0.0)
-      .where($"repo_is_blog" === 0.0)
+    val cleanRepoInfoDF = reducedRepoInfo
+      .withColumn("repo_clean_description", lower($"repo_description"))
+      .cache()
+      .withColumn("repo_is_unmaintained", when(unmaintainedWords.map($"repo_clean_description".like(_)).reduce(_ or _), true).otherwise(false))
+      .withColumn("repo_is_assignment", when(assignmentWords.map($"repo_clean_description".like(_)).reduce(_ or _), true).otherwise(false))
+      .withColumn("repo_is_demo", when(demoWords.map($"repo_clean_description".like(_)).reduce(_ or _) and $"repo_stargazers_count" <= 40, true).otherwise(false))
+      .withColumn("repo_is_blog", when(blogWords.map($"repo_clean_description".like(_)).reduce(_ or _) and $"repo_stargazers_count" <= 40, true).otherwise(false))
+      .where($"repo_is_unmaintained" === false)
+      .where($"repo_is_assignment" === false)
+      .where($"repo_is_demo" === false)
+      .where($"repo_is_blog" === false)
+      .withColumn("repo_clean_language", lower($"repo_language"))
+      .withColumn("repo_clean_topics", lower($"repo_topics"))
       .cache()
 
     // Construct Features
@@ -114,25 +106,29 @@ object RepoProfileBuilder {
       .to[List]
 
     val constructedRepoInfoDF = cleanRepoInfoDF
+      .withColumn("repo_has_activities_in_60days", datediff(current_date(), $"repo_pushed_at") <= 60)
+      .withColumn("repo_has_homepage", when($"repo_homepage" === "", false).otherwise(true))
+      .withColumn("repo_is_vinta_starred", when($"repo_id".isin(vintaStarredRepos: _*), true).otherwise(false))
       .withColumn("repo_days_between_created_at_today", datediff(current_date(), $"repo_created_at"))
       .withColumn("repo_days_between_updated_at_today", datediff(current_date(), $"repo_updated_at"))
       .withColumn("repo_days_between_pushed_at_today", datediff(current_date(), $"repo_pushed_at"))
-      .withColumn("repo_stargazers_subscribers_ratio", round($"repo_stargazers_count" / ($"repo_subscribers_count" + lit(1)), 3))
-      .withColumn("repo_stargazers_forks_ratio", round($"repo_stargazers_count" / ($"repo_forks_count" + lit(1)), 3))
-      .withColumn("repo_is_vinta_starred", when($"repo_id".isin(vintaStarredRepos: _*), 1.0).otherwise(0.0))
-      .withColumn("repo_text", concat_ws(" ", $"repo_owner_username", $"repo_name", $"repo_language", $"repo_description"))
+      .withColumn("repo_subscribers_stargazers_ratio", round($"repo_subscribers_count" / ($"repo_stargazers_count" + lit(1.0)), 3))
+      .withColumn("repo_forks_stargazers_ratio", round($"repo_forks_count" / ($"repo_stargazers_count" + lit(1.0)), 3))
+      .withColumn("repo_open_issues_stargazers_ratio", round($"repo_open_issues_count" / ($"repo_stargazers_count" + lit(1.0)), 3))
+      .withColumn("repo_text", lower(concat_ws(" ", $"repo_owner_username", $"repo_name", $"repo_language", $"repo_description")))
+
+    booleanColumnNames += "repo_has_activities_in_60days"
+    booleanColumnNames += "repo_has_homepage"
+    booleanColumnNames += "repo_is_vinta_starred"
 
     continuousColumnNames += "repo_days_between_created_at_today"
     continuousColumnNames += "repo_days_between_updated_at_today"
     continuousColumnNames += "repo_days_between_pushed_at_today"
-    continuousColumnNames += "repo_stargazers_subscribers_ratio"
-    continuousColumnNames += "repo_stargazers_forks_ratio"
-
-    categoricalColumnNames += "repo_is_vinta_starred"
+    continuousColumnNames += "repo_subscribers_stargazers_ratio"
+    continuousColumnNames += "repo_forks_stargazers_ratio"
+    continuousColumnNames += "repo_open_issues_stargazers_ratio"
 
     textColumnNames += "repo_text"
-
-    // Transform Features
 
     val languagesDF = cleanRepoInfoDF
       .groupBy($"repo_clean_language")
@@ -140,22 +136,22 @@ object RepoProfileBuilder {
 
     val transformedRepoInfoDF = constructedRepoInfoDF
       .join(languagesDF, Seq("repo_clean_language"))
-      .withColumn("repo_has_homepage", when($"repo_homepage" === "", 0.0).otherwise(1.0))
       .withColumn("repo_binned_language", when($"count_per_repo_language" <= 30, "__other").otherwise($"repo_clean_language"))
       .withColumn("repo_clean_topics", split($"repo_topics", ","))
       .cache()
 
-    categoricalColumnNames += "repo_has_homepage"
     categoricalColumnNames += "repo_binned_language"
 
     listColumnNames += "repo_clean_topics"
 
     // Save Results
 
-    // Continuous column names: repo_size, repo_stargazers_count, repo_forks_count, repo_subscribers_count, repo_open_issues_count, repo_days_between_created_at_today, repo_days_between_updated_at_today, repo_days_between_pushed_at_today, repo_stargazers_subscribers_ratio, repo_stargazers_forks_ratio
-    // Categorical column names: repo_owner_type, repo_clean_has_issues, repo_clean_has_projects, repo_clean_has_downloads, repo_clean_has_wiki, repo_clean_has_pages, repo_is_vinta_starred, repo_has_homepage, repo_binned_language
+    // Boolean column names: repo_has_issues, repo_has_projects, repo_has_downloads, repo_has_wiki, repo_has_pages, repo_has_null, repo_has_activities_in_60days, repo_has_homepage, repo_is_vinta_starred
+    // Continuous column names: repo_size, repo_stargazers_count, repo_forks_count, repo_subscribers_count, repo_open_issues_count, repo_days_between_created_at_today, repo_days_between_updated_at_today, repo_days_between_pushed_at_today, repo_subscribers_stargazers_ratio, repo_forks_stargazers_ratio, repo_open_issues_stargazers_ratio
+    // Categorical column names: repo_owner_type, repo_binned_language
     // List column names: repo_clean_topics
     // Text column names: repo_text
+    println("Boolean column names: " + booleanColumnNames.mkString(", "))
     println("Continuous column names: " + continuousColumnNames.mkString(", "))
     println("Categorical column names: " + categoricalColumnNames.mkString(", "))
     println("List column names: " + listColumnNames.mkString(", "))
