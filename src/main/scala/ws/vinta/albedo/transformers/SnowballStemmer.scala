@@ -13,7 +13,7 @@ class SnowballStemmer(override val uid: String)
     this(Identifiable.randomUID("snowballStemmer"))
   }
 
-  override protected def createTransformFunc: Seq[String] => Seq[String] = { strings =>
+  override def createTransformFunc: Seq[String] => Seq[String] = { strings =>
     val stemmer = new EnglishStemmer()
 
     strings.map((str: String) => {
@@ -27,11 +27,11 @@ class SnowballStemmer(override val uid: String)
     })
   }
 
-  override protected def validateInputType(inputType: DataType): Unit = {
+  override def validateInputType(inputType: DataType): Unit = {
     require(inputType == ArrayType(StringType), s"Input type must be string type but got $inputType.")
   }
 
-  override protected def outputDataType: DataType = {
+  override def outputDataType: DataType = {
     ArrayType(StringType)
   }
 

@@ -26,7 +26,7 @@ class HanLPTokenizer(override val uid: String)
   def setShouldRemoveStopWords(value: Boolean): this.type = set(shouldRemoveStopWords, value)
   setDefault(shouldRemoveStopWords -> true)
 
-  override protected def createTransformFunc: String => Seq[String] = { originStr =>
+  override def createTransformFunc: String => Seq[String] = { originStr =>
     HanLP.Config.ShowTermNature = false
     HanLP.Config.Normalization = false
     val segment = HanLP.newSegment()
@@ -50,11 +50,11 @@ class HanLPTokenizer(override val uid: String)
       })
   }
 
-  override protected def validateInputType(inputType: DataType): Unit = {
+  override def validateInputType(inputType: DataType): Unit = {
     require(inputType == StringType, s"Input type must be string type but got $inputType.")
   }
 
-  override protected def outputDataType: DataType = {
+  override def outputDataType: DataType = {
     new ArrayType(StringType, false)
   }
 
