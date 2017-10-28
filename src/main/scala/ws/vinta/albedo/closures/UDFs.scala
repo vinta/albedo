@@ -76,4 +76,13 @@ object UDFs extends Serializable {
     else
       temp3
   })
+
+  def repoLanguageIndexInUserRecentRepoLanguagesUDF = udf((repo_language: String, user_recent_repo_languages: Seq[String]) => {
+    val index = user_recent_repo_languages.indexOf(repo_language.toLowerCase())
+    if (index < 0) user_recent_repo_languages.size + 50 else index
+  })
+
+  def repoLanguageCountInUserRecentRepoLanguagesUDF = udf((repo_language: String, user_recent_repo_languages: Seq[String]) => {
+    user_recent_repo_languages.count(_ == repo_language.toLowerCase())
+  })
 }

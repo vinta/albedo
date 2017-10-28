@@ -84,9 +84,6 @@ object LogisticRegressionRanker {
     val listColumnNames = mutable.ArrayBuffer.empty[String]
     val textColumnNames = mutable.ArrayBuffer.empty[String]
 
-    categoricalColumnNames += "user_id"
-    categoricalColumnNames += "repo_id"
-
     // User Profile
 
     booleanColumnNames += "user_has_null"
@@ -155,23 +152,35 @@ object LogisticRegressionRanker {
 
     textColumnNames += "repo_text"
 
+    // Construct Features
+
+    val featuredDF = balancedStarringDF
+      .repartition($"user_id")
+      .cache()
+      .join(userProfileDF, Seq("user_id"))
+      .join(repoProfileDF, Seq("repo_id"))
+      .cache()
+      .withColumn("repo_language_index_in_user_recent_repo_languages", repoLanguageIndexInUserRecentRepoLanguagesUDF($"repo_language", $"user_recent_repo_languages"))
+      .withColumn("repo_language_count_in_user_recent_repo_languages", repoLanguageCountInUserRecentRepoLanguagesUDF($"repo_language", $"user_recent_repo_languages"))
+      .cache()
+
+    continuousColumnNames += "repo_language_index_in_user_recent_repo_languages"
+    continuousColumnNames += "repo_language_count_in_user_recent_repo_languages"
+
+    categoricalColumnNames += "user_id"
+    categoricalColumnNames += "repo_id"
+
     // Split Data
 
     val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
-    val Array(trainingDF, testDF, _) = balancedStarringDF.randomSplit(weights)
+    val Array(trainingDF, testDF, _) = featuredDF.randomSplit(weights)
 
     val featuredTrainingDF = trainingDF
       .repartition($"user_id")
       .cache()
-      .join(userProfileDF, Seq("user_id"))
-      .join(repoProfileDF, Seq("repo_id"))
-      .cache()
 
     val featuredTestDF = testDF
       .repartition($"user_id")
-      .cache()
-      .join(userProfileDF, Seq("user_id"))
-      .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
     val largeUserIds = featuredTestDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList

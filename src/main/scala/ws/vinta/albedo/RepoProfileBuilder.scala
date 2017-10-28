@@ -133,6 +133,8 @@ object RepoProfileBuilder {
     val languagesDF = cleanRepoInfoDF
       .groupBy($"repo_clean_language")
       .agg(count("*").alias("count_per_repo_language"))
+      .select($"repo_clean_language", $"count_per_repo_language")
+      .cache()
 
     val transformedRepoInfoDF = constructedRepoInfoDF
       .join(languagesDF, Seq("repo_clean_language"))

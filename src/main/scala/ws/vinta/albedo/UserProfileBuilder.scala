@@ -97,6 +97,7 @@ object UserProfileBuilder {
       .cache()
 
     val starringRepoInfoDF = rawStarringDS
+      .select($"user_id", $"repo_id", $"starred_at")
       .join(rawRepoInfoDS, Seq("repo_id"))
       .cache()
 
@@ -176,11 +177,13 @@ object UserProfileBuilder {
     val companyCountDF = cleanUserInfoDF
       .groupBy($"user_clean_company")
       .agg(count("*").alias("count_per_user_company"))
+      .select($"user_clean_company", $"count_per_user_company")
       .cache()
 
     val locationCountDF = cleanUserInfoDF
       .groupBy($"user_clean_location")
       .agg(count("*").alias("count_per_user_location"))
+      .select($"user_clean_location", $"count_per_user_location")
       .cache()
 
     val transformedUserInfoDF = constructedUserInfoDF
