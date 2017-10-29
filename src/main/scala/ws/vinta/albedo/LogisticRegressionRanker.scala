@@ -284,7 +284,9 @@ object LogisticRegressionRanker {
 
     val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerDataPipedBalancedStarringDF-$maxStarredReposCount.parquet"
     val dataPipedBalancedStarringDF = loadOrCreateDataFrame(dataPipedBalancedStarringDFpath, () => {
-      dataPipelineModel.transform(featuredBalancedStarringDF)
+      dataPipelineModel
+        .transform(featuredBalancedStarringDF)
+        .select($"user_id", $"repo_id", $"starring", $"weight", $"standard_features")
     })
 
     val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
