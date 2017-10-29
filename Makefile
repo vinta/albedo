@@ -92,7 +92,7 @@ baseline:
 .PHONY: build_user_profile
 build_user_profile:
 ifeq ($(platform),gcp)
-	# 5 min 0 sec
+	# 5 min 18 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
 	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
@@ -114,7 +114,7 @@ endif
 .PHONY: build_repo_profile
 build_repo_profile:
 ifeq ($(platform),gcp)
-	# 3 min 0 sec
+	# 3 min 8 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
 	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
@@ -136,7 +136,7 @@ endif
 .PHONY: train_als
 train_als:
 ifeq ($(platform),gcp)
-	# 7 min 15 sec
+	# 10 min 19 sec
 	time gcloud dataproc jobs submit spark \
 	--cluster albedo \
 	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
@@ -195,7 +195,7 @@ train_lr:
 ifeq ($(platform),gcp)
 	# 1 hr 28 min
 	time gcloud beta dataproc jobs submit spark \
-	--verbosity \
+	--verbosity debug \
 	--cluster albedo \
 	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar \

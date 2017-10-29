@@ -142,7 +142,6 @@ object RepoProfileBuilder {
       .withColumn("repo_clean_topics", split($"repo_topics", ","))
       .cache()
 
-    categoricalColumnNames += "repo_language"
     categoricalColumnNames += "repo_binned_language"
 
     listColumnNames += "repo_clean_topics"
@@ -160,7 +159,7 @@ object RepoProfileBuilder {
     println("List column names: " + listColumnNames.mkString(", "))
     println("Text column names: " + textColumnNames.mkString(", "))
 
-    val featureNames = mutable.ArrayBuffer("repo_id", "repo_full_name", "repo_owner_id")
+    val featureNames = mutable.ArrayBuffer("repo_id", "repo_full_name", "repo_owner_id", "repo_language", "repo_created_at", "repo_updated_at", "repo_pushed_at")
     featureNames ++= booleanColumnNames
     featureNames ++= continuousColumnNames
     featureNames ++= categoricalColumnNames
