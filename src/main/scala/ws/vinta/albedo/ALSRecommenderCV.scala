@@ -1,16 +1,18 @@
 package ws.vinta.albedo
 
 import org.apache.spark.SparkConf
-import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
+import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.RankingMetricFormatterALS
+import ws.vinta.albedo.transformers.RankingMetricFormatter
 import ws.vinta.albedo.utils.DatasetUtils._
+
+import scala.collection.mutable
 
 object ALSRecommenderCV {
   def main(args: Array[String]): Unit = {
@@ -42,7 +44,7 @@ object ALSRecommenderCV {
 
     val rawStarringDS = loadRawStarringDS().cache()
 
-    // Build the Pipeline
+    // Build the Model Pipeline
 
     val als = new ALS()
       .setImplicitPrefs(true)
@@ -52,13 +54,16 @@ object ALSRecommenderCV {
       .setItemCol("repo_id")
       .setRatingCol("starring")
 
-    val alsPredictionFormatter = new RankingMetricFormatterALS()
+    val rankingMetricFormatter = new RankingMetricFormatter("als")
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setPredictionCol("prediction")
 
-    val pipeline = new Pipeline()
-      .setStages(Array(als, alsPredictionFormatter))
+    val modelStages = mutable.ArrayBuffer.empty[PipelineStage]
+    modelStages += als
+    modelStages += rankingMetricFormatter
+
+    val modelPipeline = new Pipeline().setStages(modelStages.toArray)
 
     // Cross-validate Models
 
@@ -75,16 +80,16 @@ object ALSRecommenderCV {
       .as[UserItems]
       .cache()
 
-    val evaluator = new RankingEvaluator(userActualItemsDS)
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
       .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
 
     val cv = new CrossValidator()
-      .setEstimator(pipeline)
+      .setEstimator(modelPipeline)
       .setEstimatorParamMaps(paramGrid)
-      .setEvaluator(evaluator)
+      .setEvaluator(rankingEvaluator)
       .setNumFolds(2)
 
     val cvModel = cv.fit(rawStarringDS)
