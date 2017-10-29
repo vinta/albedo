@@ -6,8 +6,8 @@ import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.recommendation.ALSModel
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
@@ -52,29 +52,6 @@ object LogisticRegressionRanker {
     val repoProfileDF = loadRepoProfileDF().cache()
 
     val rawStarringDS = loadRawStarringDS().cache()
-
-    // Handle Imbalanced Samples
-
-    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF.parquet"
-    val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
-      val popularReposDS = loadPopularRepoDF()
-      val popularRepos = popularReposDS
-        .select($"repo_id".as[Int])
-        .collect()
-        .to[mutable.LinkedHashSet]
-      val bcPopularRepos = sc.broadcast(popularRepos)
-
-      val negativeBalancer = new NegativeBalancer(bcPopularRepos)
-        .setUserCol("user_id")
-        .setItemCol("repo_id")
-        .setTimeCol("starred_at")
-        .setLabelCol("starring")
-        .setNegativeValue(0.0)
-        .setNegativePositiveRatio(1.0)
-      negativeBalancer.transform(rawStarringDS)
-    })
-    .repartition($"user_id")
-    .cache()
 
     // Feature Engineering
 
@@ -152,44 +129,47 @@ object LogisticRegressionRanker {
 
     textColumnNames += "repo_text"
 
-    // Construct Features
+    // Clean Data
 
-    val featuredDF = balancedStarringDF
-      .repartition($"user_id")
-      .cache()
+    val maxStarredReposCount = 4000
+    val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
+    val reducedStarringDF = loadOrCreateDataFrame(reducedStarringDFpath, () => {
+      val userStarredReposCountDF = rawStarringDS
+        .groupBy($"user_id")
+        .agg(count("*").alias("user_starred_repos_count"))
+
+      rawStarringDS
+        .join(userStarredReposCountDF, Seq("user_id"))
+        .where($"user_starred_repos_count" <= maxStarredReposCount)
+        .select($"user_id", $"repo_id", $"starred_at", $"starring")
+    })
+    .repartition($"user_id")
+    .cache()
+
+    // Build the Data Pipeline
+
+    val featuredStarringDF = reducedStarringDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
-      .withColumn("repo_language_index_in_user_recent_repo_languages", repoLanguageIndexInUserRecentRepoLanguagesUDF($"repo_language", $"user_recent_repo_languages"))
-      .withColumn("repo_language_count_in_user_recent_repo_languages", repoLanguageCountInUserRecentRepoLanguagesUDF($"repo_language", $"user_recent_repo_languages"))
-      .cache()
-
-    continuousColumnNames += "repo_language_index_in_user_recent_repo_languages"
-    continuousColumnNames += "repo_language_count_in_user_recent_repo_languages"
 
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
 
-    // Split Data
+    val userRepoTransformer = new UserRepoTransformer()
+      .setInputCols(Array("repo_language", "user_recent_repo_languages"))
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
-    val Array(trainingDF, testDF, _) = featuredDF.randomSplit(weights)
+    continuousColumnNames += "repo_language_index_in_user_recent_repo_languages"
+    continuousColumnNames += "repo_language_count_in_user_recent_repo_languages"
 
-    val featuredTrainingDF = trainingDF
-      .repartition($"user_id")
-      .cache()
+    val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
+    val alsModel = ALSModel.load(alsModelPath)
+      .setUserCol("user_id")
+      .setItemCol("repo_id")
+      .setPredictionCol("als_score")
+      .setColdStartStrategy("drop")
 
-    val featuredTestDF = testDF
-      .repartition($"user_id")
-      .cache()
-
-    val largeUserIds = featuredTestDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
-    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
-    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
-      .toDF("user_id")
-      .cache()
-
-    // Build the Pipeline
+    continuousColumnNames += "als_score"
 
     val categoricalTransformers = categoricalColumnNames.flatMap((columnName: String) => {
       val stringIndexer = new StringIndexer()
@@ -233,15 +213,8 @@ object LogisticRegressionRanker {
       Array(hanLPTokenizer, stopWordsRemover, word2VecModel)
     })
 
-    val alsModelPath = s"${settings.dataDir}/${settings.today}/alsModel.parquet"
-    val alsModel = ALSModel.load(alsModelPath)
-      .setUserCol("user_id")
-      .setItemCol("repo_id")
-      .setPredictionCol("als_score")
-      .setColdStartStrategy("drop")
-
     val finalBooleanColumnNames = booleanColumnNames.toArray
-    val finalContinuousColumnNames = (continuousColumnNames :+ "als_score").toArray
+    val finalContinuousColumnNames = continuousColumnNames.toArray
     val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}_ohe").toArray
     val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}_cv").toArray
     val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}_w2v").toArray
@@ -262,8 +235,76 @@ object LogisticRegressionRanker {
     val weightTransformer = new SQLTransformer()
       .setStatement(sql)
 
-    val intermediateCacher = new IntermediateCacher()
-      .setInputCols(Array("user_id", "repo_id", "standard_features", "weight", "starring"))
+    val dataStages = mutable.ArrayBuffer.empty[PipelineStage]
+    dataStages += userRepoTransformer
+    dataStages += alsModel
+    dataStages ++= categoricalTransformers
+    dataStages ++= listTransformers
+    dataStages ++= textTransformers
+    dataStages += vectorAssembler
+    dataStages += standardScaler
+    dataStages += weightTransformer
+
+    val dataPipeline = new Pipeline().setStages(dataStages.toArray)
+
+    val dataPipelinePath = s"${settings.dataDir}/${settings.today}/rankerDataPipeline.parquet"
+    val dataPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, dataPipelinePath, () => {
+      dataPipeline.fit(featuredStarringDF)
+    })
+
+    // Handle Imbalanced Data
+
+    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF.parquet"
+    val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
+      val popularReposDS = loadPopularRepoDF()
+      val popularRepos = popularReposDS
+        .select($"repo_id".as[Int])
+        .collect()
+        .to[mutable.LinkedHashSet]
+      val bcPopularRepos = sc.broadcast(popularRepos)
+
+      val negativeBalancer = new NegativeBalancer(bcPopularRepos)
+        .setUserCol("user_id")
+        .setItemCol("repo_id")
+        .setTimeCol("starred_at")
+        .setLabelCol("starring")
+        .setNegativeValue(0.0)
+        .setNegativePositiveRatio(1.0)
+      negativeBalancer.transform(reducedStarringDF)
+    })
+    .repartition($"user_id")
+    .cache()
+
+    // Split Data
+
+    val featuredBalancedStarringDF = balancedStarringDF
+      .join(userProfileDF, Seq("user_id"))
+      .join(repoProfileDF, Seq("repo_id"))
+      .cache()
+
+    val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/dataPipedBalancedStarringDF.parquet"
+    val dataPipedBalancedStarringDF = loadOrCreateDataFrame(dataPipedBalancedStarringDFpath, () => {
+      dataPipelineModel.transform(featuredBalancedStarringDF)
+    })
+
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
+    val Array(trainingDF, testDF, _) = dataPipedBalancedStarringDF.randomSplit(weights)
+
+    val trainingDataPipedDF = trainingDF
+      .repartition($"user_id")
+      .cache()
+
+    val testDataPipedDF = testDF
+      .repartition($"user_id")
+      .cache()
+
+    val largeUserIds = testDataPipedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
+    val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
+      .toDF("user_id")
+      .cache()
+
+    // Build the Model Pipeline
 
     val lr = new LogisticRegression()
       .setMaxIter(150)
@@ -274,40 +315,30 @@ object LogisticRegressionRanker {
       .setWeightCol("weight")
       .setLabelCol("starring")
 
-    val stages = mutable.ArrayBuffer.empty[PipelineStage]
-    stages ++= categoricalTransformers
-    stages ++= listTransformers
-    stages ++= textTransformers
-    stages += alsModel
-    stages += vectorAssembler
-    stages += standardScaler
-    stages += weightTransformer
-    stages += intermediateCacher
-    stages += lr
+    val modelStages = mutable.ArrayBuffer.empty[PipelineStage]
+    modelStages += lr
 
-    val pipeline = new Pipeline().setStages(stages.toArray)
+    val modelPipeline = new Pipeline().setStages(modelStages.toArray)
 
-    // Train the Model
-
-    val pipelineModelPath = s"${settings.dataDir}/${settings.today}/rankerPipelineModel-als_weight-150-0.1-0.0.parquet"
-    val pipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, pipelineModelPath, () => {
-      pipeline.fit(featuredTrainingDF)
+    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline.parquet"
+    val modelPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, modelPipelinePath, () => {
+      modelPipeline.fit(trainingDataPipedDF)
     })
 
     // Evaluate the Model: Classification
 
-    val testResultDF = pipelineModel.transform(featuredTestDF)
+    val testRankedDF = modelPipelineModel.transform(testDataPipedDF)
 
     val binaryClassificationEvaluator = new BinaryClassificationEvaluator()
       .setMetricName("areaUnderROC")
       .setRawPredictionCol("rawPrediction")
       .setLabelCol("starring")
 
-    val classificationMetric = binaryClassificationEvaluator.evaluate(testResultDF)
+    val classificationMetric = binaryClassificationEvaluator.evaluate(testRankedDF)
     println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
     // areaUnderROC = 0.9603482464685226
 
-    // Make Recommendations
+    // Generate Candidates
 
     val topK = 30
 
@@ -338,28 +369,30 @@ object LogisticRegressionRanker {
     //recommenders += curationRecommender
     //recommenders += popularityRecommender
 
-    val userRecommendedItemDF = recommenders
+    val candidateDF = recommenders
       .map((recommender: Recommender) => recommender.recommendForUsers(testUserDF))
       .reduce(_ union _)
       .select($"user_id", $"repo_id")
       .distinct()
-
-    // 補上 starred_at 和 starring 欄位，讓 schema 與 rawStarringDS 一致
-    val userCandidateItemDF = userRecommendedItemDF
       .repartition($"user_id")
-      .cache()
-      .join(userProfileDF, Seq("user_id"))
-      .join(repoProfileDF, Seq("repo_id"))
-      .select(col("*"), current_date().cast("timestamp").alias("starred_at"), lit(1.0).alias("starring"))
       .cache()
 
     // Predict the Ranking
 
-    val userRankedItemDF = pipelineModel
-      .transform(userCandidateItemDF)
+    val featuredCandidateDF = candidateDF
+      .join(userProfileDF, Seq("user_id"))
+      .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    userRankedItemDF
+    val dataPipedCandidateDF = dataPipelineModel
+      .transform(featuredCandidateDF)
+      .cache()
+
+    val rankedCandidateDF = modelPipelineModel
+      .transform(dataPipedCandidateDF)
+      .cache()
+
+    rankedCandidateDF
       .where($"user_id" === 652070)
       .select("user_id", "repo_id", "prediction", "probability", "rawPrediction")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
@@ -372,7 +405,7 @@ object LogisticRegressionRanker {
       .join(testUserDF, Seq("user_id"))
       .as[UserItems]
 
-    val userPredictedItemsDS = userRankedItemDF
+    val userPredictedItemsDS = rankedCandidateDF
       .transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
       .as[UserItems]
 
@@ -397,3 +430,45 @@ object LogisticRegressionRanker {
     spark.stop()
   }
 }
+
+// load all data
+
+// build user profile
+// build repo profile
+
+// starring join user/repo profile
+// get featured starring data
+
+// build data pipeline
+// fit data pipeline: featured starring data
+// save data pipeline
+
+// handle imbalanced data
+// get balanced starring data
+// balanced starring join user/repo profile
+// get featured balanced starring data
+
+// data pipeline transform: featured balanced starring data
+// get data piped balanced starring data
+// save data piped balanced starring data
+
+// split data piped balanced starring data
+// get data piped training set
+// get data piped test set
+
+// build model pipeline
+// fit model pipeline: data piped training set
+// save model pipeline
+
+// model pipeline transform: data piped test set
+// get test ranked data
+// evaluate: binary
+
+// generate candidates
+// get candidate data
+
+// data pipeline transform: candidate data
+// get data piped candidate data
+// model pipeline transform: data piped candidate data
+// get ranked candidate data
+// evaluate: ranking

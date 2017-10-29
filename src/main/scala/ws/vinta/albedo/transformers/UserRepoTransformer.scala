@@ -11,7 +11,7 @@ class UserRepoTransformer(override val uid: String)
   extends Transformer with DefaultParamsWritable {
 
   def this() = {
-    this(Identifiable.randomUID("simpleTransformer"))
+    this(Identifiable.randomUID("userRepoTransformer"))
   }
 
   val inputCols: StringArrayParam = new StringArrayParam(this, "inputCols", "Input column names")
@@ -22,10 +22,14 @@ class UserRepoTransformer(override val uid: String)
 
   override def transformSchema(schema: StructType) = {
     $(inputCols).foreach((inputColName: String) => {
-      require(!schema.fieldNames.contains(inputColName), s"Input column $inputColName must exist.")
+      require(schema.fieldNames.contains(inputColName), s"Input column $inputColName must exist.")
     })
 
-    schema
+    val newFields: Array[StructField] = Array(
+      StructField("repo_language_index_in_user_recent_repo_languages", IntegerType, nullable = false),
+      StructField("repo_language_count_in_user_recent_repo_languages", IntegerType, nullable = false)
+    )
+    StructType(schema.fields ++ newFields)
   }
 
   override def transform(dataset: Dataset[_]) = {

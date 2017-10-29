@@ -142,6 +142,7 @@ object RepoProfileBuilder {
       .withColumn("repo_clean_topics", split($"repo_topics", ","))
       .cache()
 
+    categoricalColumnNames += "repo_language"
     categoricalColumnNames += "repo_binned_language"
 
     listColumnNames += "repo_clean_topics"
@@ -150,7 +151,7 @@ object RepoProfileBuilder {
 
     // Boolean column names: repo_has_issues, repo_has_projects, repo_has_downloads, repo_has_wiki, repo_has_pages, repo_has_null, repo_has_activities_in_60days, repo_has_homepage, repo_is_vinta_starred
     // Continuous column names: repo_size, repo_stargazers_count, repo_forks_count, repo_subscribers_count, repo_open_issues_count, repo_days_between_created_at_today, repo_days_between_updated_at_today, repo_days_between_pushed_at_today, repo_subscribers_stargazers_ratio, repo_forks_stargazers_ratio, repo_open_issues_stargazers_ratio
-    // Categorical column names: repo_owner_type, repo_binned_language
+    // Categorical column names: repo_owner_type, repo_language, repo_binned_language
     // List column names: repo_clean_topics
     // Text column names: repo_text
     println("Boolean column names: " + booleanColumnNames.mkString(", "))
@@ -159,7 +160,13 @@ object RepoProfileBuilder {
     println("List column names: " + listColumnNames.mkString(", "))
     println("Text column names: " + textColumnNames.mkString(", "))
 
-    val featureNames = mutable.ArrayBuffer("repo_id", "repo_full_name", "repo_owner_id") ++ continuousColumnNames ++ categoricalColumnNames ++ listColumnNames ++ textColumnNames
+    val featureNames = mutable.ArrayBuffer("repo_id", "repo_full_name", "repo_owner_id")
+    featureNames ++= booleanColumnNames
+    featureNames ++= continuousColumnNames
+    featureNames ++= categoricalColumnNames
+    featureNames ++= listColumnNames
+    featureNames ++= textColumnNames
+
     val path = s"${settings.dataDir}/${settings.today}/repoProfileDF.parquet"
     val repoProfileDF = loadOrCreateDataFrame(path, () => {
       transformedRepoInfoDF.select(featureNames.map(col): _*)

@@ -212,7 +212,13 @@ object UserProfileBuilder {
     println("List column names: " + listColumnNames.mkString(", "))
     println("Text column names: " + textColumnNames.mkString(", "))
 
-    val featureNames = mutable.ArrayBuffer("user_id", "user_login") ++ continuousColumnNames ++ categoricalColumnNames ++ listColumnNames ++ textColumnNames
+    val featureNames = mutable.ArrayBuffer("user_id", "user_login")
+    featureNames ++= booleanColumnNames
+    featureNames ++= continuousColumnNames
+    featureNames ++= categoricalColumnNames
+    featureNames ++= listColumnNames
+    featureNames ++= textColumnNames
+
     val path = s"${settings.dataDir}/${settings.today}/userProfileDF.parquet"
     val userProfileDF = loadOrCreateDataFrame(path, () => {
       transformedUserInfoDF.select(featureNames.map(col): _*)
