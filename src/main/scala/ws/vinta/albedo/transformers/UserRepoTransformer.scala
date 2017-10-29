@@ -3,8 +3,8 @@ package ws.vinta.albedo.transformers
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{ParamMap, StringArrayParam}
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Dataset}
 import ws.vinta.albedo.closures.UDFs._
 
 class UserRepoTransformer(override val uid: String)
@@ -20,7 +20,7 @@ class UserRepoTransformer(override val uid: String)
 
   def setInputCols(value: Array[String]): this.type = set(inputCols, value)
 
-  override def transformSchema(schema: StructType) = {
+  override def transformSchema(schema: StructType): StructType = {
     $(inputCols).foreach((inputColName: String) => {
       require(schema.fieldNames.contains(inputColName), s"Input column $inputColName must exist.")
     })
@@ -32,7 +32,7 @@ class UserRepoTransformer(override val uid: String)
     StructType(schema.fields ++ newFields)
   }
 
-  override def transform(dataset: Dataset[_]) = {
+  override def transform(dataset: Dataset[_]): DataFrame = {
     transformSchema(dataset.schema)
 
     import dataset.sparkSession.implicits._

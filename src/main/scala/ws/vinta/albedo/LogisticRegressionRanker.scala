@@ -247,14 +247,14 @@ object LogisticRegressionRanker {
 
     val dataPipeline = new Pipeline().setStages(dataStages.toArray)
 
-    val dataPipelinePath = s"${settings.dataDir}/${settings.today}/rankerDataPipeline.parquet"
+    val dataPipelinePath = s"${settings.dataDir}/${settings.today}/rankerDataPipeline-$maxStarredReposCount.parquet"
     val dataPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, dataPipelinePath, () => {
       dataPipeline.fit(featuredStarringDF)
     })
 
     // Handle Imbalanced Data
 
-    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF.parquet"
+    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
       val popularReposDS = loadPopularRepoDF()
       val popularRepos = popularReposDS
@@ -282,7 +282,7 @@ object LogisticRegressionRanker {
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/dataPipedBalancedStarringDF.parquet"
+    val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerDataPipedBalancedStarringDF-$maxStarredReposCount.parquet"
     val dataPipedBalancedStarringDF = loadOrCreateDataFrame(dataPipedBalancedStarringDFpath, () => {
       dataPipelineModel.transform(featuredBalancedStarringDF)
     })
@@ -320,7 +320,7 @@ object LogisticRegressionRanker {
 
     val modelPipeline = new Pipeline().setStages(modelStages.toArray)
 
-    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline.parquet"
+    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount.parquet"
     val modelPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, modelPipelinePath, () => {
       modelPipeline.fit(trainingDataPipedDF)
     })
