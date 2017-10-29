@@ -32,7 +32,7 @@ class IntermediateCacher(override val uid: String)
     intermediateDF.cache()
   }
 
-  override def copy(extra: ParamMap): this.type = {
+  override def copy(extra: ParamMap): IntermediateCacher = {
     defaultCopy(extra)
   }
 }

@@ -42,7 +42,7 @@ class UserRepoTransformer(override val uid: String)
       .withColumn("repo_language_count_in_user_recent_repo_languages", repoLanguageCountInUserRecentRepoLanguagesUDF($"repo_language", $"user_recent_repo_languages"))
   }
 
-  override def copy(extra: ParamMap): this.type = {
+  override def copy(extra: ParamMap): UserRepoTransformer = {
     defaultCopy(extra)
   }
 }

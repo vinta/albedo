@@ -35,7 +35,7 @@ class SnowballStemmer(override val uid: String)
     ArrayType(StringType)
   }
 
-  override def copy(extra: ParamMap): this.type = {
+  override def copy(extra: ParamMap): SnowballStemmer = {
     defaultCopy(extra)
   }
 }

@@ -111,7 +111,7 @@ class NegativeBalancer(override val uid: String, val bcPopularItems: Broadcast[m
       .union(negativeDF)
   }
 
-  override def copy(extra: ParamMap): this.type = {
+  override def copy(extra: ParamMap): NegativeBalancer = {
     defaultCopy(extra)
   }
 }

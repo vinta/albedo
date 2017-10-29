@@ -58,7 +58,7 @@ class HanLPTokenizer(override val uid: String)
     new ArrayType(StringType, false)
   }
 
-  override def copy(extra: ParamMap): this.type = {
+  override def copy(extra: ParamMap): HanLPTokenizer = {
     defaultCopy(extra)
   }
 }
