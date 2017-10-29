@@ -10,6 +10,7 @@
       <excludeFolder url="file://$MODULE_DIR$/albedo" />
       <excludeFolder url="file://$MODULE_DIR$/app" />
       <excludeFolder url="file://$MODULE_DIR$/notebooks" />
+      <excludeFolder url="file://$MODULE_DIR$/spark-data" />
       <excludeFolder url="file://$MODULE_DIR$/spark-warehouse" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
