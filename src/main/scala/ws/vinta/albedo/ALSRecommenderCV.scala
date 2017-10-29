@@ -9,7 +9,7 @@ import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.schemas.UserItems
-import ws.vinta.albedo.transformers.ALSPredictionFormatter
+import ws.vinta.albedo.transformers.RankingMetricFormatterALS
 import ws.vinta.albedo.utils.DatasetUtils._
 
 object ALSRecommenderCV {
@@ -52,7 +52,7 @@ object ALSRecommenderCV {
       .setItemCol("repo_id")
       .setRatingCol("starring")
 
-    val alsPredictionFormatter = new ALSPredictionFormatter()
+    val alsPredictionFormatter = new RankingMetricFormatterALS()
       .setUserCol("user_id")
       .setItemCol("repo_id")
       .setPredictionCol("prediction")

@@ -8,11 +8,11 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset}
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 
-class ALSPredictionFormatter(override val uid: String)
+class RankingMetricFormatterALS(override val uid: String)
   extends Transformer with DefaultParamsWritable {
 
   def this() = {
-    this(Identifiable.randomUID("alsPredictionFormatter"))
+    this(Identifiable.randomUID("rankingMetricFormatterALS"))
   }
 
   val userCol = new Param[String](this, "userCol", "User column name")
@@ -66,4 +66,4 @@ class ALSPredictionFormatter(override val uid: String)
   }
 }
 
-object ALSPredictionFormatter extends DefaultParamsReadable[ALSPredictionFormatter]
+object RankingMetricFormatterALS extends DefaultParamsReadable[RankingMetricFormatterALS]
