@@ -6,13 +6,14 @@ import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, I
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Dataset}
+import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 
-class RankingMetricFormatterALS(override val uid: String)
+class RankingMetricFormatter(override val uid: String, val sourceType: String)
   extends Transformer with DefaultParamsWritable {
 
-  def this() = {
-    this(Identifiable.randomUID("rankingMetricFormatterALS"))
+  def this(sourceType: String) = {
+    this(Identifiable.randomUID("rankingMetricFormatter"), sourceType)
   }
 
   val userCol = new Param[String](this, "userCol", "User column name")
@@ -44,7 +45,7 @@ class RankingMetricFormatterALS(override val uid: String)
   setDefault(topK -> 15)
 
   override def transformSchema(schema: StructType): StructType = {
-    Map($(userCol) -> IntegerType, $(itemCol) -> IntegerType, $(predictionCol) -> FloatType)
+    Map($(userCol) -> IntegerType, $(itemCol) -> IntegerType)
       .foreach{
         case(columnName: String, expectedDataType: DataType) => {
           val actualDataType = schema(columnName).dataType
@@ -55,15 +56,21 @@ class RankingMetricFormatterALS(override val uid: String)
     schema
   }
 
-  override def transform(alsPredictionDF: Dataset[_]): DataFrame = {
-    transformSchema(alsPredictionDF.schema)
+  override def transform(dataset: Dataset[_]): DataFrame = {
+    transformSchema(dataset.schema)
 
-    alsPredictionDF.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), col($(predictionCol)).desc, $(topK)))
+    sourceType match {
+      case "als" =>
+        dataset.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), col($(predictionCol)).desc, $(topK)))
+      case "lr" =>
+        dataset.transform(intoUserPredictedItems(col($(userCol)), col($(itemCol)), toArrayUDF(col($(predictionCol))).getItem(1).desc, $(topK)))
+    }
   }
 
-  override def copy(extra: ParamMap): this.type = {
-    defaultCopy(extra)
+  override def copy(extra: ParamMap): RankingMetricFormatter = {
+    val copied = new RankingMetricFormatter(uid, sourceType)
+    copyValues(copied, extra)
   }
 }
 
-object RankingMetricFormatterALS extends DefaultParamsReadable[RankingMetricFormatterALS]
+object RankingMetricFormatter extends DefaultParamsReadable[RankingMetricFormatter]
