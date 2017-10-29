@@ -6,8 +6,8 @@ import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.recommendation.ALSModel
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
-import org.apache.spark.sql.functions._
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
 import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
@@ -229,7 +229,9 @@ object LogisticRegressionRanker {
       .setWithMean(false)
 
     val sql = """
-    SELECT *, IF (als_score < 0.0, 1.0, 1.0 + als_score) AS weight
+    SELECT *,
+           IF (als_score < 0.0, 1.0, 1.0 + als_score) AS als_score_weight,
+           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -286,8 +288,9 @@ object LogisticRegressionRanker {
     val dataPipedBalancedStarringDF = loadOrCreateDataFrame(dataPipedBalancedStarringDFpath, () => {
       dataPipelineModel
         .transform(featuredBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"weight", $"standard_features")
+        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight")
     })
+    .cache()
 
     val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
     val Array(trainingDF, testDF, _) = dataPipedBalancedStarringDF.randomSplit(weights)
@@ -309,20 +312,20 @@ object LogisticRegressionRanker {
     // Build the Model Pipeline
 
     val lr = new LogisticRegression()
-      .setMaxIter(150)
-      .setRegParam(0.1)
+      .setMaxIter(200)
+      .setRegParam(0.05)
       .setElasticNetParam(0.0)
       .setStandardization(false)
-      .setFeaturesCol("standard_features")
-      .setWeightCol("weight")
       .setLabelCol("starring")
+      .setFeaturesCol("standard_features")
+      .setWeightCol("repo_created_at_weight")
 
     val modelStages = mutable.ArrayBuffer.empty[PipelineStage]
     modelStages += lr
 
     val modelPipeline = new Pipeline().setStages(modelStages.toArray)
 
-    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount.parquet"
+    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount-${lr.getMaxIter}-${lr.getRegParam}-${lr.getElasticNetParam}.parquet"
     val modelPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, modelPipelinePath, () => {
       modelPipeline.fit(trainingDataPipedDF)
     })
@@ -368,8 +371,8 @@ object LogisticRegressionRanker {
     val recommenders = mutable.ArrayBuffer.empty[Recommender]
     recommenders += alsRecommender
     //recommenders += contentRecommender
-    //recommenders += curationRecommender
-    //recommenders += popularityRecommender
+    recommenders += curationRecommender
+    recommenders += popularityRecommender
 
     val candidateDF = recommenders
       .map((recommender: Recommender) => recommender.recommendForUsers(testUserDF))
@@ -427,7 +430,13 @@ object LogisticRegressionRanker {
     // MaxIter: 150
     // RegParam: 0.1
     // ElasticNetParam: 0.0
-    // NDCG@30 = 0.011879982124895225
+    // NDCG@30 = 0.020901665287161884
+
+    // 150-0.0-0.0
+    // NDCG@30 = 0.010018493678513632
+
+    // 200-0.05-0.0
+    // NDCG@30 = 0.021114356461615493
 
     spark.stop()
   }
