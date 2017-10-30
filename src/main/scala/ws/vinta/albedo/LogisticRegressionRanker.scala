@@ -129,7 +129,7 @@ object LogisticRegressionRanker {
 
     textColumnNames += "repo_text"
 
-    // Build the Feature Pipeline
+    // Prepare Data
 
     val maxStarredReposCount = 4000
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
@@ -153,6 +153,8 @@ object LogisticRegressionRanker {
 
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
+
+    // Build the Feature Pipeline
 
     val userRepoTransformer = new UserRepoTransformer()
       .setInputCols(Array("repo_language", "user_recent_repo_languages"))
@@ -369,7 +371,7 @@ object LogisticRegressionRanker {
     val recommenders = mutable.ArrayBuffer.empty[Recommender]
     recommenders += alsRecommender
     //recommenders += contentRecommender
-    recommenders += curationRecommender
+    //recommenders += curationRecommender
     recommenders += popularityRecommender
 
     val candidateDF = recommenders
@@ -419,65 +421,8 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDS)
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
-
-    // MaxIter: 100
-    // RegParam: 0.05
-    // ElasticNetParam: 0.01
-    // NDCG@30 = 0.00285760091321761
-
-    // MaxIter: 150
-    // RegParam: 0.1
-    // ElasticNetParam: 0.0
-    // NDCG@30 = 0.020901665287161884
-
-    // 150-0.0-0.0
-    // NDCG@30 = 0.010018493678513632
-
-    // 200-0.05-0.0
     // NDCG@30 = 0.021114356461615493
 
     spark.stop()
   }
 }
-
-// load all data
-
-// build user profile
-// build repo profile
-
-// starring join user/repo profile
-// get profile starring data
-
-// build data pipeline
-// fit data pipeline: profile starring data
-// save data pipeline
-
-// handle imbalanced data
-// get balanced starring data
-// balanced starring join user/repo profile
-// get profile balanced starring data
-
-// data pipeline transform: profile balanced starring data
-// get data piped balanced starring data
-// save data piped balanced starring data
-
-// split data piped balanced starring data
-// get data piped training set
-// get data piped test set
-
-// build model pipeline
-// fit model pipeline: data piped training set
-// save model pipeline
-
-// model pipeline transform: data piped test set
-// get test ranked data
-// evaluate: binary
-
-// generate candidates
-// get candidate data
-
-// data pipeline transform: candidate data
-// get data piped candidate data
-// model pipeline transform: data piped candidate data
-// get ranked candidate data
-// evaluate: ranking
