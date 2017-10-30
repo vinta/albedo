@@ -129,7 +129,7 @@ object LogisticRegressionRanker {
 
     textColumnNames += "repo_text"
 
-    // Clean Data
+    // Build the Feature Pipeline
 
     val maxStarredReposCount = 4000
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
@@ -146,9 +146,7 @@ object LogisticRegressionRanker {
     .repartition($"user_id")
     .cache()
 
-    // Build the Data Pipeline
-
-    val featuredStarringDF = reducedStarringDF
+    val profileStarringDF = reducedStarringDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
@@ -237,21 +235,21 @@ object LogisticRegressionRanker {
     val weightTransformer = new SQLTransformer()
       .setStatement(sql)
 
-    val dataStages = mutable.ArrayBuffer.empty[PipelineStage]
-    dataStages += userRepoTransformer
-    dataStages += alsModel
-    dataStages ++= categoricalTransformers
-    dataStages ++= listTransformers
-    dataStages ++= textTransformers
-    dataStages += vectorAssembler
-    dataStages += standardScaler
-    dataStages += weightTransformer
+    val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
+    featureStages += userRepoTransformer
+    featureStages += alsModel
+    featureStages ++= categoricalTransformers
+    featureStages ++= listTransformers
+    featureStages ++= textTransformers
+    featureStages += vectorAssembler
+    featureStages += standardScaler
+    featureStages += weightTransformer
 
-    val dataPipeline = new Pipeline().setStages(dataStages.toArray)
+    val featurePipeline = new Pipeline().setStages(featureStages.toArray)
 
-    val dataPipelinePath = s"${settings.dataDir}/${settings.today}/rankerDataPipeline-$maxStarredReposCount.parquet"
-    val dataPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, dataPipelinePath, () => {
-      dataPipeline.fit(featuredStarringDF)
+    val featurePipelinePath = s"${settings.dataDir}/${settings.today}/rankerFeaturePipeline-$maxStarredReposCount.parquet"
+    val featurePipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, featurePipelinePath, () => {
+      featurePipeline.fit(profileStarringDF)
     })
 
     // Handle Imbalanced Data
@@ -279,31 +277,31 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val featuredBalancedStarringDF = balancedStarringDF
+    val profileBalancedStarringDF = balancedStarringDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerDataPipedBalancedStarringDF-$maxStarredReposCount.parquet"
-    val dataPipedBalancedStarringDF = loadOrCreateDataFrame(dataPipedBalancedStarringDFpath, () => {
-      dataPipelineModel
-        .transform(featuredBalancedStarringDF)
+    val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount.parquet"
+    val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
+      featurePipelineModel
+        .transform(profileBalancedStarringDF)
         .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight")
     })
     .cache()
 
     val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
-    val Array(trainingDF, testDF, _) = dataPipedBalancedStarringDF.randomSplit(weights)
+    val Array(trainingDF, testDF, _) = featuredBalancedStarringDF.randomSplit(weights)
 
-    val trainingDataPipedDF = trainingDF
+    val trainingFeaturedDF = trainingDF
       .repartition($"user_id")
       .cache()
 
-    val testDataPipedDF = testDF
+    val testFeaturedDF = testDF
       .repartition($"user_id")
       .cache()
 
-    val largeUserIds = testDataPipedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
+    val largeUserIds = testFeaturedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
     val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
     val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
       .toDF("user_id")
@@ -327,12 +325,12 @@ object LogisticRegressionRanker {
 
     val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount-${lr.getMaxIter}-${lr.getRegParam}-${lr.getElasticNetParam}.parquet"
     val modelPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, modelPipelinePath, () => {
-      modelPipeline.fit(trainingDataPipedDF)
+      modelPipeline.fit(trainingFeaturedDF)
     })
 
     // Evaluate the Model: Classification
 
-    val testRankedDF = modelPipelineModel.transform(testDataPipedDF)
+    val testRankedDF = modelPipelineModel.transform(testFeaturedDF)
 
     val binaryClassificationEvaluator = new BinaryClassificationEvaluator()
       .setMetricName("areaUnderROC")
@@ -384,17 +382,17 @@ object LogisticRegressionRanker {
 
     // Predict the Ranking
 
-    val featuredCandidateDF = candidateDF
+    val profileCandidateDF = candidateDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    val dataPipedCandidateDF = dataPipelineModel
-      .transform(featuredCandidateDF)
+    val featuredCandidateDF = featurePipelineModel
+      .transform(profileCandidateDF)
       .cache()
 
     val rankedCandidateDF = modelPipelineModel
-      .transform(dataPipedCandidateDF)
+      .transform(featuredCandidateDF)
       .cache()
 
     rankedCandidateDF
@@ -448,18 +446,18 @@ object LogisticRegressionRanker {
 // build repo profile
 
 // starring join user/repo profile
-// get featured starring data
+// get profile starring data
 
 // build data pipeline
-// fit data pipeline: featured starring data
+// fit data pipeline: profile starring data
 // save data pipeline
 
 // handle imbalanced data
 // get balanced starring data
 // balanced starring join user/repo profile
-// get featured balanced starring data
+// get profile balanced starring data
 
-// data pipeline transform: featured balanced starring data
+// data pipeline transform: profile balanced starring data
 // get data piped balanced starring data
 // save data piped balanced starring data
 
