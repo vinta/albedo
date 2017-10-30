@@ -130,6 +130,8 @@ object RepoProfileBuilder {
 
     textColumnNames += "repo_text"
 
+    // Convert Features
+
     val languagesDF = cleanRepoInfoDF
       .groupBy($"repo_clean_language")
       .agg(count("*").alias("count_per_repo_language"))
