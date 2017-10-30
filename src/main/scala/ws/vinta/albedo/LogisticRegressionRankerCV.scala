@@ -280,7 +280,6 @@ object LogisticRegressionRankerCV {
     val featuredBalancedStarringDF = balancedStarringDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
-      .sample(withReplacement = true, 0.9)
       .cache()
 
     val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerDataPipedBalancedStarringDF-$maxStarredReposCount.parquet"
@@ -320,7 +319,7 @@ object LogisticRegressionRankerCV {
       .addGrid(lr.weightCol, Array("als_score_weight", "repo_created_at_weight"))
       .build()
 
-    val userActualItemsDF = loadUserActualItemsDF(topK)
+    val userActualItemsDF = loadUserActualItemsDF(topK).cache()
 
     val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("NDCG@k")
