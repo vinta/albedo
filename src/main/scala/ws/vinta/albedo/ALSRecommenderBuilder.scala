@@ -5,10 +5,9 @@ import org.apache.spark.ml.recommendation.{ALS, ALSModel}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
-import ws.vinta.albedo.schemas._
+import ws.vinta.albedo.recommenders.ALSRecommender
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
-import ws.vinta.albedo.recommenders.ALSRecommender
 
 object ALSRecommenderBuilder {
   def main(args: Array[String]): Unit = {
@@ -84,7 +83,9 @@ object ALSRecommenderBuilder {
       .recommendForUsers(testUserDF)
       .cache()
 
-    userRecommendedItemDF.where($"user_id" === 652070).show(false)
+    userRecommendedItemDF
+      .where($"user_id" === 652070)
+      .show(false)
 
     // Evaluate the Model
 
@@ -101,7 +102,7 @@ object ALSRecommenderBuilder {
       .setItemsCol("items")
     val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
-    // NDCG@30 = 0.04380662848324943
+    // NDCG@30 = 0.05209047292612741
 
     spark.stop()
   }
