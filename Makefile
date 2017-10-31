@@ -206,7 +206,7 @@ endif
 .PHONY: train_lr
 train_lr:
 ifeq ($(platform),gcp)
-	# 1 hr 28 min
+	# 1 hr 35 min
 	time gcloud beta dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \

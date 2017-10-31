@@ -49,10 +49,6 @@ See [PopularityRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/Populari
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.PopularityRecommenderTrainer \
@@ -66,10 +62,6 @@ See [UserProfileBuilder.scala](src/main/scala/ws/vinta/albedo/UserProfileBuilder
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.UserProfileBuilder \
@@ -82,10 +74,6 @@ See [RepoProfileBuilder.scala](src/main/scala/ws/vinta/albedo/RepoProfileBuilder
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.RepoProfileBuilder \
@@ -98,10 +86,6 @@ See [ALSRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ALSRecommenderB
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ALSRecommenderBuilder \
@@ -121,10 +105,6 @@ See [ContentRecommenderBuilder.scala](src/main/scala/ws/vinta/albedo/ContentReco
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,org.apache.httpcomponents:httpclient:4.5.2,org.elasticsearch.client:elasticsearch-rest-high-level-client:5.6.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ContentRecommenderBuilder \
@@ -138,10 +118,6 @@ See [Word2VecCorpusBuilder.scala](src/main/scala/ws/vinta/albedo/Word2VecCorpusB
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.Word2VecCorpusBuilder \
@@ -154,10 +130,6 @@ See [LogisticRegressionRanker.scala](src/main/scala/ws/vinta/albedo/LogisticRegr
 
 ```bash
 $ spark-submit \
-    --driver-memory 2g \
-    --total-executor-cores 3 \
-    --executor-cores 3 \
-    --executor-memory 12g \
     --master spark://localhost:7077 \
     --packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.LogisticRegressionRanker \
@@ -168,14 +140,15 @@ $ spark-submit \
 
 - Build a recommender system with Spark: Factorization Machine
 - Build a recommender system with Spark: GDBT for Feature Learning
-- Build a recommender system with Spark: GraphX
 - Build a recommender system with Spark: Item2Vec
+- Build a recommender system with Spark: PageRank and GraphX
 - Build a recommender system with Spark: XGBoost
 
 ## Related Posts
 
-- [Build a recommender system with Spark: Content-based and Elasticsearch](https://vinta.ws/code/build-a-recommender-system-with-spark-content-based-and-elasticsearch.html)
 - [Build a recommender system with Spark: Implicit ALS](https://vinta.ws/code/build-a-recommender-system-with-pyspark-implicit-als.html)
+- [Build a recommender system with Spark: Content-based and Elasticsearch](https://vinta.ws/code/build-a-recommender-system-with-spark-content-based-and-elasticsearch.html)
+- [Build a recommender system with Spark: Logistic Regression](https://vinta.ws/code/build-a-recommender-system-with-spark-logistic-regression.html)
 - [Feature Engineering 特徵工程中常見的方法](https://vinta.ws/code/feature-engineering.html)
 - [Spark ML cookbook (Scala)](https://vinta.ws/code/spark-ml-cookbook-scala.html)
 - [Spark SQL cookbook (Scala)](https://vinta.ws/code/spark-sql-cookbook-scala.html)
