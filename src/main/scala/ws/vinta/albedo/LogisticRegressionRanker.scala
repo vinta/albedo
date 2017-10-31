@@ -130,7 +130,8 @@ object LogisticRegressionRanker {
 
     // Prepare the Feature Pipeline
 
-    val maxStarredReposCount = 4000
+    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 30 else 4000
+
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
     val reducedStarringDF = loadOrCreateDataFrame(reducedStarringDFpath, () => {
       val userStarredReposCountDF = rawStarringDS
