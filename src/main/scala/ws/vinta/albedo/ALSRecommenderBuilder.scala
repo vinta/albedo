@@ -86,20 +86,18 @@ object ALSRecommenderBuilder {
 
     // Evaluate the Model
 
-    val userActualItemsDS = loadUserActualItemsDF(topK)
-      .join(testUserDF, Seq("user_id"))
-      .as[UserItems]
+    val userActualItemsDF = loadUserActualItemsDF(topK).cache()
 
-    val userPredictedItemsDS = userRecommendedItemDF
+    val userPredictedItemsDF = userRecommendedItemDF
       .transform(intoUserPredictedItems($"user_id", $"repo_id", $"score".desc, topK))
-      .as[UserItems]
+      .cache()
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
-    val metric = rankingEvaluator.evaluate(userPredictedItemsDS)
+    val metric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getFormattedMetricName} = $metric")
     // NDCG@30 = 0.04380662848324943
 
