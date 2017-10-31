@@ -229,9 +229,9 @@ object LogisticRegressionRanker {
 
     val sql = """
     SELECT *,
+           IF (starring = 1.0, 10.0, 1.0) AS 10x_positive_weight,
            IF (als_score < 0.0, 1.0, 1.0 + als_score) AS als_score_weight,
-           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight,
-           ROUND(LOG(2, CAST(repo_pushed_at AS INT)), 5) AS repo_pushed_at_weight
+           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -288,13 +288,13 @@ object LogisticRegressionRanker {
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
       featurePipelineModel
         .transform(profileBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight", $"repo_pushed_at_weight")
+        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"10x_positive_weight", $"als_score_weight", $"repo_created_at_weight")
     })
     .cache()
 
     // Split Data
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.95, 0.05, 0.0)
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.9, 0.1, 0.0)
     val Array(trainingDF, testDF, _) = featuredBalancedStarringDF.randomSplit(weights)
 
     val trainingFeaturedDF = trainingDF
@@ -314,13 +314,13 @@ object LogisticRegressionRanker {
     // Build the Model Pipeline
 
     val lr = new LogisticRegression()
-      .setMaxIter(200)
+      .setMaxIter(800)
       .setRegParam(0.7)
       .setElasticNetParam(0.0)
       .setStandardization(false)
       .setLabelCol("starring")
       .setFeaturesCol("standard_features")
-      .setWeightCol("repo_created_at_weight")
+      .setWeightCol("10x_positive_weight")
 
     println(lr.explainParams())
 
@@ -329,7 +329,7 @@ object LogisticRegressionRanker {
 
     val modelPipeline = new Pipeline().setStages(modelStages.toArray)
 
-    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount-${lr.getMaxIter}-${lr.getRegParam}-${lr.getElasticNetParam}.parquet"
+    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount-${lr.getMaxIter}-${lr.getRegParam}-${lr.getElasticNetParam}-${lr.getWeightCol}.parquet"
     val modelPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, modelPipelinePath, () => {
       modelPipeline.fit(trainingFeaturedDF)
     })
@@ -345,7 +345,7 @@ object LogisticRegressionRanker {
 
     val classificationMetric = binaryClassificationEvaluator.evaluate(testRankedDF)
     println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
-    // areaUnderROC = 0.9603482464685226
+    // areaUnderROC = 0.9450631491281277
 
     // Generate Candidates
 
@@ -354,7 +354,7 @@ object LogisticRegressionRanker {
     val alsRecommender = new ALSRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
-      .setTopK(topK)
+      .setTopK(topK * 2)
 
     val contentRecommender = new ContentRecommender()
       .setUserCol("user_id")
@@ -383,6 +383,7 @@ object LogisticRegressionRanker {
       .reduce(_ union _)
       .select($"user_id", $"repo_id")
       .distinct()
+      .select($"user_id", $"repo_id", current_timestamp().alias("starred_at"), lit(1.0).alias("starring"))
       .repartition($"user_id")
       .cache()
 
@@ -403,7 +404,7 @@ object LogisticRegressionRanker {
 
     rankedCandidateDF
       .where($"user_id" === 652070)
-      .select("user_id", "repo_id", "prediction", "probability", "rawPrediction")
+      .select("user_id", "repo_id", "prediction", "probability")
       .orderBy(toArrayUDF($"probability").getItem(1).desc)
       .limit(topK)
       .show(false)
@@ -423,7 +424,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
-    // NDCG@30 = 0.021114356461615493
+    // NDCG@30 = 0.05662251253089785
 
     spark.stop()
   }
