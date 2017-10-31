@@ -127,7 +127,7 @@ object LogisticRegressionRankerCV {
 
     textColumnNames += "repo_text"
 
-    // Clean Data
+    // Prepare the Feature Pipeline
 
     val maxStarredReposCount = 4000
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
@@ -144,15 +144,15 @@ object LogisticRegressionRankerCV {
     .repartition($"user_id")
     .cache()
 
-    // Build the Data Pipeline
-
-    val featuredStarringDF = reducedStarringDF
+    val profileStarringDF = reducedStarringDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
     categoricalColumnNames += "user_id"
     categoricalColumnNames += "repo_id"
+
+    // Build the Feature Pipeline
 
     val userRepoTransformer = new UserRepoTransformer()
       .setInputCols(Array("repo_language", "user_recent_repo_languages"))
@@ -229,27 +229,28 @@ object LogisticRegressionRankerCV {
     val sql = """
     SELECT *,
            IF (als_score < 0.0, 1.0, 1.0 + als_score) AS als_score_weight,
-           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight
+           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight,
+           ROUND(LOG(2, CAST(repo_pushed_at AS INT)), 5) AS repo_pushed_at_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
       .setStatement(sql)
 
-    val dataStages = mutable.ArrayBuffer.empty[PipelineStage]
-    dataStages += userRepoTransformer
-    dataStages += alsModel
-    dataStages ++= categoricalTransformers
-    dataStages ++= listTransformers
-    dataStages ++= textTransformers
-    dataStages += vectorAssembler
-    dataStages += standardScaler
-    dataStages += weightTransformer
+    val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
+    featureStages += userRepoTransformer
+    featureStages += alsModel
+    featureStages ++= categoricalTransformers
+    featureStages ++= listTransformers
+    featureStages ++= textTransformers
+    featureStages += vectorAssembler
+    featureStages += standardScaler
+    featureStages += weightTransformer
 
-    val dataPipeline = new Pipeline().setStages(dataStages.toArray)
+    val featurePipeline = new Pipeline().setStages(featureStages.toArray)
 
-    val dataPipelinePath = s"${settings.dataDir}/${settings.today}/rankerDataPipeline-$maxStarredReposCount.parquet"
-    val dataPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, dataPipelinePath, () => {
-      dataPipeline.fit(featuredStarringDF)
+    val featurePipelinePath = s"${settings.dataDir}/${settings.today}/rankerFeaturePipeline-$maxStarredReposCount.parquet"
+    val featurePipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, featurePipelinePath, () => {
+      featurePipeline.fit(profileStarringDF)
     })
 
     // Handle Imbalanced Data
@@ -275,24 +276,22 @@ object LogisticRegressionRankerCV {
     .repartition($"user_id")
     .cache()
 
-    // Prepare Data
+    // Prepare the Model Pipeline
 
-    val featuredBalancedStarringDF = balancedStarringDF
+    val profileBalancedStarringDF = balancedStarringDF
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    val dataPipedBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerDataPipedBalancedStarringDF-$maxStarredReposCount.parquet"
-    val dataPipedBalancedStarringDF = loadOrCreateDataFrame(dataPipedBalancedStarringDFpath, () => {
-      dataPipelineModel
-        .transform(featuredBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight")
+    val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount.parquet"
+    val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
+      featurePipelineModel
+        .transform(profileBalancedStarringDF)
+        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight", $"repo_pushed_at_weight")
     })
     .cache()
 
     // Build the Model Pipeline
-
-    val topK = 30
 
     val lr = new LogisticRegression()
       .setStandardization(false)
@@ -314,10 +313,12 @@ object LogisticRegressionRankerCV {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(200))
-      .addGrid(lr.regParam, Array(0.1, 0.2))
+      .addGrid(lr.regParam, Array(0.7, 0.8))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("als_score_weight", "repo_created_at_weight"))
+      .addGrid(lr.weightCol, Array("repo_created_at_weight", "repo_pushed_at_weight"))
       .build()
+
+    val topK = 30
 
     val userActualItemsDF = loadUserActualItemsDF(topK).cache()
 
@@ -333,7 +334,7 @@ object LogisticRegressionRankerCV {
       .setEvaluator(rankingEvaluator)
       .setNumFolds(2)
 
-    val cvModel = cv.fit(dataPipedBalancedStarringDF)
+    val cvModel = cv.fit(featuredBalancedStarringDF)
 
     // Show Best Parameters
 

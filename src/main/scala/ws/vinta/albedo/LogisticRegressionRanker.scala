@@ -12,7 +12,6 @@ import ws.vinta.albedo.closures.UDFs._
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.recommenders._
-import ws.vinta.albedo.schemas.UserItems
 import ws.vinta.albedo.transformers._
 import ws.vinta.albedo.utils.DatasetUtils._
 import ws.vinta.albedo.utils.ModelUtils._
@@ -129,7 +128,7 @@ object LogisticRegressionRanker {
 
     textColumnNames += "repo_text"
 
-    // Prepare Data
+    // Prepare the Feature Pipeline
 
     val maxStarredReposCount = 4000
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
@@ -231,7 +230,8 @@ object LogisticRegressionRanker {
     val sql = """
     SELECT *,
            IF (als_score < 0.0, 1.0, 1.0 + als_score) AS als_score_weight,
-           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight
+           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight,
+           ROUND(LOG(2, CAST(repo_pushed_at AS INT)), 5) AS repo_pushed_at_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -277,7 +277,7 @@ object LogisticRegressionRanker {
     .repartition($"user_id")
     .cache()
 
-    // Split Data
+    // Prepare the Model Pipeline
 
     val profileBalancedStarringDF = balancedStarringDF
       .join(userProfileDF, Seq("user_id"))
@@ -288,11 +288,13 @@ object LogisticRegressionRanker {
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
       featurePipelineModel
         .transform(profileBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight")
+        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight", $"repo_pushed_at_weight")
     })
     .cache()
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.99, 0.01, 0.0)
+    // Split Data
+
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.95, 0.05, 0.0)
     val Array(trainingDF, testDF, _) = featuredBalancedStarringDF.randomSplit(weights)
 
     val trainingFeaturedDF = trainingDF
@@ -313,7 +315,7 @@ object LogisticRegressionRanker {
 
     val lr = new LogisticRegression()
       .setMaxIter(200)
-      .setRegParam(0.05)
+      .setRegParam(0.7)
       .setElasticNetParam(0.0)
       .setStandardization(false)
       .setLabelCol("starring")
@@ -350,7 +352,7 @@ object LogisticRegressionRanker {
     val alsRecommender = new ALSRecommender()
       .setUserCol("user_id")
       .setItemCol("repo_id")
-      .setTopK(topK * 2)
+      .setTopK(topK)
 
     val contentRecommender = new ContentRecommender()
       .setUserCol("user_id")
@@ -372,7 +374,7 @@ object LogisticRegressionRanker {
     recommenders += alsRecommender
     //recommenders += contentRecommender
     //recommenders += curationRecommender
-    recommenders += popularityRecommender
+    //recommenders += popularityRecommender
 
     val candidateDF = recommenders
       .map((recommender: Recommender) => recommender.recommendForUsers(testUserDF))
@@ -406,20 +408,18 @@ object LogisticRegressionRanker {
 
     // Evaluate the Model: Ranking
 
-    val userActualItemsDS = loadUserActualItemsDF(topK)
-      .join(testUserDF, Seq("user_id"))
-      .as[UserItems]
+    val userActualItemsDF = loadUserActualItemsDF(topK).cache()
 
-    val userPredictedItemsDS = rankedCandidateDF
+    val userPredictedItemsDF = rankedCandidateDF
       .transform(intoUserPredictedItems($"user_id", $"repo_id", toArrayUDF($"probability").getItem(1).desc, topK))
-      .as[UserItems]
+      .cache()
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")
       .setItemsCol("items")
-    val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDS)
+    val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
     // NDCG@30 = 0.021114356461615493
 
