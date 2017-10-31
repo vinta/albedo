@@ -226,7 +226,7 @@ object LogisticRegressionRanker {
       .setOutputCol("standard_features")
       .setWithStd(true)
       .setWithMean(false)
-    
+
     val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
     featureStages += userRepoTransformer
     featureStages += alsModel
@@ -316,10 +316,9 @@ object LogisticRegressionRanker {
 
     val sql = """
     SELECT *,
-           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_positive_weight,
-           /* IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight */
-           /* IF (starring = 1.0, als_score, 1.0 - als_score) AS als_score_weight */
-           IF (starring = 1.0, 0.9, 0.1) AS positive_weight
+           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
+           IF (starring = 1.0 AND repo_days_between_created_at_today <= 60, 0.9, 0.1) AS recent_positive_weight,
+           IF (starring = 1.0 AND als_score >= 0.5, 0.9, 0.1) AS als_score_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()

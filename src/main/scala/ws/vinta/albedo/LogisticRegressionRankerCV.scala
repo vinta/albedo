@@ -8,7 +8,7 @@ import org.apache.spark.ml.recommendation.ALSModel
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 import org.apache.spark.ml.{Pipeline, PipelineModel, PipelineStage}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.count
+import org.apache.spark.sql.functions.{col, count}
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
 import ws.vinta.albedo.transformers._
@@ -172,12 +172,12 @@ object LogisticRegressionRankerCV {
     val categoricalTransformers = categoricalColumnNames.flatMap((columnName: String) => {
       val stringIndexer = new StringIndexer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_idx")
+        .setOutputCol(s"${columnName}__idx")
         .setHandleInvalid("keep")
 
       val oneHotEncoder = new OneHotEncoder()
-        .setInputCol(s"${columnName}_idx")
-        .setOutputCol(s"${columnName}_ohe")
+        .setInputCol(s"${columnName}__idx")
+        .setOutputCol(s"${columnName}__ohe")
         .setDropLast(false)
 
       Array(stringIndexer, oneHotEncoder)
@@ -186,7 +186,7 @@ object LogisticRegressionRankerCV {
     val listTransformers = listColumnNames.flatMap((columnName: String) => {
       val countVectorizerModel = new CountVectorizer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_cv")
+        .setOutputCol(s"${columnName}__cv")
         .setMinDF(10)
         .setMinTF(1)
 
@@ -196,26 +196,26 @@ object LogisticRegressionRankerCV {
     val textTransformers = textColumnNames.flatMap((columnName: String) => {
       val hanLPTokenizer = new HanLPTokenizer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_words")
+        .setOutputCol(s"${columnName}__words")
         .setShouldRemoveStopWords(true)
 
       val stopWordsRemover = new StopWordsRemover()
-        .setInputCol(s"${columnName}_words")
-        .setOutputCol(s"${columnName}_filtered_words")
+        .setInputCol(s"${columnName}__words")
+        .setOutputCol(s"${columnName}__filtered_words")
         .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
       val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
       val word2VecModel = Word2VecModel.load(word2VecModelPath)
-        .setInputCol(s"${columnName}_filtered_words")
-        .setOutputCol(s"${columnName}_w2v")
+        .setInputCol(s"${columnName}__filtered_words")
+        .setOutputCol(s"${columnName}__w2v")
 
       Array(hanLPTokenizer, stopWordsRemover, word2VecModel)
     })
 
     val finalBooleanColumnNames = booleanColumnNames.toArray
     val finalContinuousColumnNames = continuousColumnNames.toArray
-    val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}_ohe").toArray
-    val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}_cv").toArray
-    val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}_w2v").toArray
+    val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}__ohe").toArray
+    val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}__cv").toArray
+    val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}__w2v").toArray
     val vectorAssembler = new SimpleVectorAssembler()
       .setInputCols(finalBooleanColumnNames ++ finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
       .setOutputCol("features")
@@ -226,15 +226,6 @@ object LogisticRegressionRankerCV {
       .setWithStd(true)
       .setWithMean(false)
 
-    val sql = """
-    SELECT *,
-           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_positive_weight,
-           IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight
-    FROM __THIS__
-    """.stripMargin
-    val weightTransformer = new SQLTransformer()
-      .setStatement(sql)
-
     val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
     featureStages += userRepoTransformer
     featureStages += alsModel
@@ -243,7 +234,6 @@ object LogisticRegressionRankerCV {
     featureStages ++= textTransformers
     featureStages += vectorAssembler
     featureStages += standardScaler
-    featureStages += weightTransformer
 
     val featurePipeline = new Pipeline().setStages(featureStages.toArray)
 
@@ -254,7 +244,7 @@ object LogisticRegressionRankerCV {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 1.0
+    val negativePositiveRatio = 0.5
 
     val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
@@ -284,15 +274,35 @@ object LogisticRegressionRankerCV {
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount.parquet"
+    val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
-      featurePipelineModel
-        .transform(profileBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"recent_positive_weight", $"als_score_weight")
+      val df = featurePipelineModel.transform(profileBalancedStarringDF)
+      val keepColumnName = df.columns.filter((columnName: String) => {
+        !columnName.endsWith("__idx") &&
+        !columnName.endsWith("__ohe") &&
+        !columnName.endsWith("__cv") &&
+        !columnName.endsWith("__words") &&
+        !columnName.endsWith("__filtered_words") &&
+        !columnName.endsWith("__w2v") &&
+        columnName != "features"
+      })
+      df.select(keepColumnName.map(col): _*)
     })
     .cache()
 
+    println(s"featuredBalancedStarringDF.columns: " + featuredBalancedStarringDF.columns.mkString(", "))
+
     // Build the Model Pipeline
+
+    val sql = """
+    SELECT *,
+           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
+           IF (starring = 1.0 AND repo_days_between_created_at_today <= 60, 0.9, 0.1) AS recent_positive_weight,
+           IF (starring = 1.0 AND als_score >= 0.5, 0.9, 0.1) AS als_score_weight
+    FROM __THIS__
+    """.stripMargin
+    val weightTransformer = new SQLTransformer()
+      .setStatement(sql)
 
     val lr = new LogisticRegression()
       .setStandardization(false)
@@ -305,6 +315,7 @@ object LogisticRegressionRankerCV {
       .setPredictionCol("probability")
 
     val modelStages = mutable.ArrayBuffer.empty[PipelineStage]
+    modelStages += weightTransformer
     modelStages += lr
     modelStages += rankingMetricFormatter
 
@@ -314,9 +325,9 @@ object LogisticRegressionRankerCV {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.6, 0.7, 0.8))
+      .addGrid(lr.regParam, Array(0.7, 0.8))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("recent_positive_weight", "als_score_weight"))
+      .addGrid(lr.weightCol, Array("positive_weight", "recent_positive_weight", "als_score_weight"))
       .build()
 
     val topK = 30
