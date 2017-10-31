@@ -173,12 +173,12 @@ object LogisticRegressionRanker {
     val categoricalTransformers = categoricalColumnNames.flatMap((columnName: String) => {
       val stringIndexer = new StringIndexer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_idx")
+        .setOutputCol(s"${columnName}__idx")
         .setHandleInvalid("keep")
 
       val oneHotEncoder = new OneHotEncoder()
-        .setInputCol(s"${columnName}_idx")
-        .setOutputCol(s"${columnName}_ohe")
+        .setInputCol(s"${columnName}__idx")
+        .setOutputCol(s"${columnName}__ohe")
         .setDropLast(false)
 
       Array(stringIndexer, oneHotEncoder)
@@ -187,7 +187,7 @@ object LogisticRegressionRanker {
     val listTransformers = listColumnNames.flatMap((columnName: String) => {
       val countVectorizerModel = new CountVectorizer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_cv")
+        .setOutputCol(s"${columnName}__cv")
         .setMinDF(10)
         .setMinTF(1)
 
@@ -197,26 +197,26 @@ object LogisticRegressionRanker {
     val textTransformers = textColumnNames.flatMap((columnName: String) => {
       val hanLPTokenizer = new HanLPTokenizer()
         .setInputCol(columnName)
-        .setOutputCol(s"${columnName}_words")
+        .setOutputCol(s"${columnName}__words")
         .setShouldRemoveStopWords(true)
 
       val stopWordsRemover = new StopWordsRemover()
-        .setInputCol(s"${columnName}_words")
-        .setOutputCol(s"${columnName}_filtered_words")
+        .setInputCol(s"${columnName}__words")
+        .setOutputCol(s"${columnName}__filtered_words")
         .setStopWords(StopWordsRemover.loadDefaultStopWords("english"))
       val word2VecModelPath = s"${settings.dataDir}/${settings.today}/word2VecModel.parquet"
       val word2VecModel = Word2VecModel.load(word2VecModelPath)
-        .setInputCol(s"${columnName}_filtered_words")
-        .setOutputCol(s"${columnName}_w2v")
+        .setInputCol(s"${columnName}__filtered_words")
+        .setOutputCol(s"${columnName}__w2v")
 
       Array(hanLPTokenizer, stopWordsRemover, word2VecModel)
     })
 
     val finalBooleanColumnNames = booleanColumnNames.toArray
     val finalContinuousColumnNames = continuousColumnNames.toArray
-    val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}_ohe").toArray
-    val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}_cv").toArray
-    val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}_w2v").toArray
+    val finalCategoricalColumnNames = categoricalColumnNames.map(columnName => s"${columnName}__ohe").toArray
+    val finalListColumnNames = listColumnNames.map(columnName => s"${columnName}__cv").toArray
+    val finalTextColumnNames = textColumnNames.map(columnName => s"${columnName}__w2v").toArray
     val vectorAssembler = new SimpleVectorAssembler()
       .setInputCols(finalBooleanColumnNames ++ finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
       .setOutputCol("features")
@@ -226,8 +226,7 @@ object LogisticRegressionRanker {
       .setOutputCol("standard_features")
       .setWithStd(true)
       .setWithMean(false)
-
-
+    
     val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
     featureStages += userRepoTransformer
     featureStages += alsModel
@@ -275,14 +274,24 @@ object LogisticRegressionRanker {
       .join(userProfileDF, Seq("user_id"))
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
-    
+
     val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
-      featurePipelineModel
-        .transform(profileBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"recent_positive_weight", $"als_score_weight")
+      val df = featurePipelineModel.transform(profileBalancedStarringDF)
+      val keepColumnName = df.columns.filter((columnName: String) => {
+        !columnName.endsWith("__idx") &&
+        !columnName.endsWith("__ohe") &&
+        !columnName.endsWith("__cv") &&
+        !columnName.endsWith("__words") &&
+        !columnName.endsWith("__filtered_words") &&
+        !columnName.endsWith("__w2v") &&
+        columnName != "features"
+      })
+      df.select(keepColumnName.map(col): _*)
     })
     .cache()
+
+    println(s"featuredBalancedStarringDF.columns: " + featuredBalancedStarringDF.columns.mkString(", "))
 
     // Split Data
 
