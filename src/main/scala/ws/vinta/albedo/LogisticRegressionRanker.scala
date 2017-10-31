@@ -276,7 +276,7 @@ object LogisticRegressionRanker {
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
-    val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount.parquet"
+    val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
       featurePipelineModel.transform(profileBalancedStarringDF)
     })
@@ -306,7 +306,9 @@ object LogisticRegressionRanker {
     val sql = """
     SELECT *,
            IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_positive_weight,
-           IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight
+           /* IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight */
+           /* IF (starring = 1.0, als_score, 1.0 - als_score) AS als_score_weight */
+           IF (starring = 1.0, 0.9, 0.1) AS positive_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -319,7 +321,7 @@ object LogisticRegressionRanker {
       .setStandardization(false)
       .setLabelCol("starring")
       .setFeaturesCol("standard_features")
-      .setWeightCol("recent_positive_weight")
+      .setWeightCol("positive_weight")
 
     println(lr.explainParams())
 
