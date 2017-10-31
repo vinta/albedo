@@ -276,15 +276,24 @@ object LogisticRegressionRanker {
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
+    val featureNames = mutable.ArrayBuffer("starring", "standard_features", "recent_positive_weight", "als_score_weight")
+    featureNames ++= booleanColumnNames
+    featureNames ++= continuousColumnNames
+    featureNames ++= categoricalColumnNames
+    featureNames ++= listColumnNames
+    featureNames ++= textColumnNames
+
     val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
-      featurePipelineModel.transform(profileBalancedStarringDF)
+      featurePipelineModel
+        .transform(profileBalancedStarringDF)
+        .select(featureNames.map(col): _*)
     })
     .cache()
 
     // Split Data
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.9, 0.1, 0.0)
+    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.95, 0.05, 0.0)
     val Array(trainingDF, testDF, _) = featuredBalancedStarringDF.randomSplit(weights)
 
     val trainingFeaturedDF = trainingDF
