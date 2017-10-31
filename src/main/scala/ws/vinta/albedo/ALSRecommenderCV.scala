@@ -8,7 +8,6 @@ import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.sql.SparkSession
 import ws.vinta.albedo.evaluators.RankingEvaluator
 import ws.vinta.albedo.evaluators.RankingEvaluator._
-import ws.vinta.albedo.schemas.UserItems
 import ws.vinta.albedo.transformers.RankingMetricFormatter
 import ws.vinta.albedo.utils.DatasetUtils._
 
@@ -34,8 +33,6 @@ object ALSRecommenderCV {
       .appName("ALSRecommenderCV")
       .config(conf)
       .getOrCreate()
-
-    import spark.implicits._
 
     val sc = spark.sparkContext
     sc.setCheckpointDir("./spark-data/checkpoint")
@@ -68,19 +65,17 @@ object ALSRecommenderCV {
     // Cross-validate Models
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(als.rank, Array(50, 100))
-      .addGrid(als.regParam, Array(0.01, 0.1, 1.0))
-      .addGrid(als.alpha, Array(0.01, 0.1, 40))
-      .addGrid(als.maxIter, Array(25))
+      .addGrid(als.rank, Array(50, 70))
+      .addGrid(als.regParam, Array(0.1, 0.5))
+      .addGrid(als.alpha, Array(0.1, 40))
+      .addGrid(als.maxIter, Array(20))
       .build()
 
     val topK = 30
 
-    val userActualItemsDS = loadUserActualItemsDF(topK)
-      .as[UserItems]
-      .cache()
+    val userActualItemsDF = loadUserActualItemsDF(topK).cache()
 
-    val rankingEvaluator = new RankingEvaluator(userActualItemsDS)
+    val rankingEvaluator = new RankingEvaluator(userActualItemsDF)
       .setMetricName("NDCG@k")
       .setK(topK)
       .setUserCol("user_id")

@@ -313,9 +313,9 @@ object LogisticRegressionRankerCV {
     // Cross-validate Models
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.05, 0.1))
-      .addGrid(lr.elasticNetParam, Array(0.0, 0.1))
+      .addGrid(lr.maxIter, Array(200))
+      .addGrid(lr.regParam, Array(0.1, 0.2))
+      .addGrid(lr.elasticNetParam, Array(0.0))
       .addGrid(lr.weightCol, Array("als_score_weight", "repo_created_at_weight"))
       .build()
 
