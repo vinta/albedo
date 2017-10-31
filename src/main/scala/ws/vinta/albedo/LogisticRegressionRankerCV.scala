@@ -228,8 +228,8 @@ object LogisticRegressionRankerCV {
 
     val sql = """
     SELECT *,
-           IF (als_score < 0.0, 1.0, 1.0 + als_score) AS als_score_weight,
-           ROUND(LOG(2, CAST(repo_created_at AS INT)), 5) AS repo_created_at_weight
+           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_positive_weight,
+           IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -286,7 +286,7 @@ object LogisticRegressionRankerCV {
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
       featurePipelineModel
         .transform(profileBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"als_score_weight", $"repo_created_at_weight")
+        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"recent_positive_weight", $"als_score_weight")
     })
     .cache()
 
@@ -314,7 +314,7 @@ object LogisticRegressionRankerCV {
       .addGrid(lr.maxIter, Array(150))
       .addGrid(lr.regParam, Array(0.6, 0.7, 0.8))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("repo_created_at_weight"))
+      .addGrid(lr.weightCol, Array("recent_positive_weight", "als_score_weight"))
       .build()
 
     val topK = 30
