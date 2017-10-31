@@ -96,7 +96,7 @@ ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.UserProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -119,7 +119,7 @@ ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.RepoProfileBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -142,7 +142,7 @@ ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.ALSRecommenderBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -163,7 +163,7 @@ cv_als:
 	time gcloud beta dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.ALSRecommenderCV
 
@@ -187,7 +187,7 @@ ifeq ($(platform),gcp)
 	time gcloud dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--class ws.vinta.albedo.Word2VecCorpusBuilder \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar
 else
@@ -210,7 +210,7 @@ ifeq ($(platform),gcp)
 	time gcloud beta dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.LogisticRegressionRanker
 else
@@ -231,6 +231,6 @@ cv_lr:
 	time gcloud beta dataproc jobs submit spark \
 	--verbosity debug \
 	--cluster albedo \
-	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.maxResultSize=3g;spark.driver.memory=6g;spark.executor.cores=6;spark.executor.instances=4;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
+	--properties "^;^spark.albedo.checkpointDir=gs://albedo/spark-data/checkpoint;spark.albedo.dataDir=gs://albedo/spark-data;spark.driver.memory=6g;spark.executor.cores=5;spark.executor.instances=4;spark.executor.memory=21g;spark.jars.packages=com.hankcs:hanlp:portable-1.3.4;spark.serializer=org.apache.spark.serializer.KryoSerializer" \
 	--jars target/albedo-1.0.0-SNAPSHOT.jar \
 	--class ws.vinta.albedo.LogisticRegressionRankerCV
