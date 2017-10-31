@@ -227,14 +227,6 @@ object LogisticRegressionRanker {
       .setWithStd(true)
       .setWithMean(false)
 
-    val sql = """
-    SELECT *,
-           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_positive_weight,
-           IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight
-    FROM __THIS__
-    """.stripMargin
-    val weightTransformer = new SQLTransformer()
-      .setStatement(sql)
 
     val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
     featureStages += userRepoTransformer
@@ -244,7 +236,6 @@ object LogisticRegressionRanker {
     featureStages ++= textTransformers
     featureStages += vectorAssembler
     featureStages += standardScaler
-    featureStages += weightTransformer
 
     val featurePipeline = new Pipeline().setStages(featureStages.toArray)
 
@@ -255,7 +246,9 @@ object LogisticRegressionRanker {
 
     // Handle Imbalanced Data
 
-    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount.parquet"
+    val negativePositiveRatio = 0.5
+
+    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
       val popularReposDS = loadPopularRepoDF()
       val popularRepos = popularReposDS
@@ -270,7 +263,7 @@ object LogisticRegressionRanker {
         .setTimeCol("starred_at")
         .setLabelCol("starring")
         .setNegativeValue(0.0)
-        .setNegativePositiveRatio(1.0)
+        .setNegativePositiveRatio(negativePositiveRatio)
       negativeBalancer.transform(reducedStarringDF)
     })
     .repartition($"user_id")
@@ -285,9 +278,7 @@ object LogisticRegressionRanker {
 
     val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount.parquet"
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
-      featurePipelineModel
-        .transform(profileBalancedStarringDF)
-        .select($"user_id", $"repo_id", $"starring", $"standard_features", $"recent_positive_weight", $"als_score_weight")
+      featurePipelineModel.transform(profileBalancedStarringDF)
     })
     .cache()
 
@@ -312,6 +303,15 @@ object LogisticRegressionRanker {
 
     // Build the Model Pipeline
 
+    val sql = """
+    SELECT *,
+           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_positive_weight,
+           IF (starring = 1.0, ROUND((als_score * 100) + 10, 0), 1.0) AS als_score_weight
+    FROM __THIS__
+    """.stripMargin
+    val weightTransformer = new SQLTransformer()
+      .setStatement(sql)
+
     val lr = new LogisticRegression()
       .setMaxIter(200)
       .setRegParam(0.7)
@@ -324,6 +324,7 @@ object LogisticRegressionRanker {
     println(lr.explainParams())
 
     val modelStages = mutable.ArrayBuffer.empty[PipelineStage]
+    modelStages += weightTransformer
     modelStages += lr
 
     val modelPipeline = new Pipeline().setStages(modelStages.toArray)

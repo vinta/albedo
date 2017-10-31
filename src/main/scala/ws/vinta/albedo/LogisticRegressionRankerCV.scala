@@ -254,7 +254,9 @@ object LogisticRegressionRankerCV {
 
     // Handle Imbalanced Data
 
-    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount.parquet"
+    val negativePositiveRatio = 1.0
+
+    val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
       val popularReposDS = loadPopularRepoDF()
       val popularRepos = popularReposDS
@@ -269,7 +271,7 @@ object LogisticRegressionRankerCV {
         .setTimeCol("starred_at")
         .setLabelCol("starring")
         .setNegativeValue(0.0)
-        .setNegativePositiveRatio(1.0)
+        .setNegativePositiveRatio(negativePositiveRatio)
       negativeBalancer.transform(reducedStarringDF)
     })
     .repartition($"user_id")
