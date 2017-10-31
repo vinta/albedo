@@ -312,9 +312,9 @@ object LogisticRegressionRankerCV {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.8, 0.9, 30))
+      .addGrid(lr.regParam, Array(0.6, 0.7, 0.8))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("als_score_weight", "repo_created_at_weight"))
+      .addGrid(lr.weightCol, Array("repo_created_at_weight"))
       .build()
 
     val topK = 30
