@@ -59,6 +59,8 @@ object ALSRecommenderBuilder {
       als.fit(rawStarringDS)
     })
 
+    println(alsModel.explainParams())
+
     // Split Data
 
     val Array(_, testDF) = rawStarringDS.randomSplit(Array(0.9, 0.1))

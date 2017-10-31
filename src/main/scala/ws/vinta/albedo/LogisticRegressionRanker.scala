@@ -322,6 +322,8 @@ object LogisticRegressionRanker {
       .setFeaturesCol("standard_features")
       .setWeightCol("repo_created_at_weight")
 
+    println(lr.explainParams())
+
     val modelStages = mutable.ArrayBuffer.empty[PipelineStage]
     modelStages += lr
 

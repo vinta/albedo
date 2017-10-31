@@ -82,6 +82,8 @@ object Word2VecCorpusBuilder {
       word2Vec.fit(finalDF)
     })
 
+    println(word2VecModel.explainParams())
+    
     val word2VecDF = word2VecModel.transform(finalDF)
     word2VecDF.show(false)
 
