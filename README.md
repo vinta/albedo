@@ -90,7 +90,7 @@ $ spark-submit \
     --packages "com.github.fommil.netlib:all:1.1.2,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.ALSRecommenderBuilder \
     target/albedo-1.0.0-SNAPSHOT.jar
-# NDCG@30 = 0.04380662848324943
+# NDCG@30 = 0.05209047292612741
 ```
 
 ## Build a Content-based Recommender for Candidate Generation
@@ -134,6 +134,7 @@ $ spark-submit \
     --packages "com.github.fommil.netlib:all:1.1.2,com.hankcs:hanlp:portable-1.3.4,mysql:mysql-connector-java:5.1.41" \
     --class ws.vinta.albedo.LogisticRegressionRanker \
     target/albedo-1.0.0-SNAPSHOT.jar
+# NDCG@30 = 0.021114356461615493
 ```
 
 ## TODO
