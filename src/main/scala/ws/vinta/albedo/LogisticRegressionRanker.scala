@@ -304,7 +304,7 @@ object LogisticRegressionRanker {
       .cache()
 
     val largeUserIds = testFeaturedDF.select($"user_id").distinct().map(row => row.getInt(0)).collect().toList
-    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(250) :+ 652070
+    val sampledUserIds = scala.util.Random.shuffle(largeUserIds).take(200) :+ 652070
     val testUserDF = spark.createDataFrame(sampledUserIds.map(Tuple1(_)))
       .toDF("user_id")
       .cache()
@@ -313,10 +313,10 @@ object LogisticRegressionRanker {
 
     val weightSQL = """
     SELECT *,
-           /* 1.0 AS default_weight, */
-           /* IF (starring = 1.0, 0.9, 0.1) AS positive_weight, */
-           /* IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS positive_starred_weight, */
-           /* IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight, */
+           1.0 AS default_weight,
+           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS positive_starred_weight,
+           IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight,
            IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS positive_created_week_weight
     FROM __THIS__
     """.stripMargin
@@ -327,12 +327,12 @@ object LogisticRegressionRanker {
 
     val lr = new LogisticRegression()
       .setMaxIter(300)
-      .setRegParam(0.6)
+      .setRegParam(0.7)
       .setElasticNetParam(0.0)
       .setStandardization(true)
       .setLabelCol("starring")
       .setFeaturesCol("features")
-      .setWeightCol("positive_created_week_weight")
+      .setWeightCol("positive_starred_weight")
 
     println(lr.explainParams())
 
@@ -389,8 +389,8 @@ object LogisticRegressionRanker {
     val recommenders = mutable.ArrayBuffer.empty[Recommender]
     recommenders += alsRecommender
     //recommenders += contentRecommender
-    //recommenders += curationRecommender
-    //recommenders += popularityRecommender
+    recommenders += curationRecommender
+    recommenders += popularityRecommender
 
     val candidateDF = recommenders
       .map((recommender: Recommender) => recommender.recommendForUsers(testUserDF))

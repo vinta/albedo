@@ -296,7 +296,8 @@ object LogisticRegressionRankerCV {
            1.0 AS default_weight,
            IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
            IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight,
-           IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight
+           IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight,
+           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS positive_created_week_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -325,9 +326,9 @@ object LogisticRegressionRankerCV {
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.standardization, Array(true))
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.6))
+      .addGrid(lr.regParam, Array(0.7))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("positive_weight", "recent_starred_weight", "positive_created_weight"))
+      .addGrid(lr.weightCol, Array("positive_weight", "recent_starred_weight", "positive_created_weight", "positive_created_week_weight"))
       .build()
 
     val topK = 30
