@@ -245,7 +245,7 @@ object LogisticRegressionRankerCV {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 0.5
+    val negativePositiveRatio = 1.0
 
     val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {

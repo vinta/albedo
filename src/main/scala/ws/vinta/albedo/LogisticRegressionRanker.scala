@@ -246,7 +246,7 @@ object LogisticRegressionRanker {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 0.5
+    val negativePositiveRatio = 1.0
 
     val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
@@ -332,7 +332,7 @@ object LogisticRegressionRanker {
       .setStandardization(false)
       .setLabelCol("starring")
       .setFeaturesCol("standard_features")
-      .setWeightCol("positive_weight")
+      .setWeightCol("recent_positive_weight")
 
     println(lr.explainParams())
 
@@ -342,7 +342,7 @@ object LogisticRegressionRanker {
 
     val modelPipeline = new Pipeline().setStages(modelStages.toArray)
 
-    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount-${lr.getMaxIter}-${lr.getRegParam}-${lr.getElasticNetParam}-${lr.getWeightCol}.parquet"
+    val modelPipelinePath = s"${settings.dataDir}/${settings.today}/rankerModelPipeline-$maxStarredReposCount-$negativePositiveRatio-${lr.getMaxIter}-${lr.getRegParam}-${lr.getElasticNetParam}-${lr.getWeightCol}.parquet"
     val modelPipelineModel = loadOrCreateModel[PipelineModel](PipelineModel, modelPipelinePath, () => {
       modelPipeline.fit(trainingFeaturedDF)
     })
