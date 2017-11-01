@@ -245,7 +245,7 @@ object LogisticRegressionRankerCV {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 1.0
+    val negativePositiveRatio = 2.0
 
     val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
@@ -297,10 +297,10 @@ object LogisticRegressionRankerCV {
 
     val sql = """
     SELECT *,
-           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
-           IF (starring = 1.0 AND repo_days_between_created_at_today <= 365, 0.9, 0.1) AS recent_created_weight,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 180, 0.9, 0.1) AS recent_starred_weight,
-           IF (starring = 1.0 AND als_score >= 0.5, 0.9, 0.1) AS als_score_weight
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 90, 0.9, 0.1) AS recent_starred_weight1,
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 180, 0.9, 0.1) AS recent_starred_weight2,
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight3,
+           IF (starring = 1.0, ROUND(CAST(starred_at AS DOUBLE) / (60 * 60 * 24 * 7), 0), 1.0) AS recent_starred_weight4
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -327,9 +327,9 @@ object LogisticRegressionRankerCV {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.6, 0.7))
+      .addGrid(lr.regParam, Array(0.7))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("recent_created_weight", "recent_starred_weight"))
+      .addGrid(lr.weightCol, Array("recent_starred_weight1", "recent_starred_weight2", "recent_starred_weight3", "recent_starred_weight4"))
       .build()
 
     val topK = 30
