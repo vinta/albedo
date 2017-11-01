@@ -221,12 +221,6 @@ object LogisticRegressionRankerCV {
       .setInputCols(finalBooleanColumnNames ++ finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
       .setOutputCol("features")
 
-    val standardScaler = new StandardScaler()
-      .setInputCol("features")
-      .setOutputCol("standard_features")
-      .setWithStd(true)
-      .setWithMean(false)
-
     val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
     featureStages += userRepoTransformer
     featureStages += alsModel
@@ -234,7 +228,6 @@ object LogisticRegressionRankerCV {
     featureStages ++= listTransformers
     featureStages ++= textTransformers
     featureStages += vectorAssembler
-    featureStages += standardScaler
 
     val featurePipeline = new Pipeline().setStages(featureStages.toArray)
 
@@ -284,8 +277,7 @@ object LogisticRegressionRankerCV {
         !columnName.endsWith("__cv") &&
         !columnName.endsWith("__words") &&
         !columnName.endsWith("__filtered_words") &&
-        !columnName.endsWith("__w2v") &&
-        columnName != "features"
+        !columnName.endsWith("__w2v")
       })
       df.select(keepColumnName.map(col): _*)
     })
@@ -297,18 +289,18 @@ object LogisticRegressionRankerCV {
 
     val sql = """
     SELECT *,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.999, 0.001) AS recent_starred_weight1,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight2,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 730, 0.9, 0.1) AS recent_starred_weight3
+           1.0 AS default_weight,
+           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
       .setStatement(sql)
 
     val lr = new LogisticRegression()
-      .setStandardization(false)
+      .setStandardization(true)
       .setLabelCol("starring")
-      .setFeaturesCol("standard_features")
+      .setFeaturesCol("features")
 
     val rankingMetricFormatter = new RankingMetricFormatter("lr")
       .setUserCol("user_id")
@@ -326,9 +318,9 @@ object LogisticRegressionRankerCV {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.7))
+      .addGrid(lr.regParam, Array(0.6, 0.7))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("recent_starred_weight1", "recent_starred_weight2", "recent_starred_weight3"))
+      .addGrid(lr.weightCol, Array("default_weight", "positive_weight", "recent_starred_weight"))
       .build()
 
     val topK = 30

@@ -130,7 +130,9 @@ object LogisticRegressionRanker {
 
     // Prepare the Feature Pipeline
 
-    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 2000
+    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 3000
+
+    println(s"maxStarredReposCount: $maxStarredReposCount")
 
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
     val reducedStarringDF = loadOrCreateDataFrame(reducedStarringDFpath, () => {
@@ -222,12 +224,6 @@ object LogisticRegressionRanker {
       .setInputCols(finalBooleanColumnNames ++ finalContinuousColumnNames ++ finalCategoricalColumnNames ++ finalListColumnNames ++ finalTextColumnNames)
       .setOutputCol("features")
 
-    val standardScaler = new StandardScaler()
-      .setInputCol("features")
-      .setOutputCol("standard_features")
-      .setWithStd(true)
-      .setWithMean(false)
-
     val featureStages = mutable.ArrayBuffer.empty[PipelineStage]
     featureStages += userRepoTransformer
     featureStages += alsModel
@@ -235,7 +231,6 @@ object LogisticRegressionRanker {
     featureStages ++= listTransformers
     featureStages ++= textTransformers
     featureStages += vectorAssembler
-    featureStages += standardScaler
 
     val featurePipeline = new Pipeline().setStages(featureStages.toArray)
 
@@ -247,6 +242,8 @@ object LogisticRegressionRanker {
     // Handle Imbalanced Data
 
     val negativePositiveRatio = 2.0
+
+    println(s"negativePositiveRatio: $negativePositiveRatio")
 
     val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
@@ -285,8 +282,7 @@ object LogisticRegressionRanker {
         !columnName.endsWith("__cv") &&
         !columnName.endsWith("__words") &&
         !columnName.endsWith("__filtered_words") &&
-        !columnName.endsWith("__w2v") &&
-        columnName != "features"
+        !columnName.endsWith("__w2v")
       })
       df.select(keepColumnName.map(col): _*)
     })
@@ -315,22 +311,26 @@ object LogisticRegressionRanker {
 
     // Build the Model Pipeline
 
-    val sql = """
+    val weightSQL = """
     SELECT *,
+           1.0 AS default_weight,
+           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
            IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
-      .setStatement(sql)
+      .setStatement(weightSQL)
+
+    println(s"weightSQL: $weightSQL")
 
     val lr = new LogisticRegression()
-      .setMaxIter(150)
+      .setMaxIter(180)
       .setRegParam(0.7)
       .setElasticNetParam(0.0)
-      .setStandardization(false)
+      .setStandardization(true)
       .setLabelCol("starring")
-      .setFeaturesCol("standard_features")
-      //.setWeightCol("recent_starred_weight")
+      .setFeaturesCol("features")
+      .setWeightCol("recent_starred_weight")
 
     println(lr.explainParams())
 
@@ -355,8 +355,9 @@ object LogisticRegressionRanker {
       .setLabelCol("starring")
 
     val classificationMetric = binaryClassificationEvaluator.evaluate(testRankedDF)
+
     println(s"${binaryClassificationEvaluator.getMetricName} = $classificationMetric")
-    // areaUnderROC = 0.9450631491281277
+    // areaUnderROC = 0.9425269994859455
 
     // Generate Candidates
 
@@ -434,6 +435,7 @@ object LogisticRegressionRanker {
       .setUserCol("user_id")
       .setItemsCol("items")
     val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDF)
+
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
     // NDCG@30 = 0.01987187033275995
 
