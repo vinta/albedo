@@ -130,7 +130,7 @@ object LogisticRegressionRanker {
 
     // Prepare the Feature Pipeline
 
-    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 3000
+    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 4000
 
     println(s"maxStarredReposCount: $maxStarredReposCount")
 
@@ -241,7 +241,7 @@ object LogisticRegressionRanker {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 2.0
+    val negativePositiveRatio = 1.0
 
     println(s"negativePositiveRatio: $negativePositiveRatio")
 
@@ -315,7 +315,8 @@ object LogisticRegressionRanker {
     SELECT *,
            1.0 AS default_weight,
            IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight,
+           IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -324,13 +325,13 @@ object LogisticRegressionRanker {
     println(s"weightSQL: $weightSQL")
 
     val lr = new LogisticRegression()
-      .setMaxIter(180)
+      .setMaxIter(200)
       .setRegParam(0.6)
       .setElasticNetParam(0.0)
       .setStandardization(true)
       .setLabelCol("starring")
       .setFeaturesCol("features")
-      .setWeightCol("recent_starred_weight")
+      .setWeightCol("positive_created_weight")
 
     println(lr.explainParams())
 

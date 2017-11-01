@@ -129,7 +129,7 @@ object LogisticRegressionRankerCV {
 
     // Prepare the Feature Pipeline
 
-    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 4000
+    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 40 else 4000
 
     println(s"maxStarredReposCount: $maxStarredReposCount")
 
@@ -240,7 +240,7 @@ object LogisticRegressionRankerCV {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 1.5
+    val negativePositiveRatio = 1.0
 
     println(s"negativePositiveRatio: $negativePositiveRatio")
 
@@ -295,7 +295,8 @@ object LogisticRegressionRankerCV {
     SELECT *,
            1.0 AS default_weight,
            IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight,
+           IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -324,9 +325,9 @@ object LogisticRegressionRankerCV {
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.standardization, Array(true))
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.6, 0.7))
+      .addGrid(lr.regParam, Array(0.6))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("default_weight", "positive_weight", "recent_starred_weight"))
+      .addGrid(lr.weightCol, Array("positive_weight", "recent_starred_weight", "positive_created_weight"))
       .build()
 
     val topK = 30
