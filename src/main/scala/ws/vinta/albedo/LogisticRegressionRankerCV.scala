@@ -131,6 +131,8 @@ object LogisticRegressionRankerCV {
 
     val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 4000
 
+    println(s"maxStarredReposCount: $maxStarredReposCount")
+
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
     val reducedStarringDF = loadOrCreateDataFrame(reducedStarringDFpath, () => {
       val userStarredReposCountDF = rawStarringDS
@@ -238,7 +240,9 @@ object LogisticRegressionRankerCV {
 
     // Handle Imbalanced Data
 
-    val negativePositiveRatio = 2.0
+    val negativePositiveRatio = 1.5
+
+    println(s"negativePositiveRatio: $negativePositiveRatio")
 
     val balancedStarringDFpath = s"${settings.dataDir}/${settings.today}/balancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val balancedStarringDF = loadOrCreateDataFrame(balancedStarringDFpath, () => {
@@ -287,7 +291,7 @@ object LogisticRegressionRankerCV {
 
     // Build the Model Pipeline
 
-    val sql = """
+    val weightSQL = """
     SELECT *,
            1.0 AS default_weight,
            IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
@@ -295,10 +299,11 @@ object LogisticRegressionRankerCV {
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
-      .setStatement(sql)
+      .setStatement(weightSQL)
+
+    println(s"weightSQL: $weightSQL")
 
     val lr = new LogisticRegression()
-      .setStandardization(true)
       .setLabelCol("starring")
       .setFeaturesCol("features")
 
@@ -317,6 +322,7 @@ object LogisticRegressionRankerCV {
     // Cross-validate Models
 
     val paramGrid = new ParamGridBuilder()
+      .addGrid(lr.standardization, Array(true))
       .addGrid(lr.maxIter, Array(150))
       .addGrid(lr.regParam, Array(0.6, 0.7))
       .addGrid(lr.elasticNetParam, Array(0.0))
