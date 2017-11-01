@@ -313,10 +313,11 @@ object LogisticRegressionRanker {
 
     val weightSQL = """
     SELECT *,
-           1.0 AS default_weight,
-           IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
-           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS recent_starred_weight,
-           IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight
+           /* 1.0 AS default_weight, */
+           /* IF (starring = 1.0, 0.9, 0.1) AS positive_weight, */
+           /* IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 365, 0.9, 0.1) AS positive_starred_weight, */
+           /* IF (starring = 1.0 AND datediff(current_date(), repo_created_at) <= 730, 0.9, 0.1) AS positive_created_weight, */
+           IF (starring = 1.0, ROUND(CAST(repo_created_at AS INT) / (60 * 60 * 24 * 7), 0), 1.0) AS positive_created_week_weight
     FROM __THIS__
     """.stripMargin
     val weightTransformer = new SQLTransformer()
@@ -325,13 +326,13 @@ object LogisticRegressionRanker {
     println(s"weightSQL: $weightSQL")
 
     val lr = new LogisticRegression()
-      .setMaxIter(200)
+      .setMaxIter(300)
       .setRegParam(0.6)
       .setElasticNetParam(0.0)
       .setStandardization(true)
       .setLabelCol("starring")
       .setFeaturesCol("features")
-      .setWeightCol("positive_created_weight")
+      .setWeightCol("positive_created_week_weight")
 
     println(lr.explainParams())
 
