@@ -130,7 +130,7 @@ object LogisticRegressionRanker {
 
     // Prepare the Feature Pipeline
 
-    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 30 else 4000
+    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 4000
 
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
     val reducedStarringDF = loadOrCreateDataFrame(reducedStarringDFpath, () => {
@@ -296,8 +296,8 @@ object LogisticRegressionRanker {
 
     // Split Data
 
-    val weights = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") Array(0.001, 0.001, 0.998) else Array(0.95, 0.05, 0.0)
-    val Array(trainingDF, testDF, _) = featuredBalancedStarringDF.randomSplit(weights)
+    val weights = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") Array(0.7, 0.3) else Array(0.95, 0.05)
+    val Array(trainingDF, testDF) = featuredBalancedStarringDF.randomSplit(weights)
 
     val trainingFeaturedDF = trainingDF
       .repartition($"user_id")
@@ -318,7 +318,8 @@ object LogisticRegressionRanker {
     val sql = """
     SELECT *,
            IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
-           IF (starring = 1.0 AND repo_days_between_created_at_today <= 60, 0.9, 0.1) AS recent_positive_weight,
+           IF (starring = 1.0 AND repo_days_between_created_at_today <= 365, 0.9, 0.1) AS recent_created_weight,
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 180, 0.9, 0.1) AS recent_starred_weight,
            IF (starring = 1.0 AND als_score >= 0.5, 0.9, 0.1) AS als_score_weight
     FROM __THIS__
     """.stripMargin
@@ -326,13 +327,13 @@ object LogisticRegressionRanker {
       .setStatement(sql)
 
     val lr = new LogisticRegression()
-      .setMaxIter(200)
+      .setMaxIter(150)
       .setRegParam(0.7)
       .setElasticNetParam(0.0)
       .setStandardization(false)
       .setLabelCol("starring")
       .setFeaturesCol("standard_features")
-      .setWeightCol("recent_positive_weight")
+      .setWeightCol("recent_starred_weight")
 
     println(lr.explainParams())
 
@@ -437,7 +438,7 @@ object LogisticRegressionRanker {
       .setItemsCol("items")
     val rankingMetric = rankingEvaluator.evaluate(userPredictedItemsDF)
     println(s"${rankingEvaluator.getFormattedMetricName} = $rankingMetric")
-    // NDCG@30 = 0.05662251253089785
+    // NDCG@30 = 0.01987187033275995
 
     spark.stop()
   }

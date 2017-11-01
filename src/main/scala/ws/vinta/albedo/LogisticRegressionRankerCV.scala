@@ -129,7 +129,7 @@ object LogisticRegressionRankerCV {
 
     // Prepare the Feature Pipeline
 
-    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_ON_SMALL_MACHINE", "false") == "true") 30 else 4000
+    val maxStarredReposCount = if (scala.util.Properties.envOrElse("RUN_WITH_INTELLIJ", "false") == "true") 30 else 4000
 
     val reducedStarringDFpath = s"${settings.dataDir}/${settings.today}/reducedStarringDF-$maxStarredReposCount.parquet"
     val reducedStarringDF = loadOrCreateDataFrame(reducedStarringDFpath, () => {
@@ -298,7 +298,8 @@ object LogisticRegressionRankerCV {
     val sql = """
     SELECT *,
            IF (starring = 1.0, 0.9, 0.1) AS positive_weight,
-           IF (starring = 1.0 AND repo_days_between_created_at_today <= 60, 0.9, 0.1) AS recent_positive_weight,
+           IF (starring = 1.0 AND repo_days_between_created_at_today <= 365, 0.9, 0.1) AS recent_created_weight,
+           IF (starring = 1.0 AND datediff(current_date(), starred_at) <= 180, 0.9, 0.1) AS recent_starred_weight,
            IF (starring = 1.0 AND als_score >= 0.5, 0.9, 0.1) AS als_score_weight
     FROM __THIS__
     """.stripMargin
@@ -326,9 +327,9 @@ object LogisticRegressionRankerCV {
 
     val paramGrid = new ParamGridBuilder()
       .addGrid(lr.maxIter, Array(150))
-      .addGrid(lr.regParam, Array(0.7, 0.8))
+      .addGrid(lr.regParam, Array(0.6, 0.7))
       .addGrid(lr.elasticNetParam, Array(0.0))
-      .addGrid(lr.weightCol, Array("positive_weight", "recent_positive_weight", "als_score_weight"))
+      .addGrid(lr.weightCol, Array("recent_created_weight", "recent_starred_weight"))
       .build()
 
     val topK = 30
