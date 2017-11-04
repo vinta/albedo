@@ -40,6 +40,7 @@ $ open http://127.0.0.1:8000/admin/
 You could also create a Spark cluster on [Google Cloud Dataproc](https://cloud.google.com/dataproc/).
 
 ```bash
+# start a local Spark cluster in Standalone mode
 $ make spark_start
 ```
 
