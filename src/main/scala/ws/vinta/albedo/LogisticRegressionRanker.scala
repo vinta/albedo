@@ -273,6 +273,8 @@ object LogisticRegressionRanker {
       .join(repoProfileDF, Seq("repo_id"))
       .cache()
 
+    balancedStarringDF.unpersist()
+
     val featuredBalancedStarringDFpath = s"${settings.dataDir}/${settings.today}/rankerFeaturedBalancedStarringDF-$maxStarredReposCount-$negativePositiveRatio.parquet"
     val featuredBalancedStarringDF = loadOrCreateDataFrame(featuredBalancedStarringDFpath, () => {
       val df = featurePipelineModel.transform(profileBalancedStarringDF)
