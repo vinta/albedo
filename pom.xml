@@ -80,6 +80,12 @@
       <artifactId>snowball-stemmer</artifactId>
       <version>1.3.0.581.1</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/Azure/mmlspark -->
+    <dependency>
+      <groupId>Azure</groupId>
+      <artifactId>mmlspark</artifactId>
+      <version>0.9</version>
+    </dependency>
   </dependencies>
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
